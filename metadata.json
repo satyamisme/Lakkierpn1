@@ -1,0 +1,8 @@
+{
+  "name": "Lakki Phone ERP",
+  "description": "A comprehensive 300+ feature Enterprise Resource Planning system for mobile phone retail and repair businesses, featuring high-density POS, deep-tech repair tracking, and multi-store inventory management.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
