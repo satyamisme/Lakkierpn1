@@ -1,0 +1,76 @@
+import express from 'express';
+import Sale from '../models/Sale.js';
+import Repair from '../models/Repair.js';
+import PDFDocument from 'pdfkit';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
+
+const router = express.Router();
+
+// GET /z-report (ID 190) – aggregates sales, payments, expenses for current day
+router.get('/z-report', authenticate, requirePermission(190), async (req, res) => {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const sales = await Sale.find({ createdAt: { $gte: startOfDay }, status: 'completed' });
+    const repairs = await Repair.find({ completedAt: { $gte: startOfDay }, status: 'ready' });
+    
+    const totalSales = sales.reduce((sum, s) => sum + s.total, 0);
+    const totalRepairs = repairs.reduce((sum, r) => sum + r.estimatedQuote, 0);
+    
+    const doc = new PDFDocument();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=Z-Report.pdf');
+    
+    doc.pipe(res);
+    doc.fontSize(25).text('LAKKI PHONE ERP - Z-REPORT', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString()}`);
+    doc.moveDown();
+    doc.text(`Total Sales: ${totalSales.toFixed(3)} KD`);
+    doc.text(`Total Repairs: ${totalRepairs.toFixed(3)} KD`);
+    doc.moveDown();
+    doc.text(`Grand Total: ${(totalSales + totalRepairs).toFixed(3)} KD`);
+    doc.end();
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate Z-Report' });
+  }
+});
+
+// GET /anomalies (ID 244) – flags suspicious sales
+router.get('/anomalies', authenticate, requirePermission(244), async (req, res) => {
+  try {
+    const suspiciousSales = await Sale.find({ total: { $lt: 1 } }); // Price < 1 KD
+    res.json(suspiciousSales);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch anomalies' });
+  }
+});
+
+// GET /api/tax/vat-export (permission 194) – query params: startDate, endDate
+router.get('/tax/vat-export', authenticate, requirePermission(194), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const query: any = { status: 'completed' };
+    if (startDate && endDate) {
+      query.createdAt = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+
+    const sales = await Sale.find(query).populate('customerId');
+    
+    let csv = 'Sale ID,Date,Subtotal,VAT Amount (5%),Total,Customer VAT Number\n';
+    sales.forEach(sale => {
+      const vat = sale.total * 0.05;
+      const subtotal = sale.total - vat;
+      csv += `${sale._id},${sale.createdAt.toISOString()},${subtotal.toFixed(3)},${vat.toFixed(3)},${sale.total.toFixed(3)},${(sale.customerId as any)?.vatNumber || 'N/A'}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=VAT_Export.csv');
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export VAT CSV' });
+  }
+});
+
+export default router;

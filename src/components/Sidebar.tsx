@@ -20,10 +20,17 @@ import {
   Wallet,
   UserCircle,
   PieChart,
-  Settings2
+  Settings2,
+  FileText,
+  Layers,
+  Globe,
+  RefreshCw,
+  Megaphone,
+  Trophy,
+  BrainCircuit
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { usePermissions } from './PermissionGuard';
+import { useAuth } from '../context/AuthContext';
 
 interface NavItem {
   id: number;
@@ -42,7 +49,6 @@ const navGroups: NavGroup[] = [
     label: 'POS Terminal',
     items: [
       { id: 1, label: 'Sales Terminal', icon: <ShoppingCart className="w-5 h-5" />, path: 'pos' },
-      { id: 12, label: 'Payment Matrix', icon: <CreditCard className="w-5 h-5" />, path: 'payments' },
       { id: 21, label: 'Sales History', icon: <History className="w-5 h-5" />, path: 'history' },
     ]
   },
@@ -52,44 +58,78 @@ const navGroups: NavGroup[] = [
       { id: 61, label: 'Job Cards', icon: <Wrench className="w-5 h-5" />, path: 'repairs' },
       { id: 63, label: 'Bench Queue', icon: <Activity className="w-5 h-5" />, path: 'bench' },
       { id: 71, label: 'QC Terminal', icon: <ClipboardCheck className="w-5 h-5" />, path: 'qc' },
-      { id: 141, label: 'Pickup Terminal', icon: <Truck className="w-5 h-5" />, path: 'pickup' },
     ]
   },
   {
     label: 'Inventory',
     items: [
       { id: 31, label: 'Stock Matrix', icon: <Package className="w-5 h-5" />, path: 'inventory' },
-      { id: 34, label: 'Stock Alarms', icon: <Activity className="w-5 h-5" />, path: 'alerts' },
-      { id: 29, label: 'Cost Analysis', icon: <BarChart3 className="w-5 h-5" />, path: 'costs' },
     ]
   },
   {
     label: 'Finance',
     items: [
-      { id: 101, label: 'Cash Flow', icon: <Wallet className="w-5 h-5" />, path: 'finance' },
-      { id: 105, label: 'Expenses', icon: <CreditCard className="w-5 h-5" />, path: 'expenses' },
+      { id: 101, label: 'Finance Dashboard', icon: <Wallet className="w-5 h-5" />, path: 'finance' },
+      { id: 193, label: 'Expenses', icon: <CreditCard className="w-5 h-5" />, path: 'expenses' },
     ]
   },
   {
     label: 'HR & Staff',
     items: [
-      { id: 188, label: 'Staff Directory', icon: <Users className="w-5 h-5" />, path: 'staff' },
-      { id: 190, label: 'Attendance', icon: <Clock className="w-5 h-5" />, path: 'attendance' },
-      { id: 192, label: 'Payroll', icon: <CreditCard className="w-5 h-5" />, path: 'payroll' },
+      { id: 188, label: 'HR Dashboard', icon: <Users className="w-5 h-5" />, path: 'hr' },
+      { id: 226, label: 'Shift Handover', icon: <Clock className="w-5 h-5" />, path: 'shift' },
     ]
   },
   {
-    label: 'Customers',
+    label: 'CRM & Loyalty',
     items: [
-      { id: 151, label: 'CRM Matrix', icon: <UserCircle className="w-5 h-5" />, path: 'customers' },
-      { id: 155, label: 'Loyalty Points', icon: <PieChart className="w-5 h-5" />, path: 'loyalty' },
+      { id: 256, label: 'Customer 360', icon: <UserCircle className="w-5 h-5" />, path: 'crm' },
+      { id: 19, label: 'Loyalty Points', icon: <PieChart className="w-5 h-5" />, path: 'loyalty' },
+    ]
+  },
+  {
+    label: 'IoT & Mesh',
+    items: [
+      { id: 277, label: 'IoT Dashboard', icon: <Activity className="w-5 h-5" />, path: 'iot' },
+    ]
+  },
+  {
+    label: 'Logistics',
+    items: [
+      { id: 320, label: 'Warehouse', icon: <Package className="w-5 h-5" />, path: 'warehouse' },
+      { id: 321, label: 'Suppliers', icon: <Truck className="w-5 h-5" />, path: 'suppliers' },
+      { id: 322, label: 'Bulk Ops', icon: <Layers className="w-5 h-5" />, path: 'bulk' },
+      { id: 323, label: 'Omnichannel', icon: <Globe className="w-5 h-5" />, path: 'omnichannel' },
+      { id: 334, label: 'QC Terminal', icon: <ClipboardCheck className="w-5 h-5" />, path: 'qc-terminal' },
+      { id: 335, label: 'Returns', icon: <RefreshCw className="w-5 h-5" />, path: 'returns' },
+    ]
+  },
+  {
+    label: 'Marketing & CRM',
+    items: [
+      { id: 338, label: 'Campaigns', icon: <Megaphone className="w-5 h-5" />, path: 'marketing' },
+      { id: 336, label: 'Gift Cards', icon: <Wallet className="w-5 h-5" />, path: 'gift-cards' },
+      { id: 337, label: 'Layaway', icon: <Clock className="w-5 h-5" />, path: 'layaway' },
+      { id: 340, label: 'Customer Groups', icon: <Users className="w-5 h-5" />, path: 'customer-groups' },
+      { id: 326, label: 'Customer Portal', icon: <UserCircle className="w-5 h-5" />, path: 'customer-portal' },
+      { id: 327, label: 'IMEI Timeline', icon: <Smartphone className="w-5 h-5" />, path: 'imei-timeline' },
+    ]
+  },
+  {
+    label: 'Performance',
+    items: [
+      { id: 329, label: 'Leaderboard', icon: <Trophy className="w-5 h-5" />, path: 'performance' },
+      { id: 330, label: 'Commissions', icon: <CreditCard className="w-5 h-5" />, path: 'commission' },
+      { id: 332, label: 'Compliance', icon: <ShieldCheck className="w-5 h-5" />, path: 'compliance' },
+      { id: 325, label: 'Hardware', icon: <Settings2 className="w-5 h-5" />, path: 'hardware' },
     ]
   },
   {
     label: 'Analytics',
     items: [
-      { id: 201, label: 'Performance', icon: <BarChart3 className="w-5 h-5" />, path: 'analytics' },
-      { id: 205, label: 'Audit Logs', icon: <History className="w-5 h-5" />, path: 'logs' },
+      { id: 294, label: 'Analytics Dashboard', icon: <BarChart3 className="w-5 h-5" />, path: 'analytics' },
+      { id: 328, label: 'AI Intelligence', icon: <BrainCircuit className="w-5 h-5" />, path: 'intelligence' },
+      { id: 181, label: 'Audit Logs', icon: <History className="w-5 h-5" />, path: 'logs' },
     ]
   },
   {
@@ -111,7 +151,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeModule, onModuleChange }) => {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, user } = useAuth();
 
   const filteredGroups = navGroups.map(group => ({
     ...group,
@@ -190,13 +230,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
 
       <div className="p-4 border-t border-border">
         <div className={`flex items-center gap-4 p-3 rounded-2xl bg-muted/50 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black">
-            SA
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black uppercase">
+            {user?.name?.substring(0, 2) || '??'}
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-black text-foreground truncate">Super Admin</p>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">Lakki Main Branch</p>
+              <p className="text-sm font-black text-foreground truncate">{user?.name || 'Guest'}</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">{user?.role || 'No Role'}</p>
             </div>
           )}
         </div>

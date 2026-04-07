@@ -66,9 +66,12 @@ export const QCTerminal: React.FC = () => {
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/repairs/${selectedRepair._id}/qc`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qcResults: qcChecklist }),
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ qcChecklist: qcChecklist }),
       });
       if (response.ok) {
         setSelectedRepair(null);

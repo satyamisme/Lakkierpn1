@@ -2,30 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { ModuleRenderer } from './ModuleRenderer';
-import { ChevronRight, Home } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * ID 184: Main Chassis (MainLayout.tsx)
  * A professional, high-density dashboard that never unmounts.
  */
 export const MainLayout: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
     return saved === 'true';
   });
-  const [activeModule, setActiveModule] = useState<string>(() => {
-    return localStorage.getItem('active_module') || 'pos';
-  });
+
+  // Determine active module from URL path
+  const activeModule = location.pathname.substring(1) || 'pos';
 
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
-  useEffect(() => {
-    localStorage.setItem('active_module', activeModule);
-  }, [activeModule]);
-
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+
+  const handleModuleChange = (module: string) => {
+    navigate(`/${module}`);
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-500 overflow-hidden">
@@ -34,7 +37,7 @@ export const MainLayout: React.FC = () => {
         isCollapsed={isSidebarCollapsed} 
         onToggle={toggleSidebar} 
         activeModule={activeModule}
-        onModuleChange={setActiveModule}
+        onModuleChange={handleModuleChange}
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative">
@@ -44,7 +47,7 @@ export const MainLayout: React.FC = () => {
         {/* The Stage (ModuleRenderer.tsx) */}
         <main className="flex-1 overflow-y-auto scrollbar-hide bg-muted/30 p-6 lg:p-10">
           <div className="max-w-[1800px] mx-auto">
-            <ModuleRenderer activeModule={activeModule} onModuleChange={setActiveModule} />
+            <ModuleRenderer activeModule={activeModule} onModuleChange={handleModuleChange} />
           </div>
         </main>
 
