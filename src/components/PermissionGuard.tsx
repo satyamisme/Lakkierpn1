@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
 
 export type AppRole = 'super-admin' | 'manager' | 'cashier' | 'technician';
 
@@ -55,22 +56,30 @@ try {
 }
 
 export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [role, setRole] = useState<AppRole>(() => {
-    return (localStorage.getItem('role') as AppRole) || 'super-admin';
+    return (localStorage.getItem('role') as AppRole) || (user?.role === 'superadmin' ? 'super-admin' : 'cashier');
   });
 
-  // Initialize permissions from localStorage if available
+  // Initialize permissions from user if available, otherwise from localStorage
   const [permissions, setPermissions] = useState<number[]>(() => {
+    if (user?.permissions) return user.permissions;
+    
     const saved = localStorage.getItem('permissions');
     const savedRole = localStorage.getItem('role') as AppRole;
     
-    // If super-admin (or first boot where it defaults to super-admin), always ensure full permissions [1-300]
     if (savedRole === 'super-admin' || (!savedRole && !saved)) {
-      return Array.from({ length: 300 }, (_, i) => i + 1);
+      return Array.from({ length: 400 }, (_, i) => i + 1);
     }
     
-    return saved ? JSON.parse(saved) : [0, 1, 3, 5, 12, 185]; // Default fallback
+    return saved ? JSON.parse(saved) : [0, 1, 3, 5, 12, 185];
   });
+
+  useEffect(() => {
+    if (user?.permissions) {
+      setPermissions(user.permissions);
+    }
+  }, [user]);
 
   const switchRole = (newRole: AppRole) => {
     setRole(newRole);
@@ -115,7 +124,8 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const hasPermission = (id: number) => {
-    return permissions.includes(id) || permissions.includes(0); // 0 is super admin
+    if (role === 'super-admin') return true;
+    return permissions.includes(id) || permissions.includes(0);
   };
 
   return (

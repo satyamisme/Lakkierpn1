@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Megaphone,
   Trophy,
-  BrainCircuit
+  BrainCircuit,
+  Plus
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -46,99 +47,60 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    label: 'POS Terminal',
+    label: 'Executive',
+    items: [
+      { id: 192, label: 'Executive Cockpit', icon: <BarChart3 className="w-5 h-5" />, path: 'cockpit' },
+      { id: 256, label: 'CRM Matrix', icon: <UserCircle className="w-5 h-5" />, path: 'crm' },
+    ]
+  },
+  {
+    label: 'Operations',
     items: [
       { id: 1, label: 'Sales Terminal', icon: <ShoppingCart className="w-5 h-5" />, path: 'pos' },
-      { id: 21, label: 'Sales History', icon: <History className="w-5 h-5" />, path: 'history' },
-    ]
-  },
-  {
-    label: 'Repair Hub',
-    items: [
-      { id: 61, label: 'Job Cards', icon: <Wrench className="w-5 h-5" />, path: 'repairs' },
-      { id: 63, label: 'Bench Queue', icon: <Activity className="w-5 h-5" />, path: 'bench' },
-      { id: 71, label: 'QC Terminal', icon: <ClipboardCheck className="w-5 h-5" />, path: 'qc' },
-    ]
-  },
-  {
-    label: 'Inventory',
-    items: [
-      { id: 31, label: 'Stock Matrix', icon: <Package className="w-5 h-5" />, path: 'inventory' },
-    ]
-  },
-  {
-    label: 'Finance',
-    items: [
-      { id: 101, label: 'Finance Dashboard', icon: <Wallet className="w-5 h-5" />, path: 'finance' },
-      { id: 193, label: 'Expenses', icon: <CreditCard className="w-5 h-5" />, path: 'expenses' },
-    ]
-  },
-  {
-    label: 'HR & Staff',
-    items: [
-      { id: 188, label: 'HR Dashboard', icon: <Users className="w-5 h-5" />, path: 'hr' },
-      { id: 226, label: 'Shift Handover', icon: <Clock className="w-5 h-5" />, path: 'shift' },
-    ]
-  },
-  {
-    label: 'CRM & Loyalty',
-    items: [
-      { id: 256, label: 'Customer 360', icon: <UserCircle className="w-5 h-5" />, path: 'crm' },
-      { id: 19, label: 'Loyalty Points', icon: <PieChart className="w-5 h-5" />, path: 'loyalty' },
-    ]
-  },
-  {
-    label: 'IoT & Mesh',
-    items: [
-      { id: 277, label: 'IoT Dashboard', icon: <Activity className="w-5 h-5" />, path: 'iot' },
+      { id: 61, label: 'Deep-Tech Repair Hub', icon: <Wrench className="w-5 h-5" />, path: 'repairs' },
+      { id: 31, label: 'Supply Chain Matrix', icon: <Package className="w-5 h-5" />, path: 'inventory' },
     ]
   },
   {
     label: 'Logistics',
     items: [
-      { id: 320, label: 'Warehouse', icon: <Package className="w-5 h-5" />, path: 'warehouse' },
-      { id: 321, label: 'Suppliers', icon: <Truck className="w-5 h-5" />, path: 'suppliers' },
-      { id: 322, label: 'Bulk Ops', icon: <Layers className="w-5 h-5" />, path: 'bulk' },
-      { id: 323, label: 'Omnichannel', icon: <Globe className="w-5 h-5" />, path: 'omnichannel' },
-      { id: 334, label: 'QC Terminal', icon: <ClipboardCheck className="w-5 h-5" />, path: 'qc-terminal' },
-      { id: 335, label: 'Returns', icon: <RefreshCw className="w-5 h-5" />, path: 'returns' },
+      { id: 121, label: 'Global Warehouse', icon: <Layers className="w-5 h-5" />, path: 'warehouse' },
+      { id: 122, label: 'Vendor Portal', icon: <Truck className="w-5 h-5" />, path: 'suppliers' },
+      { id: 123, label: 'Bulk Processing', icon: <RefreshCw className="w-5 h-5" />, path: 'bulk' },
     ]
   },
   {
-    label: 'Marketing & CRM',
+    label: 'Enterprise',
     items: [
-      { id: 338, label: 'Campaigns', icon: <Megaphone className="w-5 h-5" />, path: 'marketing' },
-      { id: 336, label: 'Gift Cards', icon: <Wallet className="w-5 h-5" />, path: 'gift-cards' },
-      { id: 337, label: 'Layaway', icon: <Clock className="w-5 h-5" />, path: 'layaway' },
-      { id: 340, label: 'Customer Groups', icon: <Users className="w-5 h-5" />, path: 'customer-groups' },
-      { id: 326, label: 'Customer Portal', icon: <UserCircle className="w-5 h-5" />, path: 'customer-portal' },
-      { id: 327, label: 'IMEI Timeline', icon: <Smartphone className="w-5 h-5" />, path: 'imei-timeline' },
+      { id: 316, label: 'Enterprise Core', icon: <BrainCircuit className="w-5 h-5" />, path: 'enterprise' },
+      { id: 181, label: 'Governance & Security', icon: <ShieldCheck className="w-5 h-5" />, path: 'governance' },
+      { id: 185, label: 'Feature Gate Board', icon: <Lock className="w-5 h-5" />, path: 'toggles' },
     ]
   },
   {
-    label: 'Performance',
+    label: 'Extended',
     items: [
-      { id: 329, label: 'Leaderboard', icon: <Trophy className="w-5 h-5" />, path: 'performance' },
-      { id: 330, label: 'Commissions', icon: <CreditCard className="w-5 h-5" />, path: 'commission' },
-      { id: 332, label: 'Compliance', icon: <ShieldCheck className="w-5 h-5" />, path: 'compliance' },
-      { id: 325, label: 'Hardware', icon: <Settings2 className="w-5 h-5" />, path: 'hardware' },
+      { id: 301, label: 'Premium Features', icon: <Plus className="w-5 h-5" />, path: 'extended' },
+      { id: 241, label: 'Omnichannel Hub', icon: <Globe className="w-5 h-5" />, path: 'omnichannel' },
     ]
   },
   {
-    label: 'Analytics',
+    label: 'Finance',
     items: [
-      { id: 294, label: 'Analytics Dashboard', icon: <BarChart3 className="w-5 h-5" />, path: 'analytics' },
-      { id: 328, label: 'AI Intelligence', icon: <BrainCircuit className="w-5 h-5" />, path: 'intelligence' },
-      { id: 181, label: 'Audit Logs', icon: <History className="w-5 h-5" />, path: 'logs' },
+      { id: 101, label: 'Finance Terminal', icon: <Wallet className="w-5 h-5" />, path: 'finance' },
+    ]
+  },
+  {
+    label: 'CRM & Loyalty',
+    items: [
+      { id: 188, label: 'Performance Analytics', icon: <Trophy className="w-5 h-5" />, path: 'performance' },
     ]
   },
   {
     label: 'Admin',
     items: [
-      { id: 185, label: 'Feature Toggles', icon: <ShieldCheck className="w-5 h-5" />, path: 'toggles' },
-      { id: 195, label: 'Role Manager', icon: <Lock className="w-5 h-5" />, path: 'roles' },
-      { id: 199, label: 'Store Profile', icon: <Store className="w-5 h-5" />, path: 'profile' },
-      { id: 232, label: 'System Health', icon: <Settings2 className="w-5 h-5" />, path: 'health' },
+      { id: 195, label: 'Access Control', icon: <Users className="w-5 h-5" />, path: 'roles' },
+      { id: 232, label: 'System Watchtower', icon: <Settings2 className="w-5 h-5" />, path: 'health' },
     ]
   }
 ];
@@ -164,62 +126,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
       animate={{ width: isCollapsed ? '80px' : '280px' }}
       className="h-screen bg-card border-r border-border flex flex-col transition-colors duration-500 sticky top-0 z-50"
     >
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-8 flex items-center justify-between">
         {!isCollapsed && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4"
           >
-            <div className="bg-primary p-2 rounded-xl text-primary-foreground shadow-lg shadow-primary/20">
-              <Smartphone className="w-6 h-6" />
+            <div className="bg-primary p-2.5 rounded-2xl text-primary-foreground shadow-2xl shadow-primary/40 rotate-3 group-hover:rotate-0 transition-transform">
+              <Smartphone className="w-7 h-7" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-foreground uppercase tracking-tighter text-xl leading-none">Lakki ERP</span>
-              <span className="text-[8px] font-black text-primary uppercase tracking-widest mt-1">Enterprise Shell</span>
+              <span className="font-serif italic text-2xl tracking-tighter text-foreground leading-none">Lakki ERP</span>
+              <span className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mt-1.5 opacity-70">Enterprise Core</span>
             </div>
           </motion.div>
         )}
         <button
           onClick={onToggle}
-          className="p-2 hover:bg-muted rounded-xl text-muted-foreground transition-colors"
+          className="p-3 hover:bg-surface-container rounded-2xl text-muted-foreground transition-all active:scale-90 border border-transparent hover:border-border"
         >
-          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          {isCollapsed ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
         </button>
       </div>
 
-      <nav className="flex-1 px-4 space-y-8 mt-4 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 px-6 space-y-10 mt-8 overflow-y-auto no-scrollbar pb-10">
         {filteredGroups.map((group) => (
-          <div key={group.label} className="space-y-2">
+          <div key={group.label} className="space-y-4">
             {!isCollapsed && (
-              <p className="px-3 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+              <p className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">
                 {group.label}
               </p>
             )}
-            <div className="space-y-1">
+            <div className="space-y-2">
               {group.items.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => onModuleChange(item.path)}
-                  className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all group relative ${
+                  className={`w-full flex items-center gap-5 p-4 rounded-[1.5rem] transition-all group relative border ${
                     activeModule === item.path 
-                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
-                      : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                      ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 border-primary' 
+                      : 'text-muted-foreground hover:bg-surface-container hover:text-foreground border-transparent'
                   }`}
                 >
-                  <div className="group-hover:scale-110 transition-transform">
+                  <div className={`transition-transform duration-500 ${activeModule === item.path ? 'scale-110 rotate-3' : 'group-hover:scale-110'}`}>
                     {item.icon}
                   </div>
                   {!isCollapsed && (
-                    <span className="font-bold text-xs uppercase tracking-widest">{item.label}</span>
+                    <span className="font-black text-[11px] uppercase tracking-[0.15em]">{item.label}</span>
                   )}
                   {isCollapsed && (
-                    <div className="absolute left-full ml-4 px-3 py-2 bg-foreground text-background text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-[60]">
+                    <div className="absolute left-full ml-6 px-4 py-3 bg-foreground text-background text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-[60] shadow-2xl">
                       {item.label}
                     </div>
                   )}
                   {!isCollapsed && (
-                    <span className={`ml-auto text-[8px] font-black transition-opacity ${activeModule === item.path ? 'opacity-40' : 'opacity-0 group-hover:opacity-30'}`}>ID {item.id}</span>
+                    <span className={`ml-auto text-[8px] font-mono font-black transition-opacity ${activeModule === item.path ? 'opacity-40' : 'opacity-0 group-hover:opacity-30'}`}>#{item.id}</span>
                   )}
                 </button>
               ))}
@@ -228,15 +190,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
         ))}
       </nav>
 
-      <div className="p-4 border-t border-border">
-        <div className={`flex items-center gap-4 p-3 rounded-2xl bg-muted/50 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black uppercase">
-            {user?.name?.substring(0, 2) || '??'}
+      <div className="p-6 border-t border-border bg-surface-container-lowest/50">
+        <div className={`flex items-center gap-5 p-4 rounded-[2rem] bg-surface border border-border shadow-sm ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className="w-12 h-12 rounded-2xl bg-muted overflow-hidden border-2 border-primary/10 flex items-center justify-center text-primary font-black uppercase shadow-inner">
+            {user?.name ? (
+              <img 
+                src={`https://picsum.photos/seed/${user.name}/100/100`} 
+                alt={user.name} 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
+              />
+            ) : (
+              '??'
+            )}
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-black text-foreground truncate">{user?.name || 'Guest'}</p>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">{user?.role || 'No Role'}</p>
+              <p className="text-sm font-black text-foreground truncate tracking-tight">{user?.name || 'Guest'}</p>
+              <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] truncate opacity-70">{user?.role || 'No Role'}</p>
             </div>
           )}
         </div>

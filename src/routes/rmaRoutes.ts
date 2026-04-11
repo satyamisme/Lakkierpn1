@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { rmaController } from '../controllers/rmaController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { rmaController } from '../controllers/rmaController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import GiftCard from '../models/GiftCard';
+import GiftCard from '../models/GiftCard.js';
 
 export const giftCardController = {
   create: async (req: Request, res: Response) => {

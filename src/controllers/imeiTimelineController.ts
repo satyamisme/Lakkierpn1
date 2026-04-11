@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import ImeiHistory from '../models/ImeiHistory';
+import ImeiHistory from '../models/ImeiHistory.js';
 
 export const imeiTimelineController = {
   getHistory: async (req: Request, res: Response) => {

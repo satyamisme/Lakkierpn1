@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import MarketingCampaign from '../models/MarketingCampaign';
+import MarketingCampaign from '../models/MarketingCampaign.js';
 
 export const marketingController = {
   create: async (req: Request, res: Response) => {

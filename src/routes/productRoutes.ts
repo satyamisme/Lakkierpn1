@@ -1,66 +1,30 @@
 import express from 'express';
-import Product from '../models/Product.js';
+import { productController } from '../controllers/productController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.use(authenticate);
+
 // GET / (all products)
-router.get('/', authenticate, requirePermission(121), async (req, res) => {
-  try {
-    const products = await Product.find();
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch products' });
-  }
-});
+router.get('/', requirePermission(121), productController.getAllProducts);
 
 // POST / (create product) - requires permission 1
-router.post('/', authenticate, requirePermission(1), async (req, res) => {
-  try {
-    const product = new Product(req.body);
-    await product.save();
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create product' });
-  }
-});
+router.post('/', requirePermission(1), productController.createProduct);
+
+// PUT /:id (update product) - requires permission 1
+router.put('/:id', requirePermission(1), productController.updateProduct);
+
+// DELETE /:id (delete product) - requires permission 1
+router.delete('/:id', requirePermission(1), productController.deleteProduct);
 
 // PATCH /:id/stock (update stock) - requires permission 132
-router.patch('/:id/stock', authenticate, requirePermission(132), async (req, res) => {
-  try {
-    const { stock } = req.body;
-    const product = await Product.findByIdAndUpdate(req.params.id, { stock }, { new: true });
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update stock' });
-  }
-});
+router.patch('/:id/stock', requirePermission(132), productController.updateStock);
 
 // GET /low-stock?threshold=5 - requires permission 125
-router.get('/low-stock', authenticate, requirePermission(125), async (req, res) => {
-  try {
-    const threshold = parseInt(req.query.threshold as string) || 5;
-    const products = await Product.find({ stock: { $lte: threshold } });
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch low stock products' });
-  }
-});
+router.get('/low-stock', requirePermission(125), productController.getLowStock);
 
 // GET /search?q=...
-router.get('/search', authenticate, async (req, res) => {
-  try {
-    const query = req.query.q as string;
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { sku: { $regex: query, $options: 'i' } }
-      ]
-    });
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ error: 'Search failed' });
-  }
-});
+router.get('/search', productController.searchProducts);
 
 export default router;

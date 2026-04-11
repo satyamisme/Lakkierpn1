@@ -24,8 +24,14 @@ export const bulkService = {
 
   // POST /api/bulk/label-print
   bulkLabelPrint: async (productIds: string[]) => {
-    const response = await client.post<BulkJob>("/bulk/label-print", { productIds });
-    return response.data;
+    const response = await client.post("/bulk/label-print", { productIds }, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'labels.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   },
 
   // POST /api/bulk/customer-import

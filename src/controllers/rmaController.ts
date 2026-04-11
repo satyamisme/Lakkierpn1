@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import RmaReturn from '../models/RmaReturn';
+import RmaReturn from '../models/RmaReturn.js';
 
 export const rmaController = {
   create: async (req: Request, res: Response) => {

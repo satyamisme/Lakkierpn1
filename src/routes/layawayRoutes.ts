@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { layawayController } from '../controllers/layawayController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { layawayController } from '../controllers/layawayController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Settings, Shield, Store, Activity, Database, Cpu, HardDrive, RefreshCcw, Save } from 'lucide-react';
+import { Settings, Shield, Store, Activity, Database, Cpu, HardDrive, RefreshCcw, Save, ShieldAlert } from 'lucide-react';
 import { FeatureToggleBoard } from '../FeatureToggleBoard';
 import { RoleSwitcher } from '../RoleSwitcher';
 
@@ -94,6 +94,29 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-[9px] text-muted-foreground mt-4 italic font-mono">
               * Changing roles will immediately update your permission matrix [1-300].
             </p>
+          </div>
+
+          <div className="bg-card border border-border p-6">
+            <h2 className="text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-2 text-red-500">
+              <ShieldAlert size={14} />
+              Recent System Logs
+            </h2>
+            <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+              {[
+                { time: '09:12:04', msg: 'Shopify Sync: API Rate Limit reached', type: 'warn' },
+                { time: '08:45:22', msg: 'Stripe: Webhook signature mismatch', type: 'error' },
+                { time: '07:30:11', msg: 'Backup: Daily snapshot completed', type: 'info' },
+                { time: '06:15:00', msg: 'System: Auto-reboot successful', type: 'info' },
+              ].map((log, i) => (
+                <div key={i} className="flex gap-3 text-[9px] font-mono border-b border-border/50 pb-2">
+                  <span className="text-muted-foreground shrink-0">{log.time}</span>
+                  <span className={log.type === 'error' ? 'text-red-500' : log.type === 'warn' ? 'text-yellow-500' : 'text-green-500'}>
+                    [{log.type.toUpperCase()}]
+                  </span>
+                  <span className="text-foreground/80">{log.msg}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

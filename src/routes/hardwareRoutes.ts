@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { hardwareController } from '../controllers/hardwareController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { hardwareController } from '../controllers/hardwareController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

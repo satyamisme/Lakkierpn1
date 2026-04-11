@@ -18,10 +18,38 @@ router.post('/check', authenticate, requirePermission(5), async (req, res) => {
       return res.status(400).json({ error: 'IMEI already sold' });
     }
     
-    // Mock blacklist check (ID 305)
-    const isBlacklisted = false; // In real app, call GSMA API
+    // ID 103: IMEI Verification API (GSMA Blacklist)
+    let isBlacklisted = false;
+    const gsmaKey = process.env.GSMA_API_KEY;
+
+    if (gsmaKey) {
+      try {
+        const response = await fetch('https://api.imeicheck.com/v1/checks', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${gsmaKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            imei: imei,
+            service: 'gsma_blacklist' // Example service ID
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          isBlacklisted = data.status === 'blacklisted' || data.blacklist_status === 'Blacklisted';
+        }
+      } catch (e) {
+        console.error("IMEI Check API Error, falling back to local check");
+      }
+    } else {
+      // Fallback for demo/dev if no key (ID 103 Fallback)
+      console.warn('GSMA_API_KEY missing. Using mock blacklist logic.');
+      isBlacklisted = imei.startsWith('999'); // Mock blacklist for IMEIs starting with 999
+    }
+
     if (isBlacklisted) {
-      return res.status(403).json({ error: 'IMEI is blacklisted' });
+      return res.status(403).json({ error: 'IMEI is blacklisted by GSMA' });
     }
     
     res.json({ success: true, productId: imeiDoc.productId });

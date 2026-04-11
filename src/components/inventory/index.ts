@@ -1,3 +1,3 @@
-export * from './InventoryManager';
-export * from './StockTable';
-export * from './StockStatusBadge';
+export * from './InventoryManager.js';
+export * from './StockTable.js';
+export * from './StockStatusBadge.js';

@@ -1,8 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { CreditCard, Banknote, Smartphone, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CreditCard, Banknote, Smartphone, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gate } from '../../PermissionGuard';
 import { PaymentInput } from '../atoms/PaymentInput';
+import { StripePaymentForm } from './StripePaymentForm';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { 
   PaymentData, 
   calculateTotalPaid, 
@@ -10,6 +13,8 @@ import {
   isFullyPaid as checkFullyPaid, 
   isOverPaid as checkOverPaid 
 } from '../../../utils/BalanceLogic';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock');
 
 interface PaymentMatrixProps {
   isOpen: boolean;
@@ -24,6 +29,7 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
     knet: 0,
     creditCard: 0,
   });
+  const [showStripe, setShowStripe] = useState(false);
 
   const totalPaid = useMemo(() => calculateTotalPaid(payments), [payments]);
   const remainingBalance = useMemo(() => calculateRemainingBalance(totalAmount, totalPaid), [totalAmount, totalPaid]);
@@ -34,6 +40,11 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
     const numValue = value === '' ? 0 : parseFloat(value);
     if (isNaN(numValue)) return;
     setPayments(prev => ({ ...prev, [field]: numValue }));
+  };
+
+  const handleStripeSuccess = (paymentIntentId: string) => {
+    // In a real app, we'd attach the paymentIntentId to the sale
+    onProcessSale(payments);
   };
 
   if (!isOpen) return null;
@@ -82,29 +93,55 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <PaymentInput 
-                label="Cash Payment"
-                icon={<Banknote className="w-4 h-4" />}
-                value={payments.cash}
-                onChange={(v) => handleInputChange('cash', v)}
-                colorClass="text-green-500"
-              />
-              <PaymentInput 
-                label="K-Net (Debit)"
-                icon={<Smartphone className="w-4 h-4" />}
-                value={payments.knet}
-                onChange={(v) => handleInputChange('knet', v)}
-                colorClass="text-blue-500"
-              />
-              <PaymentInput 
-                label="Credit Card"
-                icon={<CreditCard className="w-4 h-4" />}
-                value={payments.creditCard}
-                onChange={(v) => handleInputChange('creditCard', v)}
-                colorClass="text-purple-500"
-              />
-            </div>
+            {!showStripe ? (
+              <div className="grid grid-cols-1 gap-4">
+                <PaymentInput 
+                  label="Cash Payment"
+                  icon={<Banknote className="w-4 h-4" />}
+                  value={payments.cash}
+                  onChange={(v) => handleInputChange('cash', v)}
+                  colorClass="text-green-500"
+                />
+                <PaymentInput 
+                  label="K-Net (Debit)"
+                  icon={<Smartphone className="w-4 h-4" />}
+                  value={payments.knet}
+                  onChange={(v) => handleInputChange('knet', v)}
+                  colorClass="text-blue-500"
+                />
+                <div className="space-y-2">
+                  <PaymentInput 
+                    label="Credit Card"
+                    icon={<CreditCard className="w-4 h-4" />}
+                    value={payments.creditCard}
+                    onChange={(v) => handleInputChange('creditCard', v)}
+                    colorClass="text-purple-500"
+                  />
+                  {payments.creditCard > 0 && (
+                    <button 
+                      onClick={() => setShowStripe(true)}
+                      className="w-full py-2 bg-purple-50 text-purple-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-purple-100 hover:bg-purple-100 transition-all"
+                    >
+                      Initialize Stripe Terminal
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-500">Stripe Secure Payment</h3>
+                  <span className="text-lg font-black text-purple-600">{payments.creditCard.toFixed(3)} KD</span>
+                </div>
+                <Elements stripe={stripePromise}>
+                  <StripePaymentForm 
+                    amount={payments.creditCard} 
+                    onSuccess={handleStripeSuccess}
+                    onCancel={() => setShowStripe(false)}
+                  />
+                </Elements>
+              </div>
+            )}
 
             {overPaid && (
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-3 text-amber-700 text-sm font-medium">
@@ -113,16 +150,18 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
               </div>
             )}
 
-            <Gate id={12}>
-              <button 
-                onClick={() => onProcessSale(payments)}
-                disabled={!fullyPaid && !overPaid}
-                className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-xl shadow-gray-200 disabled:opacity-50 disabled:bg-gray-200 disabled:shadow-none active:scale-95"
-              >
-                <CheckCircle2 className="w-6 h-6" />
-                Complete Transaction (ID 12)
-              </button>
-            </Gate>
+            {!showStripe && (
+              <Gate id={12}>
+                <button 
+                  onClick={() => onProcessSale(payments)}
+                  disabled={(!fullyPaid && !overPaid) || (payments.creditCard > 0)}
+                  className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-xl shadow-gray-200 disabled:opacity-50 disabled:bg-gray-200 disabled:shadow-none active:scale-95"
+                >
+                  <CheckCircle2 className="w-6 h-6" />
+                  {payments.creditCard > 0 ? "Pay via Stripe Above" : "Complete Transaction (ID 12)"}
+                </button>
+              </Gate>
+            )}
           </div>
         </motion.div>
       </div>

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import CustomerGroup from '../models/CustomerGroup';
+import CustomerGroup from '../models/CustomerGroup.js';
 
 export const customerGroupController = {
   create: async (req: Request, res: Response) => {

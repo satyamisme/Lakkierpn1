@@ -21,6 +21,10 @@ const AdminReports = lazy(() => import('../pages/AdminReports').then(m => ({ def
 const FeatureToggleBoard = lazy(() => import('./FeatureToggleBoard').then(m => ({ default: m.FeatureToggleBoard })));
 
 // New Dashboards
+const Cockpit = lazy(() => import('../pages/Cockpit').then(m => ({ default: m.Cockpit })));
+const EnterpriseHub = lazy(() => import('../pages/EnterpriseHub').then(m => ({ default: m.EnterpriseHub })));
+const Governance = lazy(() => import('../pages/Governance').then(m => ({ default: m.Governance })));
+const ExtendedFeatures = lazy(() => import('../pages/ExtendedFeatures').then(m => ({ default: m.ExtendedFeatures })));
 const FinanceDashboard = lazy(() => import('../pages/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
 const HRDashboard = lazy(() => import('../pages/HRDashboard').then(m => ({ default: m.HRDashboard })));
 const Customer360 = lazy(() => import('../pages/Customer360').then(m => ({ default: m.Customer360 })));
@@ -30,11 +34,11 @@ const ShiftHandover = lazy(() => import('../pages/ShiftHandover').then(m => ({ d
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 
 // Missing Modules
-const Warehouse = lazy(() => import('../pages/Warehouse'));
-const SupplierPortal = lazy(() => import('../pages/SupplierPortal'));
-const BulkOperations = lazy(() => import('../pages/BulkOperations'));
-const Omnichannel = lazy(() => import('../pages/Omnichannel'));
-const StaffPerformance = lazy(() => import('../pages/StaffPerformance'));
+const Warehouse = lazy(() => import('../pages/Warehouse').then(m => ({ default: m.Warehouse })));
+const SupplierPortal = lazy(() => import('../pages/SupplierPortal').then(m => ({ default: m.SupplierPortal })));
+const BulkOperations = lazy(() => import('../pages/BulkOperations').then(m => ({ default: m.BulkOperations })));
+const Omnichannel = lazy(() => import('../pages/Omnichannel').then(m => ({ default: m.Omnichannel })));
+const StaffPerformance = lazy(() => import('../pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
 const Compliance = lazy(() => import('../pages/Compliance'));
 const QualityControl = lazy(() => import('../pages/QualityControl'));
 const CustomerPortal = lazy(() => import('../pages/CustomerPortal'));
@@ -51,17 +55,22 @@ const Hardware = lazy(() => import('../pages/Hardware'));
 // Sub-modules
 const SalesHistory = lazy(() => import('./pos/SalesHistory').then(m => ({ default: m.SalesHistory })));
 const QCTerminal = lazy(() => import('./repair/QCTerminal').then(m => ({ default: m.QCTerminal })));
+const PaymentMatrix = lazy(() => import('./pos/organisms/PaymentMatrix').then(m => ({ default: m.PaymentMatrix })));
+const PickupTerminal = lazy(() => import('./repair/PickupTerminal').then(m => ({ default: m.PickupTerminal })));
+const LowStockWidget = lazy(() => import('./organisms/LowStockWidget').then(m => ({ default: m.LowStockWidget })));
+const CostAnalysis = lazy(() => import('./finance/CostAnalysis').then(m => ({ default: m.CostAnalysis })));
 
 interface ModuleRendererProps {
   activeModule: string;
   onModuleChange: (module: string) => void;
+  onAddProductClick: () => void;
 }
 
 /**
  * ID 184: The Stage (ModuleRenderer.tsx)
  * Refactored to use React Router Routes for sub-modules.
  */
-export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, onModuleChange }) => {
+export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, onModuleChange, onAddProductClick }) => {
   const { user } = useAuth();
   
   const ComingSoon = ({ title, id }: { title: string, id: number }) => (
@@ -124,21 +133,25 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
   return (
     <Suspense fallback={<LoadingState />}>
       <Routes>
+        {/* Executive Folder */}
+        <Route path="cockpit" element={<Cockpit />} />
+        <Route path="multi-store" element={<Cockpit />} />
+
         {/* POS Folder */}
-        <Route path="pos" element={<POS />} />
-        <Route path="payments" element={<ComingSoon title="Payment Matrix" id={12} />} />
+        <Route path="pos" element={<POS onAddProductClick={onAddProductClick} />} />
+        <Route path="payments" element={<PaymentMatrix isOpen={true} onClose={() => onModuleChange('pos')} totalAmount={0} onProcessSale={() => {}} />} />
         <Route path="history" element={<SalesHistory />} />
         
         {/* Repairs Folder */}
         <Route path="repairs" element={<RepairIntake />} />
         <Route path="bench" element={<TechnicianDashboard />} />
         <Route path="qc" element={<QCTerminal />} />
-        <Route path="pickup" element={<ComingSoon title="Pickup Terminal" id={141} />} />
+        <Route path="pickup" element={<PickupTerminal />} />
         
         {/* Inventory Folder */}
         <Route path="inventory" element={<InventoryDashboard />} />
-        <Route path="alerts" element={<ComingSoon title="Stock Alarms" id={34} />} />
-        <Route path="costs" element={<ComingSoon title="Cost Analysis" id={29} />} />
+        <Route path="alerts" element={<LowStockWidget />} />
+        <Route path="costs" element={<CostAnalysis />} />
         
         {/* Finance Folder */}
         <Route path="finance" element={<FinanceDashboard />} />
@@ -186,6 +199,14 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
         <Route path="commission" element={<Commission />} />
         <Route path="compliance" element={<Compliance />} />
         <Route path="hardware" element={<Hardware />} />
+
+        {/* Extended Folder */}
+        <Route path="extended" element={<ExtendedFeatures />} />
+        <Route path="omnichannel" element={<Omnichannel />} />
+
+        {/* Enterprise Folder */}
+        <Route path="enterprise" element={<EnterpriseHub />} />
+        <Route path="governance" element={<Governance />} />
 
         {/* Admin Folder */}
         <Route path="toggles" element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />

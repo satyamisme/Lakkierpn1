@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { customerGroupController } from '../controllers/customerGroupController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { customerGroupController } from '../controllers/customerGroupController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

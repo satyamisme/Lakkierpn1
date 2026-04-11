@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { inventoryIntelligenceController } from '../controllers/inventoryIntelligenceController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { inventoryIntelligenceController } from '../controllers/inventoryIntelligenceController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

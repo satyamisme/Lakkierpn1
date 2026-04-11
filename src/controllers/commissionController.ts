@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import CommissionRule from '../models/CommissionRule';
-import CommissionTransaction from '../models/CommissionTransaction';
+import CommissionRule from '../models/CommissionRule.js';
+import CommissionTransaction from '../models/CommissionTransaction.js';
 
 export const commissionController = {
   createRule: async (req: Request, res: Response) => {

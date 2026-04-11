@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { complianceController } from '../controllers/complianceController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { complianceController } from '../controllers/complianceController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

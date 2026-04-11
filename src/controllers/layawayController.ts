@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Layaway from '../models/Layaway';
+import Layaway from '../models/Layaway.js';
 
 export const layawayController = {
   create: async (req: Request, res: Response) => {

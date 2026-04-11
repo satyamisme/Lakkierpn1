@@ -59,14 +59,15 @@ router.patch('/:id/status', authenticate, requirePermission(67), async (req, res
   }
 });
 
-// POST /:id/qc - requires 71
-router.post('/:id/qc', authenticate, requirePermission(71), async (req, res) => {
+// PATCH /:id/qc - requires 71
+router.patch('/:id/qc', authenticate, requirePermission(71), async (req, res) => {
   try {
     const { qcChecklist } = req.body;
-    if (qcChecklist.length !== 20) return res.status(400).json({ error: 'Invalid QC checklist' });
+    // checklist can be array or object, let's normalize
+    const checklistData = Array.isArray(qcChecklist) ? qcChecklist : Object.values(qcChecklist);
     
     const repair = await Repair.findByIdAndUpdate(req.params.id, { 
-      qcChecklist, 
+      qcChecklist: checklistData, 
       status: 'ready',
       completedAt: new Date()
     }, { new: true });

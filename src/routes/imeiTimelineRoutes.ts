@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { imeiTimelineController } from '../controllers/imeiTimelineController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { imeiTimelineController } from '../controllers/imeiTimelineController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

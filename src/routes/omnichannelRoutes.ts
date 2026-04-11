@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { omnichannelController } from '../controllers/omnichannelController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { omnichannelController } from '../controllers/omnichannelController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -9,9 +9,10 @@ router.post('/webhook/:source', omnichannelController.handleWebhook);
 
 router.use(authenticate);
 
-router.post('/orders', requirePermission(324), omnichannelController.createOrder);
+router.post('/sync/shopify', requirePermission(324), omnichannelController.syncShopifyOrders);
+router.post('/sync/woocommerce', requirePermission(324), omnichannelController.syncWooCommerceOrders);
+router.post('/sync/:source/products', requirePermission(324), omnichannelController.syncProducts);
+router.post('/sync/:source/inventory', requirePermission(324), omnichannelController.syncInventory);
 router.get('/orders', requirePermission(324), omnichannelController.getAllOrders);
-router.get('/orders/:id', requirePermission(324), omnichannelController.getOrderById);
-router.patch('/orders/:id/status', requirePermission(324), omnichannelController.updateOrderStatus);
 
 export default router;

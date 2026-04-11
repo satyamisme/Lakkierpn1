@@ -11,7 +11,7 @@ import {
   AlertCircle,
   UserPlus
 } from 'lucide-react';
-import { Gate } from '../components/Gate';
+import { Gate } from '../components/PermissionGuard';
 
 interface User {
   _id: string;

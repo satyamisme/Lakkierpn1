@@ -14,9 +14,10 @@ import {
   User, 
   MapPin, 
   Calendar,
-  Briefcase
+  Briefcase,
+  ArrowUpRight
 } from 'lucide-react';
-import { Gate } from '../components/Gate';
+import { Gate } from '../components/PermissionGuard';
 import { ClockInButton } from '../components/hr/ClockInButton';
 
 interface PayrollItem {
@@ -76,146 +77,147 @@ export const HRDashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase italic">HR & Staff Hub</h1>
-          <p className="text-muted-foreground text-xs font-mono uppercase tracking-widest">Attendance, Payroll & Performance (ID 188, 197, 198)</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm relative overflow-hidden">
+        <div className="relative z-10">
+          <h1 className="text-5xl font-serif italic tracking-tight text-foreground">HR & Staff Hub</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] mt-2">Attendance, Payroll & Performance (ID 188)</p>
         </div>
-        <button 
-          onClick={fetchData}
-          className="p-3 bg-card border border-border text-muted-foreground hover:text-primary transition-all active:scale-95"
-        >
-          <RefreshCcw className="w-5 h-5" />
-        </button>
-      </div>
+        <div className="flex gap-4 relative z-10">
+          <button 
+            onClick={fetchData}
+            className="p-4 bg-muted border border-border rounded-2xl text-muted-foreground hover:text-primary transition-all active:scale-95"
+          >
+            <RefreshCcw className="w-6 h-6" />
+          </button>
+          <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">
+            Staff Directory
+          </button>
+        </div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-3xl" />
+      </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Attendance Terminal */}
         <div className="lg:col-span-1">
-          <Gate id={188}>
-            <ClockInButton onSuccess={fetchData} />
-          </Gate>
+          <div className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm h-full">
+            <h3 className="text-xl font-serif italic mb-8">Attendance Terminal</h3>
+            <Gate id={188}>
+              <ClockInButton onSuccess={fetchData} />
+            </Gate>
+          </div>
         </div>
 
-        {/* Performance Leaderboard */}
         <div className="lg:col-span-3">
-          <Gate id={198}>
-            <div className="bg-card border border-border p-8 shadow-sm h-full">
-              <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-                <Trophy size={20} className="text-primary" />
-                Performance Leaderboard
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {performance.map((item, index) => (
-                  <motion.div 
-                    key={item.userId}
-                    whileHover={{ y: -4 }}
-                    className="p-6 bg-muted/30 border border-border relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                      <span className="text-4xl font-black italic">#{index + 1}</span>
-                    </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User size={20} className="text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black uppercase tracking-widest leading-tight">{item.name}</h4>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Technician / Sales</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Sales Count</span>
-                        <span className="text-xs font-black font-mono">{item.salesCount}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Avg Ticket</span>
-                        <span className="text-xs font-black font-mono">{item.avgTicketValue.toFixed(3)} KD</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Repair Rate</span>
-                        <span className="text-xs font-black font-mono text-green-500">{item.repairCompletionRate.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+          <div className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm h-full">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-2xl font-serif italic">Performance Leaderboard</h3>
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">Live Ranking</span>
             </div>
-          </Gate>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {performance.map((item, index) => (
+                <motion.div 
+                  key={item.userId}
+                  whileHover={{ y: -4 }}
+                  className="p-8 bg-muted/30 border border-border rounded-[2rem] relative overflow-hidden group hover:border-primary/30 transition-all"
+                >
+                  <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span className="text-6xl font-black italic">#{index + 1}</span>
+                  </div>
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center text-primary shadow-sm">
+                      <User size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-widest leading-tight">{item.name}</h4>
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Technician / Sales</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Sales Count</span>
+                      <span className="text-sm font-black font-mono">{item.salesCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Avg Ticket</span>
+                      <span className="text-sm font-black font-mono">{item.avgTicketValue.toFixed(3)} KD</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Repair Rate</span>
+                      <span className="text-sm font-black font-mono text-green-500">{item.repairCompletionRate.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Payroll Table */}
-        <Gate id={197}>
-          <div className="bg-card border border-border p-8 shadow-sm">
-            <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-              <DollarSign size={20} className="text-primary" />
-              Payroll Engine (ID 197)
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Staff Member</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Base Salary</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Commission</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Payable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payroll.map((item) => (
-                    <tr key={item.userId} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <User size={14} className="text-muted-foreground" />
-                          </div>
-                          <span className="text-xs font-black uppercase tracking-tighter">{item.name}</span>
+        <div className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-serif italic">Payroll Engine</h3>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">ID 197</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Staff Member</th>
+                  <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Base</th>
+                  <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Comm.</th>
+                  <th className="text-right px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {payroll.map((item) => (
+                  <tr key={item.userId} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border">
+                          <User size={18} />
                         </div>
-                      </td>
-                      <td className="text-right py-4 font-mono text-xs font-bold">{item.baseSalary.toFixed(3)}</td>
-                      <td className="text-right py-4 font-mono text-xs font-bold text-green-500">+{item.totalCommission.toFixed(3)}</td>
-                      <td className="text-right py-4 font-mono text-sm font-black text-primary">{item.totalPayable.toFixed(3)} KD</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <span className="text-xs font-black uppercase tracking-widest">{item.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono text-xs font-bold">{item.baseSalary.toFixed(3)}</td>
+                    <td className="px-6 py-4 text-right font-mono text-xs font-bold text-green-500">+{item.totalCommission.toFixed(3)}</td>
+                    <td className="px-6 py-4 text-right font-mono text-sm font-black text-primary">{item.totalPayable.toFixed(3)} KD</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-serif italic">Staff Status</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">8 Online</span>
             </div>
           </div>
-        </Gate>
-
-        {/* Staff Directory / Status */}
-        <div className="bg-card border border-border p-8 shadow-sm">
-          <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-            <Users size={20} className="text-primary" />
-            Staff Status
-          </h3>
           <div className="space-y-4">
             {performance.map((item) => (
-              <div key={item.userId} className="flex items-center justify-between p-4 bg-muted/30 border border-border">
+              <div key={item.userId} className="flex items-center justify-between p-6 bg-muted/30 border border-border rounded-3xl group hover:border-primary/30 transition-all">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center">
-                      <User size={18} className="text-muted-foreground" />
+                    <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm">
+                      <User size={20} />
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-card" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest leading-tight">{item.name}</h4>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Active Now</p>
+                    <h4 className="text-sm font-black uppercase tracking-widest leading-tight">{item.name}</h4>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Active • Salmiya Branch</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Sales</p>
-                    <p className="text-xs font-black font-mono">{item.salesCount}</p>
+                <div className="flex items-center gap-8">
+                  <div className="text-right">
+                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Daily Sales</p>
+                    <p className="text-sm font-black font-mono">{item.salesCount}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Repairs</p>
-                    <p className="text-xs font-black font-mono">12</p>
-                  </div>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors"><ArrowUpRight size={18} /></button>
                 </div>
               </div>
             ))}

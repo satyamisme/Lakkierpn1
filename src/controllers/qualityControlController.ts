@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import QualityControlInspection from '../models/QualityControlInspection';
+import QualityControlInspection from '../models/QualityControlInspection.js';
 
 export const qualityControlController = {
   create: async (req: Request, res: Response) => {

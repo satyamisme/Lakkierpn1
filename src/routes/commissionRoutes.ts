@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { commissionController } from '../controllers/commissionController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { commissionController } from '../controllers/commissionController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

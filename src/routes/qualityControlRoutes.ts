@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { qualityControlController } from '../controllers/qualityControlController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { qualityControlController } from '../controllers/qualityControlController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

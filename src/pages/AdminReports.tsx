@@ -10,7 +10,7 @@ import {
   Printer,
   Loader2
 } from "lucide-react";
-import { Gate } from "../components/Gate";
+import { Gate } from "../components/PermissionGuard";
 
 export const AdminReports: React.FC = () => {
   const [anomalies, setAnomalies] = useState<any[]>([]);

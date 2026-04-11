@@ -1,14 +1,45 @@
 import { Router, Request, Response } from 'express';
-import OmnichannelOrder from '../models/OmnichannelOrder';
+import crypto from 'crypto';
+import OmnichannelOrder from '../models/OmnichannelOrder.js';
 
 const router = Router();
+
+// Shopify HMAC Verification
+const verifyShopifyWebhook = (req: Request): boolean => {
+  const hmac = req.get('X-Shopify-Hmac-Sha256');
+  const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+  if (!hmac || !secret) return false;
+
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(req.body))
+    .digest('base64');
+
+  return hash === hmac;
+};
+
+// WooCommerce HMAC Verification
+const verifyWooCommerceWebhook = (req: Request): boolean => {
+  const hmac = req.get('X-WC-Webhook-Signature');
+  const secret = process.env.WOOCOMMERCE_WEBHOOK_SECRET;
+  if (!hmac || !secret) return false;
+
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(req.body))
+    .digest('base64');
+
+  return hash === hmac;
+};
 
 // Shopify Webhook
 router.post('/shopify', async (req: Request, res: Response) => {
   try {
+    if (!verifyShopifyWebhook(req)) {
+      return res.status(401).send('Invalid signature');
+    }
+
     const payload = req.body;
-    
-    // Basic verification logic would go here (HMAC)
     
     const order = new OmnichannelOrder({
       source: 'shopify',
@@ -40,6 +71,10 @@ router.post('/shopify', async (req: Request, res: Response) => {
 // WooCommerce Webhook
 router.post('/woocommerce', async (req: Request, res: Response) => {
   try {
+    if (!verifyWooCommerceWebhook(req)) {
+      return res.status(401).send('Invalid signature');
+    }
+
     const payload = req.body;
 
     const order = new OmnichannelOrder({

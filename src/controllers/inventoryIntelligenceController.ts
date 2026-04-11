@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import InventoryForecast from '../models/InventoryForecast';
+import InventoryForecast from '../models/InventoryForecast.js';
 
 export const inventoryIntelligenceController = {
   getForecast: async (req: Request, res: Response) => {

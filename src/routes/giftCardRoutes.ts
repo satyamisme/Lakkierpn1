@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { giftCardController } from '../controllers/giftCardController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { giftCardController } from '../controllers/giftCardController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

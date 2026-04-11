@@ -19,7 +19,7 @@ import {
   Terminal
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
-import { Gate } from '../components/Gate';
+import { Gate } from '../components/PermissionGuard';
 
 interface IotDevice {
   _id: string;

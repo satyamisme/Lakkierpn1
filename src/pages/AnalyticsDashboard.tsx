@@ -29,7 +29,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { Gate } from '../components/Gate';
+import { Gate } from '../components/PermissionGuard';
 import { Heatmap } from '../components/analytics/Heatmap';
 
 interface ForecastItem {
@@ -51,10 +51,11 @@ export const AnalyticsDashboard: React.FC = () => {
   const [forecast, setForecast] = useState<ForecastItem[]>([]);
   const [predictive, setPredictive] = useState<PredictiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchData = async () => {
     try {
-      setIsLoading(true);
+      setIsRefreshing(true);
       const [heatRes, foreRes, predRes] = await Promise.all([
         fetch('/api/analytics/heatmap', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
         fetch('/api/analytics/forecast', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
@@ -70,6 +71,7 @@ export const AnalyticsDashboard: React.FC = () => {
       console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -79,156 +81,204 @@ export const AnalyticsDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Running AI Engines (ID 294-297)...</p>
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-6">
+        <div className="relative">
+          <Loader2 className="w-16 h-16 text-primary animate-spin" />
+          <BrainCircuit className="absolute inset-0 m-auto w-6 h-6 text-primary/40" />
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] font-black text-foreground uppercase tracking-[0.4em]">Initializing AI Engines</p>
+          <p className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest mt-2">Synchronizing Matrix (ID 294-297)...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-12 pb-20">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter uppercase italic">Predictive Analytics</h1>
-          <p className="text-muted-foreground text-xs font-mono uppercase tracking-widest">AI-Driven Insights & Forecasting (ID 294, 295, 296, 297)</p>
+          <h1 className="text-6xl font-serif italic tracking-tight text-foreground leading-none">Predictive Analytics</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-4 opacity-60">AI-driven insights & forecasting (ID 294-297)</p>
         </div>
         <button 
           onClick={fetchData}
-          className="p-3 bg-card border border-border text-muted-foreground hover:text-primary transition-all active:scale-95"
+          disabled={isRefreshing}
+          className={`p-5 bg-surface-container-lowest border border-border rounded-2xl text-muted-foreground hover:text-primary hover:border-primary transition-all active:scale-95 shadow-sm ${isRefreshing ? 'opacity-50' : ''}`}
         >
-          <RefreshCcw className="w-5 h-5" />
+          <RefreshCcw className={`w-6 h-6 ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Heatmap */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        {/* Heatmap (8 cols) */}
+        <div className="lg:col-span-8">
           <Gate id={294}>
-            <Heatmap data={heatmap} />
+            <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-10 shadow-sm h-full relative overflow-hidden group">
+              <div className="flex items-center justify-between mb-10 relative z-10">
+                <h3 className="text-3xl font-serif italic">Operational Heatmap</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-primary/20" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Low</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">High</span>
+                  </div>
+                </div>
+              </div>
+              <div className="relative z-10">
+                <Heatmap data={heatmap} />
+              </div>
+              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-[100px] pointer-events-none" />
+            </div>
           </Gate>
         </div>
 
-        {/* Predictive Repair */}
-        <div className="lg:col-span-1">
+        {/* Predictive Repair (4 cols) */}
+        <div className="lg:col-span-4">
           <Gate id={296}>
-            <div className="bg-card border border-border p-8 shadow-sm h-full">
-              <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-                <BrainCircuit size={20} className="text-primary" />
-                Predictive Repair (ID 296)
+            <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-10 shadow-sm h-full relative overflow-hidden">
+              <h3 className="text-3xl font-serif italic mb-10 flex items-center gap-4">
+                <BrainCircuit size={28} className="text-primary" />
+                Repair Matrix
               </h3>
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {predictive.map((item) => (
-                  <div key={item.model} className="p-4 bg-muted/30 border border-border space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest">{item.model}</h4>
-                      <span className="text-[10px] font-black text-green-500">{item.successRate}% Success</span>
+                  <div key={item.model} className="space-y-4 group">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground group-hover:text-primary transition-colors">{item.model}</h4>
+                        <p className="text-sm font-black uppercase tracking-tighter mt-1">Efficiency Engine</p>
+                      </div>
+                      <span className="text-xs font-mono font-black text-green-500 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">{item.successRate}% Success</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Avg Repair Time</span>
-                      <span className="text-xs font-black font-mono">{item.avgTime} Hours</span>
+                    <div className="flex justify-between items-center text-[9px] font-black text-muted-foreground uppercase tracking-widest opacity-60">
+                      <span>Avg Resolution Time</span>
+                      <span className="font-mono">{item.avgTime} Hours</span>
                     </div>
-                    <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all duration-1000" 
-                        style={{ width: `${item.successRate}%` }}
+                    <div className="w-full bg-surface border border-border h-3 rounded-full overflow-hidden p-0.5">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.successRate}%` }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className="h-full bg-primary rounded-full shadow-lg shadow-primary/20"
                       />
                     </div>
                   </div>
                 ))}
               </div>
+              <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
             </div>
           </Gate>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Inventory Forecast */}
-        <Gate id={295}>
-          <div className="bg-card border border-border p-8 shadow-sm">
-            <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-              <Package size={20} className="text-primary" />
-              Inventory Forecast (ID 295)
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Product</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Stock</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Forecasted Demand</th>
-                    <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {forecast.map((item) => (
-                    <tr key={item.productId} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="py-4">
-                        <span className="text-xs font-black uppercase tracking-tighter">{item.name}</span>
-                      </td>
-                      <td className="text-right py-4 font-mono text-xs font-bold">{item.currentStock}</td>
-                      <td className="text-right py-4 font-mono text-xs font-bold text-indigo-500">{item.forecastedDemand}</td>
-                      <td className="text-right py-4">
-                        {item.suggestedReorder > 0 ? (
-                          <span className="px-2 py-1 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase tracking-widest border border-amber-500/20">
-                            Reorder {item.suggestedReorder}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-green-500/10 text-green-500 text-[8px] font-black uppercase tracking-widest border border-green-500/20">
-                            Optimal
-                          </span>
-                        )}
-                      </td>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        {/* Inventory Forecast (6 cols) */}
+        <div className="lg:col-span-6">
+          <Gate id={295}>
+            <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-10 shadow-sm h-full">
+              <h3 className="text-3xl font-serif italic mb-10 flex items-center gap-4">
+                <Package size={28} className="text-primary" />
+                Asset Forecasting
+              </h3>
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Product Node</th>
+                      <th className="text-right py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Current</th>
+                      <th className="text-right py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Forecast</th>
+                      <th className="text-right py-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Directive</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {forecast.map((item) => (
+                      <tr key={item.productId} className="border-b border-border/50 hover:bg-surface transition-colors group">
+                        <td className="py-6">
+                          <span className="text-xs font-black uppercase tracking-tighter group-hover:text-primary transition-colors">{item.name}</span>
+                        </td>
+                        <td className="text-right py-6 font-mono text-sm font-black">{item.currentStock}</td>
+                        <td className="text-right py-6 font-mono text-sm font-black text-indigo-500">{item.forecastedDemand}</td>
+                        <td className="text-right py-6">
+                          {item.suggestedReorder > 0 ? (
+                            <span className="px-4 py-1.5 bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase tracking-widest border border-amber-500/20 rounded-full shadow-lg shadow-amber-500/10">
+                              Reorder {item.suggestedReorder}
+                            </span>
+                          ) : (
+                            <span className="px-4 py-1.5 bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/20 rounded-full">
+                              Optimal
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </Gate>
+          </Gate>
+        </div>
 
-        {/* Sales Velocity */}
-        <div className="bg-card border border-border p-8 shadow-sm">
-          <h3 className="text-lg font-black uppercase tracking-tighter italic mb-6 flex items-center gap-2">
-            <TrendingUp size={20} className="text-primary" />
-            Sales Velocity (ID 297)
-          </h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={[
-                { time: '09:00', sales: 12 },
-                { time: '11:00', sales: 45 },
-                { time: '13:00', sales: 30 },
-                { time: '15:00', sales: 85 },
-                { time: '17:00', sales: 60 },
-                { time: '19:00', sales: 110 },
-                { time: '21:00', sales: 40 }
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 900, fill: '#666' }}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 900, fill: '#666' }}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: 'none', borderRadius: '0', color: '#fff' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#3b82f6" 
-                  strokeWidth={4} 
-                  dot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#fff', stroke: '#3b82f6', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Sales Velocity (6 cols) */}
+        <div className="lg:col-span-6">
+          <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-10 shadow-sm h-full relative overflow-hidden">
+            <h3 className="text-3xl font-serif italic mb-10 flex items-center gap-4">
+              <TrendingUp size={28} className="text-primary" />
+              Sales Velocity
+            </h3>
+            <div className="h-[400px] w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={[
+                  { time: '09:00', sales: 12 },
+                  { time: '11:00', sales: 45 },
+                  { time: '13:00', sales: 30 },
+                  { time: '15:00', sales: 85 },
+                  { time: '17:00', sales: 60 },
+                  { time: '19:00', sales: 110 },
+                  { time: '21:00', sales: 40 }
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                  <XAxis 
+                    dataKey="time" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(0,0,0,0.4)' }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(0,0,0,0.4)' }}
+                    dx={-10}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid rgba(0,0,0,0.1)', 
+                      borderRadius: '1rem', 
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                      fontSize: '10px',
+                      fontWeight: '900',
+                      textTransform: 'uppercase'
+                    }}
+                    cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#3b82f6" 
+                    strokeWidth={6} 
+                    dot={{ r: 6, fill: '#3b82f6', strokeWidth: 0 }}
+                    activeDot={{ r: 8, fill: '#fff', stroke: '#3b82f6', strokeWidth: 4 }}
+                    animationDuration={2000}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="absolute top-0 left-0 w-full h-full bg-grid-slate-100/[0.03] [mask-image:linear-gradient(to_bottom,white,transparent)] pointer-events-none" />
           </div>
         </div>
       </div>

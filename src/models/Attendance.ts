@@ -9,6 +9,7 @@ const AttendanceSchema = new mongoose.Schema({
     longitude: { type: Number, required: true }
   },
   date: { type: String, required: true }, // YYYY-MM-DD
+  overtimeHours: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export default mongoose.models.Attendance || mongoose.model("Attendance", AttendanceSchema);

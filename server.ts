@@ -38,6 +38,9 @@ import complianceRoutes from "./src/routes/complianceRoutes.js";
 import qualityControlRoutes from "./src/routes/qualityControlRoutes.js";
 import rmaRoutes from "./src/routes/rmaRoutes.js";
 import webhookRoutes from "./src/routes/webhookRoutes.js";
+import storeRoutes from "./src/routes/storeRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
+import customerRoutes from "./src/routes/customerRoutes.js";
 import { trainingModeMiddleware } from "./src/middleware/trainingMode.js";
 import { ipWhitelistMiddleware } from "./src/middleware/securityMiddleware.js";
 import { auditLogger } from "./src/middleware/auditMiddleware.js";
@@ -61,7 +64,10 @@ async function startServer() {
 
   // MongoDB Connection
   const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/lakki_erp";
-  mongoose.connect(MONGODB_URI)
+  mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 10000,
+  })
     .then(() => console.log("Connected to MongoDB"))
     .catch(err => console.error("MongoDB connection error:", err));
 
@@ -128,7 +134,7 @@ async function startServer() {
       console.log("Seeded Sample Products");
     }
   };
-  seedData();
+  await seedData();
 
   // Socket.io Real-time Job Status (ID 67)
   io.on("connection", (socket) => {
@@ -176,12 +182,25 @@ async function startServer() {
   app.use("/api/quality-control", qualityControlRoutes);
   app.use("/api/returns", rmaRoutes);
   app.use("/api/webhooks", webhookRoutes);
+  app.use("/api/stores", storeRoutes);
+  app.use("/api/users", userRoutes);
+  app.use("/api/customers", customerRoutes);
 
   // Training Mode Middleware (ID 227)
   app.use(trainingModeMiddleware);
 
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Lakki Phone ERP API is running" });
+    res.json({ 
+      status: "ok", 
+      message: "Lakki Phone ERP API is running",
+      env: {
+        stripe: !!process.env.STRIPE_SECRET_KEY,
+        gsma: !!process.env.GSMA_API_KEY,
+        shopify: !!process.env.SHOPIFY_API_KEY,
+        woocommerce: !!process.env.WOOCOMMERCE_CONSUMER_KEY,
+        mongodb: mongoose.connection.readyState === 1
+      }
+    });
   });
 
   // 404 handler for API routes to prevent falling back to index.html
@@ -191,11 +210,15 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (err) {
+      console.error("Vite server error:", err);
+    }
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -204,9 +227,17 @@ async function startServer() {
     });
   }
 
-  httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  try {
+    httpServer.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("Server failed to start:", err);
+  }
 }
 
-startServer();
+try {
+  startServer();
+} catch (err) {
+  console.error("Fatal error during server startup:", err);
+}

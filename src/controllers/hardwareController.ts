@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import HardwareDevice from '../models/HardwareDevice';
+import HardwareDevice from '../models/HardwareDevice.js';
 
 export const hardwareController = {
   create: async (req: Request, res: Response) => {

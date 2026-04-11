@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import ComplianceLog from '../models/ComplianceLog';
+import ComplianceLog from '../models/ComplianceLog.js';
 
 export const complianceController = {
   createLog: async (req: Request, res: Response) => {

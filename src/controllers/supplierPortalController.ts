@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import OmnichannelOrder from '../models/OmnichannelOrder';
+import OmnichannelOrder from '../models/OmnichannelOrder.js';
 
 export const supplierPortalController = {
   getOrders: async (req: Request, res: Response) => {

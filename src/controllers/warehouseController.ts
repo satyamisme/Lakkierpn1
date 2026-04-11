@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import WarehouseTask from '../models/WarehouseTask';
+import WarehouseTask from '../models/WarehouseTask.js';
 
 export const warehouseController = {
   createTask: async (req: Request, res: Response) => {

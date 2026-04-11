@@ -14,7 +14,7 @@ import {
   Camera,
   History
 } from "lucide-react";
-import { Gate } from "../components/Gate";
+import { Gate } from "../components/PermissionGuard";
 
 export const TechnicianDashboard: React.FC = () => {
   const [repairs, setRepairs] = useState<any[]>([]);
@@ -70,7 +70,7 @@ export const TechnicianDashboard: React.FC = () => {
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/repairs/${selectedRepair._id}/qc`, {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`

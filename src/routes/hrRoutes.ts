@@ -4,6 +4,8 @@ import Commission from '../models/Commission.js';
 import Sale from '../models/Sale.js';
 import Repair from '../models/Repair.js';
 import User from '../models/User.js';
+import PayrollAdjustment from '../models/PayrollAdjustment.js';
+import { calculateOvertime } from '../services/overtimeCalculator.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -35,12 +37,16 @@ router.post('/attendance/clock-in', authenticate, requirePermission(188), async 
 router.post('/attendance/clock-out', authenticate, requirePermission(188), async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const attendance = await Attendance.findOneAndUpdate(
-      { userId: (req as any).user.id, date: today, clockOut: { $exists: false } },
-      { clockOut: new Date() },
-      { new: true }
-    );
+    const attendance = await Attendance.findOne({ userId: (req as any).user.id, date: today, clockOut: { $exists: false } });
     if (!attendance) return res.status(400).json({ error: 'No active clock-in found for today' });
+
+    const clockOut = new Date();
+    const overtimeHours = calculateOvertime(attendance.clockIn, clockOut);
+
+    attendance.clockOut = clockOut;
+    attendance.overtimeHours = overtimeHours;
+    await attendance.save();
+
     res.json(attendance);
   } catch (error) {
     res.status(500).json({ error: 'Clock-out failed' });
@@ -51,9 +57,19 @@ router.post('/attendance/clock-out', authenticate, requirePermission(188), async
 router.get('/payroll', authenticate, requirePermission(197), async (req, res) => {
   try {
     const users = await User.find();
+    const currentPeriod = new Date().toISOString().slice(0, 7); // YYYY-MM
+
     const payrollData = await Promise.all(users.map(async (user) => {
       const commissions = await Commission.find({ userId: user._id, paid: false });
       const totalCommission = commissions.reduce((sum, c) => sum + c.amount, 0);
+      
+      const adjustments = await PayrollAdjustment.find({ userId: user._id, payPeriod: currentPeriod });
+      const totalAdjustments = adjustments.reduce((sum, a) => a.type === 'bonus' ? sum + a.amount : sum - a.amount, 0);
+
+      const attendance = await Attendance.find({ userId: user._id, date: { $regex: `^${currentPeriod}` } });
+      const totalOvertime = attendance.reduce((sum, a) => sum + (a.overtimeHours || 0), 0);
+      const overtimePay = totalOvertime * 5; // Mock overtime rate: 5 KD/hr
+
       const baseSalary = 250; // Mock base salary in KD
       const penalties = 0; // Mock penalties
 
@@ -62,8 +78,10 @@ router.get('/payroll', authenticate, requirePermission(197), async (req, res) =>
         name: user.name,
         baseSalary,
         totalCommission,
+        totalAdjustments,
+        overtimePay,
         penalties,
-        totalPayable: baseSalary + totalCommission - penalties
+        totalPayable: baseSalary + totalCommission + totalAdjustments + overtimePay - penalties
       };
     }));
     res.json(payrollData);
@@ -72,8 +90,8 @@ router.get('/payroll', authenticate, requirePermission(197), async (req, res) =>
   }
 });
 
-// GET /api/performance (permission 198)
-router.get('/performance', authenticate, requirePermission(198), async (req, res) => {
+// GET /api/performance (permission 329 - Bug #12)
+router.get('/performance', authenticate, requirePermission(329), async (req, res) => {
   try {
     const users = await User.find();
     const performanceData = await Promise.all(users.map(async (user) => {

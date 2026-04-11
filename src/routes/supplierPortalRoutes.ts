@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { supplierPortalController } from '../controllers/supplierPortalController';
-import { authenticate, requirePermission } from '../middleware/authMiddleware';
+import { supplierPortalController } from '../controllers/supplierPortalController.js';
+import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
