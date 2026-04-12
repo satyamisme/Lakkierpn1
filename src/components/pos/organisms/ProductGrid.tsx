@@ -89,7 +89,9 @@ export const ProductGrid: React.FC = () => {
   const fetchProducts = async (query = '') => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/products/search?q=${query}`);
+      const response = await fetch(`/api/products/search?q=${query}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to fetch products');
       setProducts(data);

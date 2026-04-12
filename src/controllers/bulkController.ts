@@ -6,16 +6,30 @@ import PDFDocument from 'pdfkit';
 export const bulkController = {
   createJob: async (req: Request, res: Response) => {
     try {
-      const { type, totalItems } = req.body;
+      const { type, totalItems, items } = req.body;
       const job = new BulkJob({
         type,
         totalItems,
-        createdBy: (req as any).user.id
+        createdBy: (req as any).user.id,
+        status: 'processing'
       });
       await job.save();
       
-      // Logic to start bulk processing would go here
-      // This would typically involve a worker process or a queue
+      // Synchronous processing (ID 18)
+      if (type === 'price_update' && items) {
+        for (const item of items) {
+          await Product.findByIdAndUpdate(item.productId, { price: item.price });
+          job.processedItems++;
+        }
+      } else if (type === 'stock_adjustment' && items) {
+        for (const item of items) {
+          await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.adjustment } });
+          job.processedItems++;
+        }
+      }
+
+      job.status = 'completed';
+      await job.save();
       
       res.status(201).json(job);
     } catch (error: any) {
@@ -37,6 +51,16 @@ export const bulkController = {
       const job = await BulkJob.findById(req.params.id).populate('createdBy', 'name');
       if (!job) return res.status(404).json({ message: 'Bulk job not found' });
       res.json(job);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  deleteJob: async (req: Request, res: Response) => {
+    try {
+      const job = await BulkJob.findByIdAndDelete(req.params.id);
+      if (!job) return res.status(404).json({ message: 'Bulk job not found' });
+      res.json({ message: 'Job deleted successfully' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -86,6 +110,41 @@ export const bulkController = {
       });
 
       doc.end();
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  importProductCSV: async (req: Request, res: Response) => {
+    try {
+      const { csvData } = req.body;
+      const lines = csvData.split('\n');
+      const headers = lines[0].split(',').map((h: string) => h.trim());
+      const rows = lines.slice(1).filter((l: string) => l.trim().length > 0);
+
+      const results = [];
+      for (const line of rows) {
+        const values = line.split(',').map((v: string) => v.trim());
+        const productData: any = {};
+        headers.forEach((header: string, i: number) => {
+          let val: any = values[i];
+          if (header === 'price' || header === 'cost') val = parseFloat(val) || 0;
+          if (header === 'stock') val = parseInt(val) || 0;
+          if (header === 'isImeiRequired') val = val.toLowerCase() === 'true';
+          productData[header] = val;
+        });
+
+        if (productData.name && productData.sku) {
+          const product = await Product.findOneAndUpdate(
+            { sku: productData.sku },
+            productData,
+            { upsert: true, new: true }
+          );
+          results.push(product);
+        }
+      }
+
+      res.status(200).json({ message: `Successfully processed ${results.length} products`, count: results.length });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

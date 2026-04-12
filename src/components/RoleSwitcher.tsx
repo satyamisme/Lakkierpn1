@@ -10,6 +10,8 @@ export const RoleSwitcher: React.FC = () => {
     { id: 'manager', label: 'Store Manager' },
     { id: 'cashier', label: 'Cashier' },
     { id: 'technician', label: 'Technician' },
+    { id: 'inventory', label: 'Inventory' },
+    { id: 'auditor', label: 'Auditor' },
   ];
 
   return (

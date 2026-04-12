@@ -42,10 +42,30 @@ export const userController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const { password, ...updateData } = req.body;
+      const { password, role, ...updateData } = req.body;
       if (password) {
         updateData.password = await bcrypt.hash(password, 10);
       }
+      
+      if (role) {
+        updateData.role = role;
+        // Auto-assign permissions based on role (ID 14)
+        switch (role) {
+          case 'cashier':
+            updateData.permissions = [1, 121];
+            break;
+          case 'technician':
+            updateData.permissions = [61, 67, 71, 88];
+            break;
+          case 'manager':
+            updateData.permissions = [1, 29, 61, 121, 122, 125, 181, 188, 190, 193];
+            break;
+          case 'superadmin':
+            updateData.permissions = [0, ...Array.from({ length: 350 }, (_, i) => i + 1)];
+            break;
+        }
+      }
+
       const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
       if (!user) return res.status(404).json({ message: 'User not found' });
       res.json(user);

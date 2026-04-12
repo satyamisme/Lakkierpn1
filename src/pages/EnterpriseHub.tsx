@@ -13,8 +13,11 @@ import {
   Activity,
   X,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Package,
+  Search
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { FEATURES } from '../constants/features';
 
 /**
@@ -29,23 +32,28 @@ export const EnterpriseHub: React.FC = () => {
 
   const getIcon = (id: number) => {
     switch (id) {
+      case 316: return <Package className="w-6 h-6" />;
       case 317: return <History className="w-6 h-6" />;
+      case 318: return <Search className="w-6 h-6" />;
       case 319: return <Zap className="w-6 h-6" />;
-      case 325: return <Globe className="w-6 h-6" />;
-      case 334: return <Lock className="w-6 h-6" />;
+      case 325: return <Lock className="w-6 h-6" />;
+      case 327: return <Zap className="w-6 h-6" />;
+      case 334: return <ShieldCheck className="w-6 h-6" />;
       case 340: return <RefreshCw className="w-6 h-6" />;
       case 341: return <Database className="w-6 h-6" />;
       case 345: return <Cpu className="w-6 h-6" />;
-      case 350: return <Server className="w-6 h-6" />;
+      case 350: return <AlertTriangle className="w-6 h-6" />;
       default: return <Activity className="w-6 h-6" />;
     }
   };
 
   const handleAction = (id: number) => {
     setIsProcessing(true);
+    toast.info(`Executing Enterprise Module: ${id}...`);
     setTimeout(() => {
       setIsProcessing(false);
       setActiveConfig(null);
+      toast.success(`Module ${id} successfully atomized.`);
     }, 1500);
   };
 
@@ -57,7 +65,7 @@ export const EnterpriseHub: React.FC = () => {
             Infrastructure Layer
           </div>
           <h1 className="text-6xl font-serif italic tracking-tight text-foreground leading-none">Enterprise Hub</h1>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-4 opacity-60">Core Governance & High-Tier Ops (ID 316)</p>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-4 opacity-60">Core Governance & High-Tier Ops (ID 316-350)</p>
         </div>
         <div className="flex gap-4">
           <button className="px-8 py-4 bg-surface-container border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all">Audit Logs</button>
@@ -66,12 +74,12 @@ export const EnterpriseHub: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {enterpriseFeatures.slice(0, 8).map((feature, i) => (
+        {enterpriseFeatures.map((feature, i) => (
           <motion.div
             key={feature.id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05 }}
+            transition={{ delay: i * 0.02 }}
             onClick={() => setActiveConfig(feature.id)}
             className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm hover:shadow-2xl hover:border-indigo-500/50 transition-all group cursor-pointer relative overflow-hidden"
           >
@@ -82,7 +90,7 @@ export const EnterpriseHub: React.FC = () => {
               <h3 className="font-black text-sm uppercase tracking-tighter">{feature.name}</h3>
               <span className="text-[9px] font-black text-indigo-500 opacity-40">ID {feature.id}</span>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+            <p className="text-xs text-muted-foreground leading-relaxed font-medium line-clamp-2">
               {feature.description}
             </p>
             <div className="mt-8 pt-8 border-t border-border flex items-center justify-between">
@@ -159,21 +167,63 @@ export const EnterpriseHub: React.FC = () => {
               </p>
 
               <div className="space-y-8">
-                <div className="p-6 bg-muted/30 border border-border rounded-3xl space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Status</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-green-500">Operational</span>
+                {activeConfig === 317 && (
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-2">Restore Point (Minutes Ago)</label>
+                    <input type="range" min="1" max="1440" className="w-full accent-indigo-600" />
+                    <div className="flex justify-between text-[10px] font-mono font-black opacity-60">
+                      <span>1m</span>
+                      <span>24h</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Last Sync</span>
-                    <span className="text-[10px] font-mono font-black">2026-04-09 14:22:01</span>
-                  </div>
-                </div>
+                )}
 
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-2">Sensitivity Threshold</label>
-                  <input type="range" className="w-full accent-indigo-600" />
-                </div>
+                {activeConfig === 319 && (
+                  <div className="space-y-4">
+                    {['WhatsApp API', 'KNET Gateway', 'GSMA Blacklist', 'Shopify Sync'].map(api => (
+                      <div key={api} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
+                        <span className="text-[10px] font-black uppercase tracking-widest">{api}</span>
+                        <div className="w-12 h-6 bg-green-500/20 rounded-full relative p-1 cursor-pointer">
+                          <div className="w-4 h-4 bg-green-500 rounded-full shadow-lg" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeConfig === 325 && (
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-2">Idle Timeout (Seconds)</label>
+                    <input 
+                      type="number" 
+                      defaultValue={60}
+                      className="w-full bg-muted border border-border p-4 rounded-2xl text-xl font-black font-mono outline-none focus:ring-2 ring-indigo-500/20" 
+                    />
+                  </div>
+                )}
+
+                {activeConfig === 334 && (
+                  <div className="p-8 bg-red-500/5 border border-red-500/20 rounded-[2.5rem] text-center space-y-4">
+                    <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+                    <h4 className="text-xl font-serif italic text-red-500">Global Kill Switch</h4>
+                    <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
+                      Activating this will immediately sever all external API connections and switch the entire ERP to manual failover mode.
+                    </p>
+                  </div>
+                )}
+
+                {!([317, 319, 325, 334].includes(activeConfig)) && (
+                  <div className="p-6 bg-muted/30 border border-border rounded-3xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest">Status</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-green-500">Operational</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest">Last Sync</span>
+                      <span className="text-[10px] font-mono font-black">2026-04-09 14:22:01</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-4 pt-4">
                   <button 

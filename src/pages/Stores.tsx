@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Store, Plus, Search, MapPin, Phone, User, Trash2, Edit2, Loader2, X, CheckCircle2 } from "lucide-react";
+import { Store, Plus, Search, MapPin, Phone, User, Trash2, Edit2, Loader2, X, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import axios from "axios";
 import { toast } from "sonner";

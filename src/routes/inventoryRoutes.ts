@@ -25,4 +25,11 @@ router.post('/adjust', authenticate, requirePermission(132), inventoryController
 // GET /valuation (ID 141)
 router.get('/valuation', authenticate, requirePermission(141), inventoryController.getFifoValuation);
 
+// Cycle Count (ID 318)
+router.post('/cycle-count/start', authenticate, requirePermission(318), inventoryController.startCycleCount);
+router.post('/cycle-count/submit', authenticate, requirePermission(318), inventoryController.submitCycleCount);
+router.get('/cycle-count/pending', authenticate, requirePermission(318), inventoryController.getPendingCycleCounts);
+router.get('/cycle-count/discrepancy/:sessionId', authenticate, requirePermission(318), inventoryController.getCycleCountDiscrepancy);
+router.post('/cycle-count/resolve', authenticate, requirePermission(318), inventoryController.resolveCycleCount);
+
 export default router;

@@ -10,28 +10,37 @@ import {
   Loader2,
   CheckCircle2,
   Truck,
-  X
+  X,
+  Smartphone,
+  Tag,
+  Layers
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import { toast } from "sonner";
+import { GlobalAddProductModal } from "../components/GlobalAddProductModal";
+import { BulkImportModal } from "../components/BulkImportModal";
+import { Upload } from "lucide-react";
+
+import axios from 'axios';
+import { StockIntakeModal } from "../components/StockIntakeModal";
+
+import { useSearchParams } from "react-router-dom";
 
 export const InventoryDashboard: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [lowStock, setLowStock] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [transfers, setTransfers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    sku: "",
-    category: "Accessories",
-    price: 0,
-    cost: 0,
-    stock: 0,
-    isImeiRequired: false
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('sku') || "");
+
+  useEffect(() => {
+    const sku = searchParams.get('sku');
+    if (sku) setSearchQuery(sku);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchData();
@@ -41,28 +50,29 @@ export const InventoryDashboard: React.FC = () => {
     try {
       setIsLoading(true);
       const [lowStockRes, transfersRes, allProductsRes] = await Promise.all([
-        fetch('/api/inventory/low-stock', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/inventory/transfers', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/products', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+        axios.get('/api/products/low-stock'),
+        axios.get('/api/inventory/transfers'),
+        axios.get('/api/products')
       ]);
       
-      if (lowStockRes.ok) {
-        const data = await lowStockRes.json();
-        setLowStock(data.map((p: any) => ({
+      if (lowStockRes.status === 200) {
+        setLowStock(lowStockRes.data.map((p: any) => ({
           ...p,
           image: p.image || `https://picsum.photos/seed/${p.sku}/200/200`
         })));
       }
-      if (transfersRes.ok) setTransfers(await transfersRes.json());
-      if (allProductsRes.ok) {
-        const data = await allProductsRes.json();
-        setAllProducts(data.map((p: any) => ({
+      if (transfersRes.status === 200) setTransfers(transfersRes.data);
+      if (allProductsRes.status === 200) {
+        const data = allProductsRes.data;
+        const productsList = Array.isArray(data) ? data : (data.products || []);
+        setAllProducts(productsList.map((p: any) => ({
           ...p,
           image: p.image || `https://picsum.photos/seed/${p.sku}/200/200`
         })));
       }
     } catch (error) {
       console.error("Fetch error:", error);
+      toast.error("Failed to sync inventory matrix.");
     } finally {
       setIsLoading(false);
     }
@@ -70,46 +80,19 @@ export const InventoryDashboard: React.FC = () => {
 
   const handleReceive = async (id: string) => {
     try {
-      const response = await fetch(`/api/inventory/transfers/${id}/receive`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) {
+      const response = await axios.patch(`/api/inventory/transfers/${id}/status`, { status: 'received' });
+      if (response.status === 200) {
         fetchData();
         toast.success("Transfer received & stock updated!");
       }
     } catch (error) {
       console.error("Receive error:", error);
-    }
-  };
-
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newProduct)
-      });
-      if (response.ok) {
-        setIsAddModalOpen(false);
-        setNewProduct({ name: "", sku: "", category: "Accessories", price: 0, cost: 0, stock: 0, isImeiRequired: false });
-        fetchData();
-        toast.success("Product added successfully!");
-      }
-    } catch (error) {
-      console.error("Add product error:", error);
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to process transfer.");
     }
   };
 
   const filteredProducts = allProducts.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -123,13 +106,22 @@ export const InventoryDashboard: React.FC = () => {
         <Gate id={122}>
           <div className="flex gap-6">
             <button 
+              onClick={() => setIsIntakeModalOpen(true)}
+              className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm"
+            >
+              <Layers size={18} /> Stock Intake (ID 129)
+            </button>
+            <button 
+              onClick={() => setIsBulkModalOpen(true)}
+              className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm"
+            >
+              <Upload size={18} /> Bulk Import (ID 137)
+            </button>
+            <button 
               onClick={() => setIsAddModalOpen(true)}
               className="px-10 py-5 bg-primary text-primary-foreground rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
             >
               <Plus size={18} /> Register Asset
-            </button>
-            <button className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm">
-              <ArrowRightLeft size={18} /> Bulk Reorder
             </button>
           </div>
         </Gate>
@@ -296,148 +288,24 @@ export const InventoryDashboard: React.FC = () => {
         </div>
       </Gate>
 
-      {/* Add Product Modal */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute inset-0 bg-background/60 backdrop-blur-3xl"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative bg-surface-container-lowest border border-border p-16 rounded-[4rem] shadow-2xl w-full max-w-3xl overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-3 bg-primary" />
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="absolute top-10 right-10 p-4 hover:bg-surface-container rounded-full text-muted-foreground transition-all active:scale-90"
-              >
-                <X size={24} />
-              </button>
+      {/* Modals */}
+      <BulkImportModal 
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={fetchData}
+      />
 
-              <h2 className="text-6xl font-serif italic mb-4">Register Asset</h2>
-              <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-12 opacity-60">New Product Entry (ID 122)</p>
-              
-              <form onSubmit={handleAddProduct} className="space-y-8">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Product Name</label>
-                    <input 
-                      required
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.1em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">SKU / Model</label>
-                    <input 
-                      required
-                      value={newProduct.sku}
-                      onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
-                      className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.1em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
-                  </div>
-                </div>
+      <GlobalAddProductModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        onSuccess={fetchData}
+      />
 
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Category</label>
-                    <div className="relative">
-                      <select 
-                        value={newProduct.category}
-                        onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                        className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-xs font-black uppercase tracking-[0.1em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all appearance-none shadow-inner"
-                      >
-                        <option>Phones</option>
-                        <option>Accessories</option>
-                        <option>Parts</option>
-                        <option>Services</option>
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-                        <Package size={16} />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Initial Stock</label>
-                    <input 
-                      type="number"
-                      required
-                      value={newProduct.stock}
-                      onChange={(e) => setNewProduct({...newProduct, stock: parseInt(e.target.value)})}
-                      className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-sm font-black font-mono outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Cost Price (KD)</label>
-                    <input 
-                      type="number"
-                      step="0.001"
-                      required
-                      value={newProduct.cost}
-                      onChange={(e) => setNewProduct({...newProduct, cost: parseFloat(e.target.value)})}
-                      className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-sm font-black font-mono text-primary outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Sale Price (KD)</label>
-                    <input 
-                      type="number"
-                      step="0.001"
-                      required
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
-                      className="w-full bg-surface border border-border p-5 rounded-[1.5rem] text-sm font-black font-mono text-primary outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner"
-                    />
-                  </div>
-                </div>
-
-                <div 
-                  className="flex items-center gap-6 p-8 bg-surface border border-border rounded-[2.5rem] group cursor-pointer hover:border-primary/30 transition-all shadow-inner" 
-                  onClick={() => setNewProduct({...newProduct, isImeiRequired: !newProduct.isImeiRequired})}
-                >
-                  <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-500 ${newProduct.isImeiRequired ? 'bg-primary border-primary rotate-12' : 'border-border'}`}>
-                    {newProduct.isImeiRequired && <CheckCircle2 className="w-5 h-5 text-white" />}
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em]">Require IMEI/Serial Validation</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-60">Blocks sale if 15-digit serial is missing</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-8 pt-10">
-                  <button 
-                    type="button"
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="flex-1 py-6 border border-border rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] hover:bg-surface transition-all active:scale-95 opacity-60"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-6 bg-primary text-primary-foreground rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl shadow-primary/40 flex items-center justify-center gap-4 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 size={20} />}
-                    Register Node
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <StockIntakeModal 
+        isOpen={isIntakeModalOpen}
+        onClose={() => setIsIntakeModalOpen(false)}
+        onSuccess={fetchData}
+      />
     </div>
   );
 };

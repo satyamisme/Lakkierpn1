@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, AlertCircle, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import axios from 'axios';
 
 interface ImeiModalProps {
   isOpen: boolean;
@@ -24,23 +25,21 @@ export const ImeiModal: React.FC<ImeiModalProps> = ({ isOpen, onClose, onConfirm
     setError(null);
 
     try {
-      // ID 6: Duplicate IMEI Prevention - Check if IMEI exists in DB
-      const response = await fetch(`/api/products/validate-imei?imei=${imei}`);
-      const data = await response.json();
+      // ID 6: Duplicate IMEI Prevention - Check if IMEI exists and is available
+      const response = await axios.get(`/api/imei/check/${imei}`);
+      const data = response.data;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Validation failed');
-      }
-
-      if (data.exists) {
-        setError('Duplicate IMEI: This serial has already been sold or exists in stock.');
+      if (data.error && !data.exists) {
+        setError('IMEI not found in system. Please perform stock intake first.');
+      } else if (!data.available) {
+        setError(data.error || 'IMEI is not available for sale.');
       } else {
         onConfirm(imei);
         setImei('');
         onClose();
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.error || 'Validation failed');
     } finally {
       setIsValidating(false);
     }

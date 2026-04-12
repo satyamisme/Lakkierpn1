@@ -71,7 +71,7 @@ export const authController = {
         { expiresIn: "1d" }
       );
       
-      res.json({ token, user: { id: user._id, name: user.name, permissions: user.permissions } });
+      res.json({ token, user: { id: user._id, name: user.name, role: user.role, permissions: user.permissions } });
     } catch (error: any) {
       res.status(500).json({ error: "Login failed" });
     }
@@ -140,7 +140,7 @@ export const authController = {
         { expiresIn: "1d" }
       );
       
-      res.json({ token: jwtToken, user: { id: user._id, name: user.name, permissions: user.permissions } });
+      res.json({ token: jwtToken, user: { id: user._id, name: user.name, role: user.role, permissions: user.permissions } });
     } catch (error: any) {
       res.status(500).json({ error: "2FA verification failed" });
     }
@@ -152,6 +152,16 @@ export const authController = {
       res.json({ message: "Logged out successfully" });
     } catch (error: any) {
       res.status(500).json({ error: "Logout failed" });
+    }
+  },
+
+  getMe: async (req: any, res: Response) => {
+    try {
+      const user = await User.findById(req.user.id).select("-password");
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch user" });
     }
   },
 

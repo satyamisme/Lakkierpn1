@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Clock, 
@@ -39,6 +40,7 @@ interface PerformanceItem {
 }
 
 export const HRDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [payroll, setPayroll] = useState<PayrollItem[]>([]);
   const [performance, setPerformance] = useState<PerformanceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +91,10 @@ export const HRDashboard: React.FC = () => {
           >
             <RefreshCcw className="w-6 h-6" />
           </button>
-          <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">
+          <button 
+            onClick={() => navigate('/staff')}
+            className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
+          >
             Staff Directory
           </button>
         </div>

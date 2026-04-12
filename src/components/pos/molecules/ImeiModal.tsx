@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Smartphone, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import axios from "axios";
 
 interface ImeiModalProps {
   isOpen: boolean;
@@ -24,26 +25,18 @@ export const ImeiModal: React.FC<ImeiModalProps> = ({ isOpen, onClose, onConfirm
     setError("");
 
     try {
-      const response = await fetch('/api/imei/check', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ imei }),
-      });
+      const response = await axios.get(`/api/imei/check/${imei}`);
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data.exists && data.available) {
         onConfirm(imei);
         setImei("");
         onClose();
       } else {
         setError(data.error || "IMEI validation failed");
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Network error. Please try again.");
     } finally {
       setIsValidating(false);
     }

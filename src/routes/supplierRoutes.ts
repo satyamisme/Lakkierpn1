@@ -6,6 +6,26 @@ import { authenticate, requirePermission } from '../middleware/authMiddleware.js
 
 const router = express.Router();
 
+// GET /api/suppliers
+router.get('/', authenticate, requirePermission(142), async (req, res) => {
+  try {
+    const suppliers = await Supplier.find().sort({ name: 1 });
+    res.json(suppliers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch suppliers' });
+  }
+});
+
+// GET /api/suppliers/purchase-orders
+router.get('/purchase-orders', authenticate, requirePermission(127), async (req, res) => {
+  try {
+    const pos = await PurchaseOrder.find().populate('supplierId').sort({ createdAt: -1 });
+    res.json(pos);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch POs' });
+  }
+});
+
 // POST /api/suppliers (requires permission 142)
 router.post('/', authenticate, requirePermission(142), async (req, res) => {
   try {

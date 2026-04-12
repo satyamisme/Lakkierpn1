@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/MainLayout';
 import { Login } from './components/Login';
 import { Loader2 } from 'lucide-react';
+import { syncPendingSales } from './services/offlineQueue';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -58,6 +59,14 @@ const AppContent = () => {
 };
 
 export default function App() {
+  React.useEffect(() => {
+    const handleOnline = () => {
+      syncPendingSales();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

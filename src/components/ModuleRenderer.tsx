@@ -32,11 +32,16 @@ const AnalyticsDashboard = lazy(() => import('../pages/AnalyticsDashboard').then
 const IoTDashboard = lazy(() => import('../pages/IoTDashboard').then(m => ({ default: m.IoTDashboard })));
 const ShiftHandover = lazy(() => import('../pages/ShiftHandover').then(m => ({ default: m.ShiftHandover })));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const Stores = lazy(() => import('../pages/Stores').then(m => ({ default: m.Stores })));
+const Staff = lazy(() => import('../pages/Staff').then(m => ({ default: m.Staff })));
+const Roles = lazy(() => import('../pages/Roles').then(m => ({ default: m.Roles })));
 
 // Missing Modules
 const Warehouse = lazy(() => import('../pages/Warehouse').then(m => ({ default: m.Warehouse })));
 const SupplierPortal = lazy(() => import('../pages/SupplierPortal').then(m => ({ default: m.SupplierPortal })));
 const BulkOperations = lazy(() => import('../pages/BulkOperations').then(m => ({ default: m.BulkOperations })));
+const CycleCountStaff = lazy(() => import('../pages/CycleCountStaff').then(m => ({ default: m.CycleCountStaff })));
+const CycleCountManager = lazy(() => import('../pages/CycleCountManager').then(m => ({ default: m.CycleCountManager })));
 const Omnichannel = lazy(() => import('../pages/Omnichannel').then(m => ({ default: m.Omnichannel })));
 const StaffPerformance = lazy(() => import('../pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
 const Compliance = lazy(() => import('../pages/Compliance'));
@@ -150,6 +155,8 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
         
         {/* Inventory Folder */}
         <Route path="inventory" element={<InventoryDashboard />} />
+        <Route path="cycle-count/staff" element={<CycleCountStaff />} />
+        <Route path="cycle-count/manager" element={<CycleCountManager />} />
         <Route path="alerts" element={<LowStockWidget />} />
         <Route path="costs" element={<CostAnalysis />} />
         
@@ -159,7 +166,6 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
         
         {/* HR Folder */}
         <Route path="hr" element={<HRDashboard />} />
-        <Route path="staff" element={<HRDashboard />} />
         <Route path="attendance" element={<HRDashboard />} />
         <Route path="payroll" element={<HRDashboard />} />
         <Route path="shift" element={<ShiftHandover />} />
@@ -210,7 +216,9 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
 
         {/* Admin Folder */}
         <Route path="toggles" element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />
-        <Route path="roles" element={<AdminDashboard />} />
+        <Route path="roles" element={<Roles />} />
+        <Route path="staff" element={<Staff />} />
+        <Route path="stores" element={<Stores />} />
         <Route path="profile" element={<AdminDashboard />} />
         <Route path="health" element={<AdminDashboard />} />
         

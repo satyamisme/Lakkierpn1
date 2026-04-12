@@ -1,27 +1,21 @@
 import { useState, useEffect } from "react";
-
-interface OfflineSale {
-  id: string;
-  data: any;
-  timestamp: number;
-}
+import { saveSale, syncPendingSales, getPendingSales } from "../services/offlineQueue";
 
 export const useOfflineQueue = () => {
-  const [queue, setQueue] = useState<OfflineSale[]>([]);
+  const [queueLength, setQueueLength] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncPendingSales().then(updateQueueLength);
+    };
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Load queue from localStorage
-    const savedQueue = localStorage.getItem("offline_sales_queue");
-    if (savedQueue) {
-      setQueue(JSON.parse(savedQueue));
-    }
+    updateQueueLength();
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -29,50 +23,15 @@ export const useOfflineQueue = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (isOnline && queue.length > 0) {
-      syncQueue();
-    }
-  }, [isOnline, queue]);
-
-  const addToQueue = (saleData: any) => {
-    const newSale: OfflineSale = {
-      id: Math.random().toString(36).substr(2, 9),
-      data: saleData,
-      timestamp: Date.now(),
-    };
-    const newQueue = [...queue, newSale];
-    setQueue(newQueue);
-    localStorage.setItem("offline_sales_queue", JSON.stringify(newQueue));
+  const updateQueueLength = async () => {
+    const sales = await getPendingSales();
+    setQueueLength(sales.length);
   };
 
-  const syncQueue = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    for (const sale of queue) {
-      try {
-        const response = await fetch("/api/sales", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify(sale.data),
-        });
-
-        if (response.ok) {
-          // Remove from queue
-          const newQueue = queue.filter((s) => s.id !== sale.id);
-          setQueue(newQueue);
-          localStorage.setItem("offline_sales_queue", JSON.stringify(newQueue));
-        }
-      } catch (error) {
-        console.error("Sync failed for sale:", sale.id, error);
-        break; // Stop syncing if network error
-      }
-    }
+  const addToQueue = async (saleData: any) => {
+    await saveSale(saleData);
+    await updateQueueLength();
   };
 
-  return { addToQueue, queueLength: queue.length, isOnline };
+  return { addToQueue, queueLength, isOnline };
 };

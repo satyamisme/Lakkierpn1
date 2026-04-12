@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/search', requirePermission(17), customerController.search);
 router.post('/', requirePermission(17), customerController.create);
 router.get('/', requirePermission(17), customerController.getAll);
 router.get('/:id', requirePermission(17), customerController.getById);

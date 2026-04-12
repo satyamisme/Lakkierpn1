@@ -27,6 +27,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(parsedUser);
       setToken(savedToken);
       axios.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
+      
+      // Fetch fresh user data to sync permissions (ID 185)
+      axios.get("/api/auth/me")
+        .then(res => {
+          setUser(res.data);
+          localStorage.setItem("user", JSON.stringify(res.data));
+        })
+        .catch(err => {
+          console.error("Failed to sync user data:", err);
+          if (err.response?.status === 401) {
+            logout();
+          }
+        });
     }
     setLoading(false);
   }, []);

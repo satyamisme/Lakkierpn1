@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 
-export type AppRole = 'super-admin' | 'manager' | 'cashier' | 'technician';
+export type AppRole = 'super-admin' | 'manager' | 'cashier' | 'technician' | 'inventory' | 'auditor';
 
 interface PermissionContextType {
   permissions: number[];
@@ -72,12 +72,17 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return Array.from({ length: 400 }, (_, i) => i + 1);
     }
     
-    return saved ? JSON.parse(saved) : [0, 1, 3, 5, 12, 185];
+    return saved ? JSON.parse(saved) : [1, 3, 5, 12, 31, 121, 141, 185];
   });
 
   useEffect(() => {
     if (user?.permissions) {
       setPermissions(user.permissions);
+    }
+    if (user?.role) {
+      const newRole = user.role === 'superadmin' ? 'super-admin' : user.role;
+      setRole(newRole as AppRole);
+      localStorage.setItem('role', newRole);
     }
   }, [user]);
 
@@ -89,16 +94,22 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     let newPermissions: number[] = [];
     switch (newRole) {
       case 'super-admin':
-        newPermissions = Array.from({ length: 300 }, (_, i) => i + 1);
+        newPermissions = Array.from({ length: 400 }, (_, i) => i + 1);
         break;
       case 'manager':
-        newPermissions = [1, 3, 5, 12, 31, 34, 61, 63, 71, 72, 121, 141, 185, 199, 232];
+        newPermissions = [1, 3, 5, 12, 31, 34, 61, 63, 71, 72, 121, 122, 125, 132, 141, 185, 195, 199, 232];
         break;
       case 'cashier':
-        newPermissions = [1, 3, 5, 12, 31, 141, 121]; // Cashiers can view stock
+        newPermissions = [1, 3, 5, 12, 31, 121, 141, 185];
         break;
       case 'technician':
-        newPermissions = Array.from({ length: 39 }, (_, i) => i + 61); // 61 to 99 (includes 63, 71, 72)
+        newPermissions = [61, 62, 63, 71, 72, 73, 74, 75, 185];
+        break;
+      case 'inventory':
+        newPermissions = [121, 122, 125, 129, 132, 137, 185];
+        break;
+      case 'auditor':
+        newPermissions = [31, 34, 121, 125, 185, 232];
         break;
     }
     setPermissions(newPermissions);

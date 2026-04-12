@@ -73,4 +73,31 @@ router.get('/tax/vat-export', authenticate, requirePermission(194), async (req, 
   }
 });
 
+// GET /stats (ID 192) – JSON stats for Cockpit
+router.get('/stats', authenticate, requirePermission(192), async (req, res) => {
+  try {
+    const totalSales = await Sale.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } }
+    ]);
+
+    const totalRepairs = await Repair.aggregate([
+      { $match: { status: 'ready' } },
+      { $group: { _id: null, total: { $sum: '$estimatedQuote' }, count: { $sum: 1 } } }
+    ]);
+
+    const revenue = (totalSales[0]?.total || 0) + (totalRepairs[0]?.total || 0);
+    const units = (totalSales[0]?.count || 0);
+
+    res.json({
+      revenue,
+      units,
+      targetProgress: 85.8, // Mock for now
+      slaRisks: 12 // Mock for now
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
 export default router;

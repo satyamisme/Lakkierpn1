@@ -1,16 +1,45 @@
-import React from 'react';
-import { Smartphone, CreditCard, Banknote, MapPin, Phone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Smartphone, CreditCard, Banknote, MapPin, Phone, RefreshCcw } from 'lucide-react';
 
 interface ThermalReceiptProps {
   id: string;
   orderId: string;
   date: string;
   items: { name: string; sku: string; price: number; imei?: string }[];
-  payments: { cash: number; knet: number; creditCard: number };
+  payments: any;
   total: number;
 }
 
 export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, date, items, payments, total }) => {
+  const [storeInfo, setStoreInfo] = useState({
+    name: "Lakki Phone ERP",
+    address: "Kuwait City, Main Branch",
+    phone: "+965 2222 3333"
+  });
+
+  useEffect(() => {
+    const fetchStore = async () => {
+      try {
+        const res = await fetch('/api/stores', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+          const stores = await res.json();
+          if (stores.length > 0) {
+            setStoreInfo({
+              name: stores[0].name,
+              address: stores[0].address,
+              phone: stores[0].phone
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch store info for receipt", err);
+      }
+    };
+    fetchStore();
+  }, []);
+
   return (
     <div id={id} className="w-[300px] bg-white p-4 mx-auto text-gray-900 border border-gray-200" style={{ fontFamily: "'Inter', 'Noto Sans Arabic', sans-serif" }}>
       {/* Header */}
@@ -20,17 +49,17 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, dat
             <Smartphone className="w-8 h-8" />
           </div>
         </div>
-        <h1 className="text-xl font-black uppercase tracking-tighter">Lakki Phone ERP</h1>
+        <h1 className="text-xl font-black uppercase tracking-tighter">{storeInfo.name}</h1>
         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Enterprise Retail Terminal</p>
         
         <div className="mt-2 text-[10px] flex flex-col items-center gap-1">
           <div className="flex items-center gap-1">
             <MapPin className="w-3 h-3" />
-            <span>Kuwait City, Main Branch</span>
+            <span>{storeInfo.address}</span>
           </div>
           <div className="flex items-center gap-1">
             <Phone className="w-3 h-3" />
-            <span>+965 2222 3333</span>
+            <span>{storeInfo.phone}</span>
           </div>
         </div>
       </div>
@@ -89,23 +118,40 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, dat
       <div className="bg-gray-50 p-3 rounded-lg mb-4">
         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-200 pb-1">Payment Split / تفاصيل الدفع</p>
         <div className="space-y-1">
-          {payments.cash > 0 && (
-            <div className="flex justify-between text-[10px] font-medium">
-              <span className="flex items-center gap-1"><Banknote className="w-3 h-3 text-green-500" /> Cash / نقدي</span>
-              <span>{payments.cash.toFixed(3)} KD</span>
-            </div>
-          )}
-          {payments.knet > 0 && (
-            <div className="flex justify-between text-[10px] font-medium">
-              <span className="flex items-center gap-1"><Smartphone className="w-3 h-3 text-blue-500" /> K-Net / كي نت</span>
-              <span>{payments.knet.toFixed(3)} KD</span>
-            </div>
-          )}
-          {payments.creditCard > 0 && (
-            <div className="flex justify-between text-[10px] font-medium">
-              <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-purple-500" /> Card / فيزا</span>
-              <span>{payments.creditCard.toFixed(3)} KD</span>
-            </div>
+          {Array.isArray(payments) ? (
+            payments.map((p, idx) => (
+              <div key={idx} className="flex justify-between text-[10px] font-medium">
+                <span className="flex items-center gap-1">
+                  {p.method === 'cash' && <Banknote className="w-3 h-3 text-green-500" />}
+                  {p.method === 'knet' && <Smartphone className="w-3 h-3 text-blue-500" />}
+                  {(p.method === 'card' || p.method === 'credit_card') && <CreditCard className="w-3 h-3 text-purple-500" />}
+                  {p.method === 'store_credit' && <RefreshCcw className="w-3 h-3 text-orange-500" />}
+                  <span className="capitalize">{p.method.replace('_', ' ')}</span>
+                </span>
+                <span>{p.amount.toFixed(3)} KD</span>
+              </div>
+            ))
+          ) : (
+            <>
+              {payments.cash > 0 && (
+                <div className="flex justify-between text-[10px] font-medium">
+                  <span className="flex items-center gap-1"><Banknote className="w-3 h-3 text-green-500" /> Cash / نقدي</span>
+                  <span>{payments.cash.toFixed(3)} KD</span>
+                </div>
+              )}
+              {payments.knet > 0 && (
+                <div className="flex justify-between text-[10px] font-medium">
+                  <span className="flex items-center gap-1"><Smartphone className="w-3 h-3 text-blue-500" /> K-Net / كي نت</span>
+                  <span>{payments.knet.toFixed(3)} KD</span>
+                </div>
+              )}
+              {payments.creditCard > 0 && (
+                <div className="flex justify-between text-[10px] font-medium">
+                  <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-purple-500" /> Card / فيزا</span>
+                  <span>{payments.creditCard.toFixed(3)} KD</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -54,6 +54,12 @@ export const bulkService = {
     return response.data;
   },
 
+  // POST /api/bulk/products
+  importProducts: async (csvData: string) => {
+    const response = await client.post("/bulk/products", { csvData });
+    return response.data;
+  },
+
   // POST /api/bulk/scanner
   bulkScanner: async (barcodes: string[]) => {
     const response = await client.post<BulkJob>("/bulk/scanner", { barcodes });
@@ -63,6 +69,12 @@ export const bulkService = {
   // GET /api/bulk/jobs/:id
   getJobStatus: async (id: string) => {
     const response = await client.get<BulkJob>(`/bulk/jobs/${id}`);
+    return response.data;
+  },
+  
+  // GET /api/bulk/jobs
+  getAllJobs: async () => {
+    const response = await client.get<BulkJob[]>("/bulk/jobs");
     return response.data;
   },
 };

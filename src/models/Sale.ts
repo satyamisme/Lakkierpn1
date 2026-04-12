@@ -15,7 +15,9 @@ export interface ISale extends Document {
   discount: number;
   total: number;
   status: 'completed' | 'voided' | 'held';
+  saleNumber: string;
   sessionId?: string;
+  storeId: mongoose.Types.ObjectId;
   customerId?: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -43,7 +45,9 @@ const SaleSchema: Schema = new Schema({
     enum: ['completed', 'voided', 'held'], 
     default: 'completed' 
   },
+  saleNumber: { type: String, unique: true },
   sessionId: { type: String },
+  storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },
 }, { timestamps: true });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, 
   Phone, 
@@ -15,9 +15,12 @@ import {
   CreditCard,
   Search,
   AlertCircle,
-  Plus
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Gate } from '../components/PermissionGuard';
+import axios from 'axios';
 
 interface Customer360Data {
   customer: any;
@@ -30,44 +33,39 @@ interface Customer360Data {
 
 export const Customer360: React.FC = () => {
   const [phone, setPhone] = useState('');
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<Customer360Data | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('repairs');
 
-  const mockData = {
-    customer: {
-      name: 'Julian Casablancas',
-      tier: 'VIP',
-      points: 24580,
-      credit: 1240.50,
-      phone: '+965 9000 1234',
-      email: 'julian@thestrokes.com',
-      image: 'https://picsum.photos/seed/julian/200/200'
-    },
-    repairs: [
-      { id: 'REP-102', device: 'iPhone 15 Pro', service: 'Screen Replacement', status: 'In Progress', amount: 85.000 },
-      { id: 'REP-098', device: 'MacBook Pro M2', service: 'Battery Service', status: 'QC Pass', amount: 45.000 },
-    ],
-    family: [
-      { name: 'Elena Casablancas', relation: 'Spouse', points: 1200 },
-      { name: 'Mateo Casablancas', relation: 'Child', points: 450 },
-    ]
-  };
-
-  useEffect(() => {
-    // Auto-load mock for demo
-    setData(mockData);
-  }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone) return;
+    
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setData(mockData);
-      setIsLoading(false);
+    try {
+      const searchRes = await axios.get(`/api/customers/search?phone=${phone}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (searchRes.data.length === 0) {
+        toast.error("No customer found with this phone number");
+        setData(null);
+        return;
+      }
+
+      const customer = searchRes.data[0];
+      const detailsRes = await axios.get(`/api/crm/customer/${customer._id}/360`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      setData(detailsRes.data);
       toast.success("Customer profile synchronized");
-    }, 800);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to fetch customer data");
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -105,7 +103,7 @@ export const Customer360: React.FC = () => {
                 <div className="flex items-center gap-4 mb-2">
                   <h2 className="text-5xl font-serif italic tracking-tight">{data.customer.name}</h2>
                   <span className="px-4 py-1.5 bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-xl shadow-amber-500/30">
-                    {data.customer.tier} Member
+                    {data.customer.tier || 'Silver'} Member
                   </span>
                 </div>
                 <div className="flex items-center gap-6 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -117,11 +115,11 @@ export const Customer360: React.FC = () => {
             <div className="flex gap-6 relative z-10">
               <div className="bg-surface border border-border p-6 rounded-3xl text-center min-w-[160px] shadow-sm hover:border-amber-500/50 transition-all">
                 <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2 opacity-60">Loyalty Points</p>
-                <p className="text-3xl font-mono font-black text-amber-600 tracking-tighter">{data.customer.points.toLocaleString()}</p>
+                <p className="text-3xl font-mono font-black text-amber-600 tracking-tighter">{(data.customer.loyaltyPoints || 0).toLocaleString()}</p>
               </div>
               <div className="bg-surface border border-border p-6 rounded-3xl text-center min-w-[160px] shadow-sm hover:border-primary/50 transition-all">
                 <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-2 opacity-60">Store Credit</p>
-                <p className="text-3xl font-mono font-black text-primary tracking-tighter">{data.customer.credit.toFixed(3)} <span className="text-xs">KD</span></p>
+                <p className="text-3xl font-mono font-black text-primary tracking-tighter">{(data.customer.storeCredit || 0).toFixed(3)} <span className="text-xs">KD</span></p>
               </div>
             </div>
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full -mr-64 -mt-64 blur-[100px] pointer-events-none" />
@@ -130,7 +128,7 @@ export const Customer360: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
             <div className="lg:col-span-3 space-y-8">
               <div className="flex gap-2 p-1.5 bg-surface-container border border-border rounded-2xl w-fit shadow-sm">
-                {['repairs', 'purchases', 'gallery', 'whatsapp', 'family'].map((tab) => (
+                {['repairs', 'sales', 'loyalty'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -158,50 +156,78 @@ export const Customer360: React.FC = () => {
                         <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[9px] font-black uppercase tracking-widest">Live Status</span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {data.repairs.map((repair: any) => (
-                          <div key={repair.id} className="bg-surface border border-border p-8 rounded-[2.5rem] group hover:border-primary/50 hover:shadow-2xl transition-all relative overflow-hidden">
+                        {data.history.repairs.map((repair: any) => (
+                          <div key={repair._id} className="bg-surface border border-border p-8 rounded-[2.5rem] group hover:border-primary/50 hover:shadow-2xl transition-all relative overflow-hidden">
                             <div className="flex justify-between items-start mb-6">
                               <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary group-hover:text-white transition-all"><Wrench size={24} /></div>
-                              <span className="text-[10px] font-mono font-black text-muted-foreground uppercase tracking-widest">{repair.id}</span>
+                              <span className="text-[10px] font-mono font-black text-muted-foreground uppercase tracking-widest">{repair.ticketId}</span>
                             </div>
-                            <h4 className="text-xl font-black uppercase tracking-tighter mb-2">{repair.device}</h4>
-                            <p className="text-sm text-muted-foreground mb-6 font-medium">{repair.service}</p>
+                            <h4 className="text-xl font-black uppercase tracking-tighter mb-2">{repair.phoneModel}</h4>
+                            <p className="text-sm text-muted-foreground mb-6 font-medium">{repair.issue}</p>
                             <div className="flex items-center justify-between pt-6 border-t border-border">
                               <span className="px-4 py-1.5 bg-indigo-500/10 text-indigo-500 text-[9px] font-black uppercase tracking-widest rounded-full border border-indigo-500/20">{repair.status}</span>
-                              <span className="font-mono font-black text-lg text-primary">{repair.amount.toFixed(3)} KD</span>
+                              <span className="font-mono font-black text-lg text-primary">{repair.estimatedQuote.toFixed(3)} KD</span>
                             </div>
                           </div>
                         ))}
                       </div>
                     </motion.div>
                   )}
-                  {activeTab === 'family' && (
+                  {activeTab === 'sales' && (
                     <motion.div 
-                      key="family"
+                      key="sales"
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-8"
                     >
                       <div className="flex justify-between items-center mb-10">
-                        <h3 className="text-3xl font-serif italic">Family Account Links</h3>
-                        <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-primary/20">
-                          <Plus size={18} /> Link New Member
-                        </button>
+                        <h3 className="text-3xl font-serif italic">Purchase History</h3>
                       </div>
                       <div className="space-y-4">
-                        {data.family.map((member: any) => (
-                          <div key={member.name} className="flex items-center justify-between p-8 bg-surface border border-border rounded-[2.5rem] group hover:border-primary/30 transition-all">
+                        {data.history.sales.map((sale: any) => (
+                          <div key={sale._id} className="flex items-center justify-between p-8 bg-surface border border-border rounded-[2.5rem] group hover:border-primary/30 transition-all">
                             <div className="flex items-center gap-6">
-                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border group-hover:bg-primary/10 group-hover:text-primary transition-all"><User size={28} /></div>
+                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border group-hover:bg-primary/10 group-hover:text-primary transition-all"><ShoppingBag size={28} /></div>
                               <div>
-                                <p className="font-black text-lg uppercase tracking-tighter">{member.name}</p>
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-60">{member.relation}</p>
+                                <p className="font-black text-lg uppercase tracking-tighter">{sale.saleNumber || 'INV-OLD'}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-60">{new Date(sale.createdAt).toLocaleDateString()}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-black text-amber-600 uppercase tracking-widest">{member.points.toLocaleString()} Points</p>
-                              <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline mt-2 opacity-60 hover:opacity-100 transition-opacity">Manage Permissions</button>
+                              <p className="text-sm font-black text-primary uppercase tracking-widest">{sale.total.toFixed(3)} KD</p>
+                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-2 opacity-60">{sale.items.length} Items</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                  {activeTab === 'loyalty' && (
+                    <motion.div 
+                      key="loyalty"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-8"
+                    >
+                      <div className="flex justify-between items-center mb-10">
+                        <h3 className="text-3xl font-serif italic">Loyalty Ledger</h3>
+                      </div>
+                      <div className="space-y-4">
+                        {data.history.loyalty.map((log: any) => (
+                          <div key={log._id} className="flex items-center justify-between p-8 bg-surface border border-border rounded-[2.5rem] group hover:border-primary/30 transition-all">
+                            <div className="flex items-center gap-6">
+                              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border group-hover:bg-primary/10 group-hover:text-primary transition-all"><Star size={28} /></div>
+                              <div>
+                                <p className="font-black text-lg uppercase tracking-tighter">{log.reason}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-60">{new Date(log.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-black uppercase tracking-widest ${log.pointsEarned > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {log.pointsEarned > 0 ? `+${log.pointsEarned}` : log.pointsRedeemed ? `-${log.pointsRedeemed}` : '0'} Points
+                              </p>
                             </div>
                           </div>
                         ))}

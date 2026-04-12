@@ -4,6 +4,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,19 +21,26 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      // Simulate API call for prototype
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, latitude, longitude })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Authentication failed');
+      }
+
+      const data = await response.json();
       
-      // Mock user data based on role-based requirements
-      const mockUser = {
-        id: 'staff-001',
-        name: email.split('@')[0].toUpperCase(),
-        email: email,
-        role: email.includes('admin') ? 'Super Admin' : 'Cashier',
-        permissions: [0] // Full access for prototype
-      };
-      
-      login(mockUser, 'mock-jwt-token');
+      if (data.requires2FA) {
+        // Handle 2FA if needed, but for now let's assume simple login works
+        toast.info("2FA required. Please verify.");
+        return;
+      }
+
+      login(data.user, data.token);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Authentication failed');

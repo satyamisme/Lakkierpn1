@@ -6,6 +6,7 @@ import {
   Users, 
   ChevronLeft, 
   ChevronRight,
+  Shield,
   ShieldCheck,
   Activity,
   History,
@@ -28,7 +29,8 @@ import {
   Megaphone,
   Trophy,
   BrainCircuit,
-  Plus
+  Plus,
+  Home
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -56,9 +58,10 @@ const navGroups: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { id: 1, label: 'Sales Terminal', icon: <ShoppingCart className="w-5 h-5" />, path: 'pos' },
       { id: 61, label: 'Deep-Tech Repair Hub', icon: <Wrench className="w-5 h-5" />, path: 'repairs' },
       { id: 31, label: 'Supply Chain Matrix', icon: <Package className="w-5 h-5" />, path: 'inventory' },
+      { id: 318, label: 'Cycle Count (Staff)', icon: <ClipboardCheck className="w-5 h-5" />, path: 'cycle-count/staff' },
+      { id: 318, label: 'Cycle Count (Manager)', icon: <ShieldCheck className="w-5 h-5" />, path: 'cycle-count/manager' },
     ]
   },
   {
@@ -99,7 +102,8 @@ const navGroups: NavGroup[] = [
   {
     label: 'Admin',
     items: [
-      { id: 195, label: 'Access Control', icon: <Users className="w-5 h-5" />, path: 'roles' },
+      { id: 195, label: 'Staff Management', icon: <Users className="w-5 h-5" />, path: 'staff' },
+      { id: 199, label: 'Access Control', icon: <Shield className="w-5 h-5" />, path: 'roles' },
       { id: 232, label: 'System Watchtower', icon: <Settings2 className="w-5 h-5" />, path: 'health' },
     ]
   }
@@ -150,13 +154,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
         </button>
       </div>
 
-      <nav className="flex-1 px-6 space-y-10 mt-8 overflow-y-auto no-scrollbar pb-10">
-        {filteredGroups.map((group) => (
-          <div key={group.label} className="space-y-4">
+      <nav className="flex-1 px-6 space-y-12 mt-8 overflow-y-auto no-scrollbar pb-10">
+        {/* Quick Access / Home */}
+        <div className="space-y-2">
+          <button
+            onClick={() => onModuleChange('pos')}
+            className={`w-full flex items-center gap-5 p-4 rounded-[1.5rem] transition-all group relative border ${
+              activeModule === 'pos' 
+                ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 border-primary' 
+                : 'text-muted-foreground hover:bg-primary/5 hover:text-primary border-transparent hover:border-primary/10'
+            }`}
+          >
+            <div className={`transition-all duration-500 ${activeModule === 'pos' ? 'scale-110 rotate-3' : 'group-hover:scale-110 group-hover:rotate-3'}`}>
+              <Home className="w-5 h-5" />
+            </div>
             {!isCollapsed && (
-              <p className="px-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40">
-                {group.label}
-              </p>
+              <span className={`font-black text-[11px] uppercase tracking-[0.15em] transition-all ${activeModule === 'pos' ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                Dashboard Home
+              </span>
+            )}
+            {activeModule === 'pos' && (
+              <motion.div 
+                layoutId="active-pill"
+                className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
+              />
+            )}
+          </button>
+        </div>
+
+        {filteredGroups.map((group) => (
+          <div key={group.label} className="space-y-6">
+            {!isCollapsed && (
+              <div className="flex items-center gap-4 px-4">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40 whitespace-nowrap">
+                  {group.label}
+                </p>
+                <div className="h-[1px] w-full bg-border opacity-20" />
+              </div>
             )}
             <div className="space-y-2">
               {group.items.map((item) => (
@@ -166,14 +200,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
                   className={`w-full flex items-center gap-5 p-4 rounded-[1.5rem] transition-all group relative border ${
                     activeModule === item.path 
                       ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 border-primary' 
-                      : 'text-muted-foreground hover:bg-surface-container hover:text-foreground border-transparent'
+                      : 'text-muted-foreground hover:bg-primary/5 hover:text-primary border-transparent hover:border-primary/10'
                   }`}
                 >
-                  <div className={`transition-transform duration-500 ${activeModule === item.path ? 'scale-110 rotate-3' : 'group-hover:scale-110'}`}>
+                  <div className={`transition-all duration-500 ${activeModule === item.path ? 'scale-110 rotate-3' : 'group-hover:scale-110 group-hover:rotate-3'}`}>
                     {item.icon}
                   </div>
                   {!isCollapsed && (
-                    <span className="font-black text-[11px] uppercase tracking-[0.15em]">{item.label}</span>
+                    <span className={`font-black text-[11px] uppercase tracking-[0.15em] transition-all ${activeModule === item.path ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                      {item.label}
+                    </span>
                   )}
                   {isCollapsed && (
                     <div className="absolute left-full ml-6 px-4 py-3 bg-foreground text-background text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-[60] shadow-2xl">
@@ -182,6 +218,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
                   )}
                   {!isCollapsed && (
                     <span className={`ml-auto text-[8px] font-mono font-black transition-opacity ${activeModule === item.path ? 'opacity-40' : 'opacity-0 group-hover:opacity-30'}`}>#{item.id}</span>
+                  )}
+                  
+                  {/* Active Indicator Dot */}
+                  {activeModule === item.path && (
+                    <motion.div 
+                      layoutId="active-pill"
+                      className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
+                    />
                   )}
                 </button>
               ))}

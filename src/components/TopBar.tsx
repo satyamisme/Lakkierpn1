@@ -13,14 +13,15 @@ import {
   CreditCard,
   LogOut,
   User,
-  Plus
+  Plus,
+  ArrowLeft
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Gate, usePermissions } from './PermissionGuard';
 import { RoleSwitcher } from './RoleSwitcher';
 import { printThermalReceipt, printA4Invoice } from '../utils/documentService';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface TopBarProps {
   activeModule: string;
@@ -30,7 +31,7 @@ interface TopBarProps {
 
 /**
  * ID 219, 195: Control Center (TopBar.tsx)
- * Left: Breadcrumbs.
+ * Left: Breadcrumbs & Back Navigation.
  * Center: Global Search (Ctrl+K).
  * Right: Theme Toggle (ID 219), Role Switcher (ID 195), and Quick-Action Print (ID 21, 25).
  */
@@ -38,6 +39,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeModule, onSearchClick, onA
   const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const handleLogout = () => {
@@ -45,16 +47,38 @@ export const TopBar: React.FC<TopBarProps> = ({ activeModule, onSearchClick, onA
     navigate('/login');
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  // Generate breadcrumbs from path
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+
   return (
     <header className="h-24 bg-surface-container-lowest/60 border-b border-border flex items-center justify-between px-10 transition-all duration-500 sticky top-0 z-40 backdrop-blur-2xl">
-      {/* Left: Breadcrumbs (ID 184) */}
+      {/* Left: Breadcrumbs & Back Button (ID 184) */}
       <div className="flex items-center gap-6 flex-1">
+        <button 
+          onClick={handleBack}
+          className="p-3 hover:bg-surface-container rounded-2xl text-muted-foreground hover:text-primary transition-all active:scale-90 border border-border shadow-sm group"
+        >
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+        </button>
+
         <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">
-          <Home className="w-4 h-4" />
+          <Home className="w-4 h-4 cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')} />
           <ChevronRight className="w-3 h-3" />
-          <span className="font-serif italic lowercase text-lg tracking-normal opacity-100 text-foreground">dashboard</span>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-primary tracking-[0.4em] font-black">{activeModule.replace('-', ' ')} terminal</span>
+          <span className="font-serif italic lowercase text-lg tracking-normal opacity-100 text-foreground">
+            {pathSegments.length > 0 ? pathSegments[0].replace(/-/g, ' ') : 'dashboard'}
+          </span>
+          {pathSegments.length > 1 && (
+            <>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-primary tracking-[0.4em] font-black">
+                {pathSegments[pathSegments.length - 1].replace(/-/g, ' ')}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

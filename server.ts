@@ -7,6 +7,10 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import quoteRoutes from "./src/routes/quoteRoutes.js";
+import bulkRoutes from "./src/routes/bulkRoutes.js";
+import featureToggleRoutes from "./src/routes/featureToggleRoutes.js";
+import searchRoutes from "./src/routes/searchRoutes.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import productRoutes from "./src/routes/productRoutes.js";
 import imeiRoutes from "./src/routes/imeiRoutes.js";
@@ -27,7 +31,6 @@ import marketingRoutes from "./src/routes/marketingRoutes.js";
 import customerGroupRoutes from "./src/routes/customerGroupRoutes.js";
 import warehouseRoutes from "./src/routes/warehouseRoutes.js";
 import supplierPortalRoutes from "./src/routes/supplierPortalRoutes.js";
-import bulkRoutes from "./src/routes/bulkRoutes.js";
 import omnichannelRoutes from "./src/routes/omnichannelRoutes.js";
 import hardwareRoutes from "./src/routes/hardwareRoutes.js";
 import customerPortalRoutes from "./src/routes/customerPortalRoutes.js";
@@ -41,9 +44,13 @@ import webhookRoutes from "./src/routes/webhookRoutes.js";
 import storeRoutes from "./src/routes/storeRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import customerRoutes from "./src/routes/customerRoutes.js";
+import leaveRoutes from "./src/routes/leaveRoutes.js";
+import paymentRoutes from "./src/routes/paymentRoutes.js";
+import valuationRoutes from "./src/routes/valuationRoutes.js";
 import { trainingModeMiddleware } from "./src/middleware/trainingMode.js";
 import { ipWhitelistMiddleware } from "./src/middleware/securityMiddleware.js";
 import { auditLogger } from "./src/middleware/auditMiddleware.js";
+import { initBackupCron } from "./src/services/backupService.js";
 import StoreProfile from "./src/models/StoreProfile.js";
 import User from "./src/models/User.js";
 import Product from "./src/models/Product.js";
@@ -59,6 +66,8 @@ async function startServer() {
       methods: ["GET", "POST"]
     }
   });
+
+  initBackupCron();
 
   const PORT = 3000;
 
@@ -109,7 +118,18 @@ async function startServer() {
           name: "Super Admin",
           password: hashedPassword,
           role: "superadmin",
-          permissions: [0, ...fullPermissions] // 0 for super admin + all 350 IDs
+          permissions: [0, ...fullPermissions]
+        },
+        { upsert: true, new: true }
+      );
+
+      await User.findOneAndUpdate(
+        { email: "satyamisme@gmail.com" },
+        {
+          name: "Satyam Admin",
+          password: hashedPassword,
+          role: "superadmin",
+          permissions: [0, ...fullPermissions]
         },
         { upsert: true, new: true }
       );
@@ -152,6 +172,10 @@ async function startServer() {
 
   // API Routes
   app.use("/api/auth", authRoutes);
+  app.use("/api/quotes", quoteRoutes);
+  app.use("/api/bulk", bulkRoutes);
+  app.use("/api/feature-toggles", featureToggleRoutes);
+  app.use("/api/search", searchRoutes);
   app.use("/api/products", productRoutes);
   app.use("/api/imei", imeiRoutes);
   app.use("/api/sales", saleRoutes);
@@ -171,7 +195,6 @@ async function startServer() {
   app.use("/api/customer-groups", customerGroupRoutes);
   app.use("/api/warehouse", warehouseRoutes);
   app.use("/api/supplier-portal", supplierPortalRoutes);
-  app.use("/api/bulk", bulkRoutes);
   app.use("/api/omnichannel", omnichannelRoutes);
   app.use("/api/hardware", hardwareRoutes);
   app.use("/api/customer-portal", customerPortalRoutes);
@@ -185,6 +208,9 @@ async function startServer() {
   app.use("/api/stores", storeRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/customers", customerRoutes);
+  app.use("/api/leave", leaveRoutes);
+  app.use("/api/payments", paymentRoutes);
+  app.use("/api/valuation", valuationRoutes);
 
   // Training Mode Middleware (ID 227)
   app.use(trainingModeMiddleware);

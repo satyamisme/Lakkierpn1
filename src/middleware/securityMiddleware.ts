@@ -10,9 +10,10 @@ export const ipWhitelistMiddleware = async (req: any, res: Response, next: NextF
   // Check if the user is trying to access a sensitive feature
   // This is a simplified check for the middleware
   const userPermissions = req.user?.permissions || [];
+  const isSuperAdmin = req.user?.role === 'superadmin' || userPermissions.includes(0);
   const isAccessingSensitive = sensitiveIds.some(id => userPermissions.includes(id));
 
-  if (isAccessingSensitive) {
+  if (isAccessingSensitive && !isSuperAdmin) {
     try {
       const store = await StoreProfile.findOne();
       if (store && store.whitelistedIPs.length > 0) {

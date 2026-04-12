@@ -22,24 +22,24 @@ export interface ZReport {
 }
 
 export const complianceService = {
-  // GET /api/compliance/audit-logs
+  // GET /api/compliance/logs
   getAuditLogs: async (params?: any) => {
-    const response = await client.get<AuditLog[]>("/compliance/audit-logs", { params });
+    const response = await client.get<AuditLog[]>("/compliance/logs", { params });
     return response.data;
   },
 
-  // GET /api/compliance/export-tax
+  // GET /api/compliance/tax-export
   exportTaxCompliance: async (startDate: string, endDate: string) => {
-    const response = await client.get("/compliance/export-tax", {
+    const response = await client.get("/compliance/tax-export", {
       params: { startDate, endDate },
       responseType: "blob",
     });
     return response.data;
   },
 
-  // GET /api/compliance/z-report
-  getZReport: async (date: string) => {
-    const response = await client.get<ZReport>(`/compliance/z-report/${date}`);
+  // POST /api/compliance/zreport
+  generateZReport: async (data: any) => {
+    const response = await client.post<ZReport>(`/compliance/zreport`, data);
     return response.data;
   },
 };

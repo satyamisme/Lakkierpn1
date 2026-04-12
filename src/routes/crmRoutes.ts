@@ -8,32 +8,6 @@ import { authenticate, requirePermission } from '../middleware/authMiddleware.js
 
 const router = express.Router();
 
-// GET /api/customers/search (by phone)
-router.get('/customers/search', authenticate, async (req, res) => {
-  try {
-    const { phone } = req.query;
-    const customers = await Customer.find({ phone: new RegExp(phone as string, 'i') });
-    res.json(customers);
-  } catch (error) {
-    res.status(500).json({ error: 'Search failed' });
-  }
-});
-
-// POST /api/customers (create/update)
-router.post('/customers', authenticate, async (req, res) => {
-  try {
-    const { phone, name, email, consentMarketing, birthday } = req.body;
-    const customer = await Customer.findOneAndUpdate(
-      { phone },
-      { name, email, consentMarketing, birthday },
-      { upsert: true, new: true }
-    );
-    res.json(customer);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save customer' });
-  }
-});
-
 // POST /api/loyalty/accrue (ID 18)
 router.post('/loyalty/accrue', authenticate, requirePermission(18), async (req, res) => {
   try {
@@ -48,11 +22,20 @@ router.post('/loyalty/accrue', authenticate, requirePermission(18), async (req, 
     });
     await transaction.save();
     
+    const customer = await Customer.findById(customerId);
+    if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+    const newTotalSpent = customer.totalSpent + amount;
+    let newTier = 'Silver';
+    if (newTotalSpent >= 500) newTier = 'VIP';
+    else if (newTotalSpent >= 100) newTier = 'Gold';
+
     await Customer.findByIdAndUpdate(customerId, { 
-      $inc: { loyaltyPoints: points, totalSpent: amount } 
+      $inc: { loyaltyPoints: points, totalSpent: amount },
+      $set: { tier: newTier }
     });
     
-    res.json({ pointsEarned: points });
+    res.json({ pointsEarned: points, newTier });
   } catch (error) {
     res.status(500).json({ error: 'Loyalty accrual failed' });
   }

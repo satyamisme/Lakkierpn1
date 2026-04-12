@@ -26,7 +26,7 @@ const CustomerGroupsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this group?")) return;
+    if (!window.confirm("Are you sure you want to delete this group?")) return;
     try {
       await customerGroupsService.delete(id);
       toast.success("Group deleted");

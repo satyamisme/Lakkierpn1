@@ -29,7 +29,7 @@ export const useComplianceStore = create<ComplianceState>((set) => ({
   fetchZReport: async (date) => {
     set({ isLoading: true, error: null });
     try {
-      const data = await complianceService.getZReport(date);
+      const data = await complianceService.generateZReport({ date });
       set({ currentZReport: data, isLoading: false });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });

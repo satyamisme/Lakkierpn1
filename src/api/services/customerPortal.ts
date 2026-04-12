@@ -23,9 +23,9 @@ export const customerPortalService = {
     return response.data;
   },
 
-  // GET /api/customer-portal/repairs/:ticketNumber
+  // GET /api/customer-portal/repair-status
   getRepairStatus: async (ticketNumber: string) => {
-    const response = await client.get<CustomerRepair>(`/customer-portal/repairs/${ticketNumber}`);
+    const response = await client.get<CustomerRepair>(`/customer-portal/repair-status`, { params: { ticketNumber } });
     return response.data;
   },
 

@@ -5,6 +5,7 @@ import { ModuleRenderer } from './ModuleRenderer';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CommandPalette } from './CommandPalette';
 import { GlobalAddProductModal } from './GlobalAddProductModal';
+import { Downbar } from './Downbar';
 
 /**
  * ID 184: Main Chassis (MainLayout.tsx)
@@ -56,6 +57,13 @@ export const MainLayout: React.FC = () => {
         isOpen={isGlobalAddOpen}
         onClose={() => setIsGlobalAddOpen(false)}
       />
+      
+      {/* Mobile Downbar (Quick Actions) */}
+      <Downbar 
+        onSearchClick={() => setIsCommandPaletteOpen(true)}
+        onAddProductClick={() => setIsGlobalAddOpen(true)}
+      />
+
       {/* Sidebar (ID 184) */}
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
@@ -87,19 +95,32 @@ export const MainLayout: React.FC = () => {
         </main>
 
         {/* Global Footer Status Bar */}
-        <footer className="h-10 bg-surface-container-lowest border-t border-border px-10 flex items-center justify-between text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] shrink-0 shadow-2xl">
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-lg shadow-green-500/50" />
-              Enterprise Shell Active (ID 184)
+        <footer className="h-12 bg-surface-container-lowest border-t border-border px-10 flex items-center justify-between text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] shrink-0 shadow-2xl relative z-30">
+          <div className="flex items-center gap-8">
+            <span className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping opacity-20" />
+              </div>
+              <span className="text-foreground/80">Enterprise Shell Active</span>
             </span>
-            <span className="opacity-20">|</span>
-            <span className="opacity-60">Terminal: POS-01-LAKKI</span>
+            <div className="h-4 w-[1px] bg-border opacity-30" />
+            <span className="opacity-60 flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-primary" />
+              Terminal: POS-01-LAKKI
+            </span>
+            <div className="h-4 w-[1px] bg-border opacity-30" />
+            <span className="opacity-60 flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-primary" />
+              Latency: 14ms
+            </span>
           </div>
-          <div className="flex items-center gap-6">
-            <span className="opacity-60">Lakki Phone ERP &copy; 2026</span>
-            <span className="opacity-20">|</span>
-            <span className="text-primary font-black">v2.5.0-STABLE</span>
+          <div className="flex items-center gap-8">
+            <span className="opacity-40">Lakki Phone ERP &copy; 2026</span>
+            <div className="h-4 w-[1px] bg-border opacity-30" />
+            <div className="flex items-center gap-3 bg-primary/5 px-4 py-1 rounded-full border border-primary/10">
+              <span className="text-primary font-black tracking-[0.4em]">v2.5.0-STABLE</span>
+            </div>
           </div>
         </footer>
       </div>

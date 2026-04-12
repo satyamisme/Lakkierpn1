@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -8,20 +8,34 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
+import { commissionService } from '../api/services/commission';
 
 /**
  * ID 188: Staff Performance
  * KPI tracking, sales leaderboards, and attendance.
  */
 export const StaffPerformance: React.FC = () => {
-  const leaderboard = [
-    { name: 'Ahmed K.', role: 'Senior Sales', sales: 12450.000, target: 15000, trend: '+5%' },
-    { name: 'Sarah M.', role: 'Technician', sales: 8200.000, target: 7000, trend: '+12%' },
-    { name: 'John D.', role: 'Sales Associate', sales: 5400.000, target: 6000, trend: '-2%' },
-    { name: 'Lina S.', role: 'Technician', sales: 4900.000, target: 5000, trend: '+1%' },
-  ];
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+  const fetchLeaderboard = async () => {
+    try {
+      setIsLoading(true);
+      const data = await commissionService.getLeaderboard("monthly");
+      setLeaderboard(data);
+    } catch (error) {
+      console.error("Leaderboard fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -66,26 +80,36 @@ export const StaffPerformance: React.FC = () => {
             </div>
           </div>
           <div className="space-y-4">
-            {leaderboard.map((staff, i) => (
-              <div key={staff.name} className="flex items-center justify-between p-6 bg-muted/30 border border-border rounded-3xl group hover:border-primary/30 transition-all">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Calculating Performance...</p>
+              </div>
+            ) : leaderboard.length === 0 ? (
+              <div className="text-center py-20 opacity-20">
+                <Award size={48} className="mx-auto mb-4" />
+                <p className="font-black uppercase tracking-widest">No performance data yet</p>
+              </div>
+            ) : leaderboard.map((staff, i) => (
+              <div key={staff.staffId} className="flex items-center justify-between p-6 bg-muted/30 border border-border rounded-3xl group hover:border-primary/30 transition-all">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
                     {i === 0 ? <Award className="w-6 h-6 text-amber-500" /> : <Users className="w-6 h-6" />}
                   </div>
                   <div>
-                    <p className="text-xs font-black uppercase tracking-widest">{staff.name}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold">{staff.role}</p>
+                    <p className="text-xs font-black uppercase tracking-widest">{staff.staffName}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">Staff ID: {staff.staffId.slice(-6).toUpperCase()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-8">
                   <div className="text-right">
-                    <p className="text-sm font-mono font-black">{staff.sales.toFixed(3)} KD</p>
+                    <p className="text-sm font-mono font-black">{staff.totalSales.toFixed(3)} KD</p>
                     <div className="w-24 h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${(staff.sales / staff.target) * 100}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${Math.min((staff.totalSales / 5000) * 100, 100)}%` }} />
                     </div>
                   </div>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${staff.trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                    {staff.trend}
+                  <span className="text-[10px] font-black uppercase tracking-widest text-green-500">
+                    +{staff.commission.toFixed(3)} KD
                   </span>
                 </div>
               </div>

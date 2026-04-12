@@ -21,6 +21,19 @@ export const customerController = {
     }
   },
 
+  search: async (req: Request, res: Response) => {
+    try {
+      const { phone } = req.query;
+      if (!phone) return res.status(400).json({ error: 'Phone query parameter is required' });
+      const customers = await Customer.find({ 
+        phone: new RegExp(phone as string, 'i') 
+      });
+      res.json(customers);
+    } catch (error: any) {
+      res.status(500).json({ error: 'Search failed' });
+    }
+  },
+
   getById: async (req: Request, res: Response) => {
     try {
       const customer = await Customer.findById(req.params.id);

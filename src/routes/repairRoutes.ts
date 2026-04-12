@@ -43,7 +43,7 @@ router.patch('/:id/status', authenticate, requirePermission(67), async (req, res
       await sendTemplate(repair.customerPhone, 'repair_ready', {
         customerName: repair.customerName,
         ticketId: repair.ticketId,
-        deviceModel: repair.deviceModel,
+        deviceModel: repair.phoneModel,
         amount: repair.estimatedQuote.toString()
       });
     }
@@ -88,7 +88,7 @@ router.post('/:id/whatsapp', authenticate, requirePermission(74), async (req, re
     await sendTemplate(repair.customerPhone, 'repair_ready', {
       customerName: repair.customerName,
       ticketId: repair.ticketId,
-      deviceModel: repair.deviceModel,
+      deviceModel: repair.phoneModel,
       amount: repair.estimatedQuote.toString()
     });
     

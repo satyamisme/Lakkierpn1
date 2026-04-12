@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Zap, 
@@ -7,19 +7,53 @@ import {
   ShieldAlert, 
   ArrowRight,
   Play,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { bulkService } from '../api/services/bulk';
+
+import { BulkImportModal } from '../components/BulkImportModal';
 
 /**
  * ID 123: Bulk Operations
  * Mass updates, price changes, and inventory adjustments.
  */
 export const BulkOperations: React.FC = () => {
-  const tasks = [
-    { id: 'BULK-001', label: 'Price Update: iPhone 15 Series', impact: '12 SKUs', status: 'Draft' },
-    { id: 'BULK-002', label: 'Inventory Adjustment: Salmiya', impact: '450 Items', status: 'Running' },
-    { id: 'BULK-003', label: 'Category Re-assignment', impact: '1,200 Items', status: 'Completed' },
-  ];
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      const data = await bulkService.getAllJobs();
+      setJobs(data);
+    } catch (error) {
+      console.error('Failed to fetch bulk jobs:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRunSync = async () => {
+    setIsProcessing(true);
+    try {
+      // Use bulkService for price update
+      await bulkService.bulkPriceUpdate([]);
+      toast.success("Global price sync initiated");
+      fetchJobs();
+    } catch (error) {
+      toast.error("Failed to initiate sync");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -36,32 +70,40 @@ export const BulkOperations: React.FC = () => {
               <button className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-[9px] font-black uppercase tracking-widest">New Bulk Job</button>
             </div>
             <div className="space-y-4">
-              {tasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-6 bg-muted/30 border border-border rounded-3xl group hover:border-primary/30 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl border border-border ${
-                      task.status === 'Running' ? 'bg-primary/10 text-primary animate-pulse' : 'bg-card text-muted-foreground'
-                    }`}>
-                      <Zap size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest">{task.label}</p>
-                      <p className="text-[10px] text-muted-foreground font-bold">{task.impact}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                      task.status === 'Completed' ? 'bg-green-500 text-white' : 
-                      task.status === 'Running' ? 'bg-indigo-500 text-white' : 'bg-muted text-muted-foreground border border-border'
-                    }`}>
-                      {task.status}
-                    </span>
-                    <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                      {task.status === 'Draft' ? <Play size={16} /> : <ArrowRight size={16} />}
-                    </button>
-                  </div>
+              {isLoading ? (
+                <div className="flex justify-center p-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-              ))}
+              ) : jobs.length === 0 ? (
+                <p className="text-center text-muted-foreground py-12 text-xs font-black uppercase tracking-widest">No active jobs in queue</p>
+              ) : (
+                jobs.map((job) => (
+                  <div key={job._id} className="flex items-center justify-between p-6 bg-muted/30 border border-border rounded-3xl group hover:border-primary/30 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-2xl border border-border ${
+                        job.status === 'processing' ? 'bg-primary/10 text-primary animate-pulse' : 'bg-card text-muted-foreground'
+                      }`}>
+                        <Zap size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest">{job.type.replace('_', ' ')}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold">{job.processedItems} / {job.totalItems} Items</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                        job.status === 'completed' ? 'bg-green-500 text-white' : 
+                        job.status === 'processing' ? 'bg-indigo-500 text-white' : 'bg-muted text-muted-foreground border border-border'
+                      }`}>
+                        {job.status}
+                      </span>
+                      <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                        <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -74,8 +116,11 @@ export const BulkOperations: React.FC = () => {
               <p className="text-xs text-muted-foreground leading-relaxed mb-6">
                 Upload CSV/Excel files to bulk import inventory, customers, or repair history.
               </p>
-              <button className="w-full py-4 border-2 border-dashed border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-primary transition-all">
-                Drop Files Here
+              <button 
+                onClick={() => setIsBulkModalOpen(true)}
+                className="w-full py-4 border-2 border-dashed border-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-primary transition-all"
+              >
+                Launch Product Importer
               </button>
             </div>
             <div className="bg-surface-container-lowest border border-border p-8 rounded-[2.5rem] shadow-sm">
@@ -86,8 +131,12 @@ export const BulkOperations: React.FC = () => {
               <p className="text-xs text-muted-foreground leading-relaxed mb-6">
                 Synchronize prices across all store nodes and omnichannel platforms instantly.
               </p>
-              <button className="w-full py-4 bg-muted border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted/80 transition-all">
-                Run Global Sync
+              <button 
+                onClick={handleRunSync}
+                disabled={isProcessing}
+                className="w-full py-4 bg-muted border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted/80 transition-all flex items-center justify-center gap-2"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Run Global Sync'}
               </button>
             </div>
           </div>
@@ -136,6 +185,12 @@ export const BulkOperations: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <BulkImportModal 
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={fetchJobs}
+      />
     </div>
   );
 };

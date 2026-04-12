@@ -29,21 +29,21 @@ export const Cockpit: React.FC = () => {
     try {
       setIsLoading(true);
       // Simulate fetching from multiple endpoints
-      const [salesRes, inventoryRes] = await Promise.all([
-        fetch('/api/reports/z-report', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
+      const [statsRes, inventoryRes] = await Promise.all([
+        fetch('/api/reports/stats', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
         fetch('/api/inventory/low-stock', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
       ]);
 
-      // Note: z-report returns a PDF in the current implementation, but we might want a JSON version for the dashboard
-      // For now, we'll use mock data but structured as if it came from the API to demonstrate the UI
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setStats([
+          { label: 'Total Revenue', value: `${data.revenue.toFixed(3)} KD`, trend: '+12.4%', up: true, icon: <DollarSign className="w-5 h-5" /> },
+          { label: 'Target Progress', value: `${data.targetProgress}%`, trend: 'On Track', up: true, icon: <Activity className="w-5 h-5" /> },
+          { label: 'SLA Risks', value: data.slaRisks.toString(), trend: 'Critical', up: false, icon: <AlertTriangle className="w-5 h-5" /> },
+          { label: 'Units Sold', value: data.units.toLocaleString(), trend: '+5.2%', up: true, icon: <Package className="w-5 h-5" /> },
+        ]);
+      }
       
-      setStats([
-        { label: 'Total Revenue', value: '428,940.50 KD', trend: '+12.4%', up: true, icon: <DollarSign className="w-5 h-5" /> },
-        { label: 'Target Progress', value: '85.8%', trend: 'On Track', up: true, icon: <Activity className="w-5 h-5" /> },
-        { label: 'SLA Risks', value: '12', trend: 'Critical', up: false, icon: <AlertTriangle className="w-5 h-5" /> },
-        { label: 'Units Sold', value: '1,402', trend: '+5.2%', up: true, icon: <Package className="w-5 h-5" /> },
-      ]);
-
       if (inventoryRes.ok) {
         const lowStock = await inventoryRes.json();
         setCriticalInventory(lowStock.slice(0, 4));

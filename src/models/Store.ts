@@ -14,7 +14,7 @@ const StoreSchema: Schema = new Schema({
   name: { type: String, required: true },
   address: { type: String, required: true },
   phone: { type: String, required: true },
-  managerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  managerId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
 }, { timestamps: true });
 

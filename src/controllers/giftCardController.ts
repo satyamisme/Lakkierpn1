@@ -70,5 +70,21 @@ export const giftCardController = {
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
+  },
+
+  validate: async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      const giftCard = await GiftCard.findOne({ code, status: 'active' });
+      if (!giftCard) return res.status(404).json({ message: 'Invalid or inactive gift card' });
+      if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
+        giftCard.status = 'void';
+        await giftCard.save();
+        return res.status(400).json({ message: 'Gift card expired' });
+      }
+      res.json(giftCard);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
   }
 };
