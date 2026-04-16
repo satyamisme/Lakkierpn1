@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { StockIntakeModal } from '../components/StockIntakeModal';
+import { StockTransferModal } from '../components/StockTransferModal';
 
 /**
  * ID 121: Warehouse Matrix (Warehouse.tsx)
@@ -27,6 +28,7 @@ export const Warehouse: React.FC = () => {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -66,8 +68,11 @@ export const Warehouse: React.FC = () => {
           <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-6 opacity-60">Bin Locations & Logistics Orchestration (ID 121)</p>
         </div>
         <div className="flex gap-6">
-          <button className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm">
-            <Layers size={18} /> Bin Manager
+          <button 
+            onClick={() => setIsTransferOpen(true)}
+            className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm"
+          >
+            <ArrowRightLeft size={18} /> Stock Transfer
           </button>
           <button 
             onClick={() => setIsIntakeOpen(true)}
@@ -237,6 +242,11 @@ export const Warehouse: React.FC = () => {
       <StockIntakeModal 
         isOpen={isIntakeOpen} 
         onClose={() => setIsIntakeOpen(false)} 
+        onSuccess={fetchData}
+      />
+      <StockTransferModal 
+        isOpen={isTransferOpen} 
+        onClose={() => setIsTransferOpen(false)} 
         onSuccess={fetchData}
       />
     </div>

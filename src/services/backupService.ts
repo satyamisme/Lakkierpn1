@@ -5,7 +5,6 @@ import Backup from '../models/Backup.js';
 export const initBackupCron = () => {
   // Every 6 hours (ID 188)
   cron.schedule('0 */6 * * *', async () => {
-    console.log('Starting scheduled backup...');
     try {
       const collections = await mongoose.connection.db.listCollections().toArray();
       const backupData: any = {};
@@ -24,7 +23,6 @@ export const initBackupCron = () => {
       });
 
       await backup.save();
-      console.log('Backup completed successfully');
     } catch (error) {
       console.error('Backup failed:', error);
     }
@@ -35,8 +33,6 @@ export const restoreBackup = async (backupId: string) => {
   const backup = await Backup.findById(backupId);
   if (!backup) throw new Error('Backup not found');
 
-  console.log(`Restoring backup from ${backup.timestamp}...`);
-  
   for (const colName of backup.collections) {
     const data = backup.data[colName];
     if (data) {

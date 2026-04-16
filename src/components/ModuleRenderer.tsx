@@ -7,63 +7,37 @@ import {
   ShieldAlert, 
   Clock, 
   ArrowRight,
-  Loader2
+  Loader2,
+  Zap,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
+import { ATOMIC_NAVIGATION, AtomicPage } from '../constants/navigation';
 
 // Lazy load existing organisms
 const POS = lazy(() => import('../pages/POS').then(m => ({ default: m.POS })));
 const RepairIntake = lazy(() => import('../pages/RepairIntake').then(m => ({ default: m.RepairIntake })));
 const TechnicianDashboard = lazy(() => import('../pages/TechnicianDashboard').then(m => ({ default: m.TechnicianDashboard })));
 const InventoryDashboard = lazy(() => import('../pages/InventoryDashboard').then(m => ({ default: m.InventoryDashboard })));
-const AdminReports = lazy(() => import('../pages/AdminReports').then(m => ({ default: m.AdminReports })));
-const FeatureToggleBoard = lazy(() => import('./FeatureToggleBoard').then(m => ({ default: m.FeatureToggleBoard })));
-
-// New Dashboards
-const Cockpit = lazy(() => import('../pages/Cockpit').then(m => ({ default: m.Cockpit })));
-const EnterpriseHub = lazy(() => import('../pages/EnterpriseHub').then(m => ({ default: m.EnterpriseHub })));
-const Governance = lazy(() => import('../pages/Governance').then(m => ({ default: m.Governance })));
-const ExtendedFeatures = lazy(() => import('../pages/ExtendedFeatures').then(m => ({ default: m.ExtendedFeatures })));
-const FinanceDashboard = lazy(() => import('../pages/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
-const HRDashboard = lazy(() => import('../pages/HRDashboard').then(m => ({ default: m.HRDashboard })));
-const Customer360 = lazy(() => import('../pages/Customer360').then(m => ({ default: m.Customer360 })));
-const AnalyticsDashboard = lazy(() => import('../pages/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
-const IoTDashboard = lazy(() => import('../pages/IoTDashboard').then(m => ({ default: m.IoTDashboard })));
-const ShiftHandover = lazy(() => import('../pages/ShiftHandover').then(m => ({ default: m.ShiftHandover })));
-const AdminDashboard = lazy(() => import('./admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const Stores = lazy(() => import('../pages/Stores').then(m => ({ default: m.Stores })));
-const Staff = lazy(() => import('../pages/Staff').then(m => ({ default: m.Staff })));
 const Roles = lazy(() => import('../pages/Roles').then(m => ({ default: m.Roles })));
-
-// Missing Modules
-const Warehouse = lazy(() => import('../pages/Warehouse').then(m => ({ default: m.Warehouse })));
-const SupplierPortal = lazy(() => import('../pages/SupplierPortal').then(m => ({ default: m.SupplierPortal })));
-const BulkOperations = lazy(() => import('../pages/BulkOperations').then(m => ({ default: m.BulkOperations })));
-const CycleCountStaff = lazy(() => import('../pages/CycleCountStaff').then(m => ({ default: m.CycleCountStaff })));
-const CycleCountManager = lazy(() => import('../pages/CycleCountManager').then(m => ({ default: m.CycleCountManager })));
-const Omnichannel = lazy(() => import('../pages/Omnichannel').then(m => ({ default: m.Omnichannel })));
-const StaffPerformance = lazy(() => import('../pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
-const Compliance = lazy(() => import('../pages/Compliance'));
-const QualityControl = lazy(() => import('../pages/QualityControl'));
-const CustomerPortal = lazy(() => import('../pages/CustomerPortal'));
-const ImeiTimeline = lazy(() => import('../pages/ImeiTimeline'));
-const InventoryIntelligence = lazy(() => import('../pages/InventoryIntelligence'));
-const Marketing = lazy(() => import('../pages/Marketing'));
-const CustomerGroups = lazy(() => import('../pages/CustomerGroups'));
-const Returns = lazy(() => import('../pages/Returns'));
-const GiftCards = lazy(() => import('../pages/GiftCards'));
-const Layaway = lazy(() => import('../pages/Layaway'));
-const Commission = lazy(() => import('../pages/Commission'));
-const Hardware = lazy(() => import('../pages/Hardware'));
-
-// Sub-modules
-const SalesHistory = lazy(() => import('./pos/SalesHistory').then(m => ({ default: m.SalesHistory })));
-const QCTerminal = lazy(() => import('./repair/QCTerminal').then(m => ({ default: m.QCTerminal })));
-const PaymentMatrix = lazy(() => import('./pos/organisms/PaymentMatrix').then(m => ({ default: m.PaymentMatrix })));
-const PickupTerminal = lazy(() => import('./repair/PickupTerminal').then(m => ({ default: m.PickupTerminal })));
-const LowStockWidget = lazy(() => import('./organisms/LowStockWidget').then(m => ({ default: m.LowStockWidget })));
-const CostAnalysis = lazy(() => import('./finance/CostAnalysis').then(m => ({ default: m.CostAnalysis })));
+const POApproval = lazy(() => import('../pages/POApproval').then(m => ({ default: m.POApproval })));
+const BinLocations = lazy(() => import('../pages/BinLocations').then(m => ({ default: m.BinLocations })));
+const FeatureToggleBoard = lazy(() => import('./FeatureToggleBoard').then(m => ({ default: m.FeatureToggleBoard })));
+const Compliance = lazy(() => import('../pages/Compliance').then(m => ({ default: m.Compliance })));
+const QualityControl = lazy(() => import('../pages/QualityControl').then(m => ({ default: m.QualityControl })));
+const Profile = lazy(() => import('../pages/Profile').then(m => ({ default: m.Profile })));
+const Staff = lazy(() => import('../pages/Staff').then(m => ({ default: m.Staff })));
+const SecurityConfig = lazy(() => import('../pages/SecurityConfig').then(m => ({ default: m.SecurityConfig })));
+const BulkUserInvite = lazy(() => import('../pages/BulkUserInvite').then(m => ({ default: m.BulkUserInvite })));
+const PasswordPolicy = lazy(() => import('../pages/PasswordPolicy').then(m => ({ default: m.PasswordPolicy })));
+const Cockpit = lazy(() => import('../pages/Cockpit').then(m => ({ default: m.Cockpit })));
+const ExecutiveComparison = lazy(() => import('../pages/ExecutiveComparison').then(m => ({ default: m.ExecutiveComparison })));
+const ExecutiveAnomalies = lazy(() => import('../pages/ExecutiveAnomalies').then(m => ({ default: m.ExecutiveAnomalies })));
+const ExecutiveAffinity = lazy(() => import('../pages/ExecutiveAffinity').then(m => ({ default: m.ExecutiveAffinity })));
+const ExecutiveInfrastructure = lazy(() => import('../pages/ExecutiveInfrastructure').then(m => ({ default: m.ExecutiveInfrastructure })));
+const CommandCenter = lazy(() => import('../pages/CommandCenter').then(m => ({ default: m.CommandCenter })));
 
 interface ModuleRendererProps {
   activeModule: string;
@@ -71,66 +45,115 @@ interface ModuleRendererProps {
   onAddProductClick: () => void;
 }
 
-/**
- * ID 184: The Stage (ModuleRenderer.tsx)
- * Refactored to use React Router Routes for sub-modules.
- */
-export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, onModuleChange, onAddProductClick }) => {
-  const { user } = useAuth();
-  
-  const ComingSoon = ({ title, id }: { title: string, id: number }) => (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-card rounded-[3rem] border border-border shadow-2xl shadow-primary/5 relative overflow-hidden group"
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-      
-      <div className="relative">
-        <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center text-primary mb-8 mx-auto relative">
-          <Construction className="w-10 h-10" />
-          <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest shadow-xl">
-            Under Dev
+const FeaturePagePlaceholder = ({ page }: { page: AtomicPage }) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="min-h-[80vh] flex items-center justify-center p-8"
+  >
+    <div className="max-w-4xl w-full bg-[#0A0A0A] border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+      <div className="p-12 border-b border-white/5 bg-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-white/10">
+            <Zap className="w-8 h-8 text-black fill-black" />
+          </div>
+          <div>
+            <h2 className="text-4xl font-black tracking-tighter text-white uppercase leading-none">{page.label}</h2>
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">Atomic Feature Page #{page.id}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10px] font-black text-blue-500 uppercase tracking-widest">
+          <Construction className="w-4 h-4" /> Under Construction
+        </div>
+      </div>
+
+      <div className="p-12 grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div className="space-y-8">
+          <div>
+            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4">Functional Description</h3>
+            <p className="text-white/60 text-sm leading-relaxed font-medium">
+              {page.description}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4">Linked Feature IDs</h3>
+            <div className="flex flex-wrap gap-2">
+              {page.featureIds.map(id => (
+                <div key={id} className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-mono text-white/40">
+                  ID {id}
+                </div>
+              ))}
+              {page.featureIds.length === 0 && <span className="text-white/20 text-[10px] font-black uppercase tracking-widest">None</span>}
+            </div>
           </div>
         </div>
 
-        <h2 className="text-4xl font-black text-foreground uppercase tracking-tighter mb-4">
-          {title} <span className="text-primary">Terminal</span>
-        </h2>
-        
-        <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[10px] mb-8 max-w-md mx-auto leading-relaxed">
-          This module (ID {id}) is currently being atomized by the Senior UI Architect. 
-          Expected deployment: Q2 2026.
-        </p>
+        <div className="bg-white/5 rounded-3xl p-8 border border-white/5 flex flex-col justify-between">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/40">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase tracking-widest">Security Gated</p>
+                <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Role-based access enabled</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/40">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase tracking-widest">Audit Enabled</p>
+                <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest">All interactions logged</p>
+              </div>
+            </div>
+          </div>
 
-        <div className="flex flex-wrap justify-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-xl border border-border text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-            <Lock className="w-3 h-3" /> Encrypted
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-xl border border-border text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-            <ShieldAlert className="w-3 h-3" /> Gated
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-xl border border-border text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-            <Clock className="w-3 h-3" /> Scheduled
+          <div className="pt-8 mt-8 border-t border-white/5">
+            <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.3em] leading-relaxed">
+              This atomic page is part of the Lakki Terminal OS v2.6 expansion. 
+              The UI Architect is currently mapping the data layer for this module.
+            </p>
           </div>
         </div>
+      </div>
 
+      <div className="p-8 bg-white/5 border-t border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-6 text-[9px] font-black text-white/20 uppercase tracking-widest">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            <span>Frontend: Ready</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+            <span>Backend: Mapping</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+            <span>QA: Pending</span>
+          </div>
+        </div>
         <button 
-          onClick={() => onModuleChange('pos')}
-          className="mt-12 px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-primary/20 group"
+          onClick={() => window.history.back()}
+          className="px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
         >
-          Return to POS Terminal
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          Return to Previous <ChevronRight className="w-3 h-3" />
         </button>
       </div>
-    </motion.div>
-  );
+    </div>
+  </motion.div>
+);
+
+export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, onModuleChange, onAddProductClick }) => {
+  const { user } = useAuth();
 
   const LoadingState = () => (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-      <Loader2 className="w-16 h-16 text-primary animate-spin" />
-      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] animate-pulse">
-        Initializing Enterprise Module...
+      <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />
+      <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] animate-pulse">
+        Initializing Obsidian Module...
       </p>
     </div>
   );
@@ -138,93 +161,48 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
   return (
     <Suspense fallback={<LoadingState />}>
       <Routes>
-        {/* Executive Folder */}
-        <Route path="cockpit" element={<Cockpit />} />
-        <Route path="multi-store" element={<Cockpit />} />
+        {/* Core & Landing */}
+        <Route path="command-center" element={<CommandCenter />} />
+        <Route path="/" element={<CommandCenter />} />
 
-        {/* POS Folder */}
+        {/* Map Atomic Pages */}
+        {ATOMIC_NAVIGATION.map(category => 
+          category.pages.map(page => {
+            // Map specific paths to existing components if available
+            if (page.path.startsWith('pos/')) return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
+            if (page.path === 'repairs/intake') return <Route key={page.id} path={page.path} element={<RepairIntake />} />;
+            if (page.path === 'auth/roles' || page.path === 'auth/overrides') return <Route key={page.id} path={page.path} element={<Roles />} />;
+            if (page.path === 'inventory/po-approval') return <Route key={page.id} path={page.path} element={<POApproval />} />;
+            if (page.path === 'inventory/bins') return <Route key={page.id} path={page.path} element={<BinLocations />} />;
+            if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />;
+            if (page.path === 'gov/compliance' || page.path === 'gov/audit' || page.path === 'gov/reports' || page.path === 'gov/vat') return <Route key={page.id} path={page.path} element={<Compliance />} />;
+            if (page.path === 'inventory/qc' || page.path === 'repairs/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
+            if (page.path === 'auth/profile' || page.path === 'auth/2fa') return <Route key={page.id} path={page.path} element={<Profile />} />;
+            if (page.path === 'staff') return <Route key={page.id} path={page.path} element={<Staff />} />;
+            if (page.path === 'auth/ip-whitelist' || page.path === 'auth/geofence') return <Route key={page.id} path={page.path} element={<SecurityConfig />} />;
+            if (page.path === 'auth/bulk-invite') return <Route key={page.id} path={page.path} element={<BulkUserInvite />} />;
+            if (page.path === 'auth/password-policy') return <Route key={page.id} path={page.path} element={<PasswordPolicy />} />;
+            if (page.path === 'exec/revenue') return <Route key={page.id} path={page.path} element={<Cockpit />} />;
+            if (page.path === 'exec/comparison') return <Route key={page.id} path={page.path} element={<ExecutiveComparison />} />;
+            if (page.path === 'exec/anomalies') return <Route key={page.id} path={page.path} element={<ExecutiveAnomalies />} />;
+            if (page.path === 'exec/affinity') return <Route key={page.id} path={page.path} element={<ExecutiveAffinity />} />;
+            if (page.path === 'exec/routing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="routing" />} />;
+            if (page.path === 'exec/coalescing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="coalescing" />} />;
+            if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer' || page.path === 'inventory/intake') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
+            if (page.path === 'repairs/assignment' || page.path === 'repairs/tech-stats') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
+            
+            // Default to placeholder
+            return <Route key={page.id} path={page.path} element={<FeaturePagePlaceholder page={page} />} />;
+          })
+        )}
+
+        {/* Legacy / Compatibility Routes */}
         <Route path="pos" element={<POS onAddProductClick={onAddProductClick} />} />
-        <Route path="payments" element={<PaymentMatrix isOpen={true} onClose={() => onModuleChange('pos')} totalAmount={0} onProcessSale={() => {}} />} />
-        <Route path="history" element={<SalesHistory />} />
-        
-        {/* Repairs Folder */}
         <Route path="repairs" element={<RepairIntake />} />
-        <Route path="bench" element={<TechnicianDashboard />} />
-        <Route path="qc" element={<QCTerminal />} />
-        <Route path="pickup" element={<PickupTerminal />} />
-        
-        {/* Inventory Folder */}
         <Route path="inventory" element={<InventoryDashboard />} />
-        <Route path="cycle-count/staff" element={<CycleCountStaff />} />
-        <Route path="cycle-count/manager" element={<CycleCountManager />} />
-        <Route path="alerts" element={<LowStockWidget />} />
-        <Route path="costs" element={<CostAnalysis />} />
         
-        {/* Finance Folder */}
-        <Route path="finance" element={<FinanceDashboard />} />
-        <Route path="expenses" element={<FinanceDashboard />} />
-        
-        {/* HR Folder */}
-        <Route path="hr" element={<HRDashboard />} />
-        <Route path="attendance" element={<HRDashboard />} />
-        <Route path="payroll" element={<HRDashboard />} />
-        <Route path="shift" element={<ShiftHandover />} />
-        <Route path="handover" element={<ShiftHandover />} />
-        
-        {/* Customers Folder */}
-        <Route path="crm" element={<Customer360 />} />
-        <Route path="customers" element={<Customer360 />} />
-        <Route path="loyalty" element={<Customer360 />} />
-        
-        {/* Analytics Folder */}
-        <Route path="analytics" element={<AnalyticsDashboard />} />
-        <Route path="intelligence" element={<InventoryIntelligence />} />
-        <Route path="logs" element={<AdminReports />} />
-
-        {/* IoT Folder */}
-        <Route path="iot" element={<IoTDashboard />} />
-        
-        {/* Logistics & Warehouse */}
-        <Route path="warehouse" element={<Warehouse />} />
-        <Route path="suppliers" element={<SupplierPortal />} />
-        <Route path="bulk" element={<BulkOperations />} />
-        <Route path="omnichannel" element={<Omnichannel />} />
-        <Route path="qc-terminal" element={<QualityControl />} />
-        <Route path="returns" element={<Returns />} />
-
-        {/* Marketing & CRM */}
-        <Route path="marketing" element={<Marketing />} />
-        <Route path="gift-cards" element={<GiftCards />} />
-        <Route path="layaway" element={<Layaway />} />
-        <Route path="customer-groups" element={<CustomerGroups />} />
-        <Route path="customer-portal" element={<CustomerPortal />} />
-        <Route path="imei-timeline" element={<ImeiTimeline />} />
-
-        {/* Performance */}
-        <Route path="performance" element={<StaffPerformance />} />
-        <Route path="commission" element={<Commission />} />
-        <Route path="compliance" element={<Compliance />} />
-        <Route path="hardware" element={<Hardware />} />
-
-        {/* Extended Folder */}
-        <Route path="extended" element={<ExtendedFeatures />} />
-        <Route path="omnichannel" element={<Omnichannel />} />
-
-        {/* Enterprise Folder */}
-        <Route path="enterprise" element={<EnterpriseHub />} />
-        <Route path="governance" element={<Governance />} />
-
-        {/* Admin Folder */}
-        <Route path="toggles" element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />
-        <Route path="roles" element={<Roles />} />
-        <Route path="staff" element={<Staff />} />
-        <Route path="stores" element={<Stores />} />
-        <Route path="profile" element={<AdminDashboard />} />
-        <Route path="health" element={<AdminDashboard />} />
-        
-        {/* Default / Fallback */}
-        <Route path="/" element={<Navigate to="/pos" replace />} />
-        <Route path="*" element={<ComingSoon title="Module Not Found" id={404} />} />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/command-center" replace />} />
       </Routes>
     </Suspense>
   );

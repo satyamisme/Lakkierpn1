@@ -34,8 +34,6 @@ export const syncPendingSales = async () => {
   const sales = await getPendingSales();
   if (sales.length === 0) return;
 
-  console.log(`Syncing ${sales.length} offline sales...`);
-  
   for (const sale of sales) {
     try {
       const response = await fetch('/api/sales', {
@@ -49,7 +47,6 @@ export const syncPendingSales = async () => {
       
       if (response.ok) {
         await deleteSale(sale.id);
-        console.log(`Sale ${sale.id} synced successfully`);
       } else {
         const errorData = await response.json();
         console.error(`Failed to sync sale ${sale.id}:`, errorData);

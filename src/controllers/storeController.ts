@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Store from '../models/Store.js';
+import StoreProfile from '../models/StoreProfile.js';
 import Product from '../models/Product.js';
 
 export const storeController = {
@@ -58,6 +59,32 @@ export const storeController = {
       res.json({ message: 'Store deactivated successfully' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  },
+
+  getProfile: async (req: Request, res: Response) => {
+    try {
+      let profile = await StoreProfile.findOne();
+      if (!profile) {
+        profile = new StoreProfile({
+          name: "Main Store",
+          address: "Kuwait City",
+          location: { latitude: 29.3759, longitude: 47.9774 }
+        });
+        await profile.save();
+      }
+      res.json(profile);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  updateProfile: async (req: Request, res: Response) => {
+    try {
+      const profile = await StoreProfile.findOneAndUpdate({}, req.body, { new: true, upsert: true });
+      res.json(profile);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   }
 };

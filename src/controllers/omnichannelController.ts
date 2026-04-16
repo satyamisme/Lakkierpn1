@@ -32,7 +32,6 @@ export const omnichannelController = {
   syncShopifyOrders: async (req: Request, res: Response) => {
     try {
       if (!shopify) {
-        console.log('[MOCK SHOPIFY] Syncing orders');
         return res.json({ message: 'Synced 0 orders from Shopify (MOCK MODE)' });
       }
       const orders = await shopify.order.list({ limit: 50, status: 'open' });
@@ -64,7 +63,6 @@ export const omnichannelController = {
   syncWooCommerceOrders: async (req: Request, res: Response) => {
     try {
       if (!WooCommerce) {
-        console.log('[MOCK WOOCOMMERCE] Syncing orders');
         return res.json({ message: 'Synced 0 orders from WooCommerce (MOCK MODE)' });
       }
       const response = await WooCommerce.get("orders", { per_page: 50, status: 'processing' });
@@ -101,7 +99,6 @@ export const omnichannelController = {
 
       if (source === 'shopify') {
         if (!shopify) {
-          console.log('[MOCK SHOPIFY] Syncing products');
           return res.json({ message: 'Synced 0 products from Shopify (MOCK MODE)', count: 0 });
         }
         const shopifyProducts = await shopify.product.list({ limit: 50 });
@@ -114,7 +111,6 @@ export const omnichannelController = {
         }));
       } else {
         if (!WooCommerce) {
-          console.log('[MOCK WOOCOMMERCE] Syncing products');
           return res.json({ message: 'Synced 0 products from WooCommerce (MOCK MODE)', count: 0 });
         }
         const response = await WooCommerce.get("products", { per_page: 50 });

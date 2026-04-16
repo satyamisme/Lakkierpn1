@@ -1,113 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
+  Home, 
   ShoppingCart, 
-  Smartphone, 
+  Wrench, 
   Package, 
   Users, 
-  ChevronLeft, 
+  Sparkles, 
+  Settings, 
   ChevronRight,
-  Shield,
+  LayoutDashboard,
   ShieldCheck,
-  Activity,
-  History,
-  Wrench,
-  CreditCard,
-  ClipboardCheck,
-  Truck,
+  Zap,
+  Box,
   BarChart3,
-  Lock,
-  Store,
-  Clock,
-  Wallet,
-  UserCircle,
-  PieChart,
-  Settings2,
-  FileText,
-  Layers,
+  Database,
   Globe,
-  RefreshCw,
-  Megaphone,
-  Trophy,
-  BrainCircuit,
-  Plus,
-  Home
+  Lock,
+  Menu,
+  X,
+  ChevronDown,
+  Search
 } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useAuth } from '../context/AuthContext';
-
-interface NavItem {
-  id: number;
-  label: string;
-  icon: React.ReactNode;
-  path: string;
-}
-
-interface NavGroup {
-  label: string;
-  items: NavItem[];
-}
-
-const navGroups: NavGroup[] = [
-  {
-    label: 'Executive',
-    items: [
-      { id: 192, label: 'Executive Cockpit', icon: <BarChart3 className="w-5 h-5" />, path: 'cockpit' },
-      { id: 256, label: 'CRM Matrix', icon: <UserCircle className="w-5 h-5" />, path: 'crm' },
-    ]
-  },
-  {
-    label: 'Operations',
-    items: [
-      { id: 61, label: 'Deep-Tech Repair Hub', icon: <Wrench className="w-5 h-5" />, path: 'repairs' },
-      { id: 31, label: 'Supply Chain Matrix', icon: <Package className="w-5 h-5" />, path: 'inventory' },
-      { id: 318, label: 'Cycle Count (Staff)', icon: <ClipboardCheck className="w-5 h-5" />, path: 'cycle-count/staff' },
-      { id: 318, label: 'Cycle Count (Manager)', icon: <ShieldCheck className="w-5 h-5" />, path: 'cycle-count/manager' },
-    ]
-  },
-  {
-    label: 'Logistics',
-    items: [
-      { id: 121, label: 'Global Warehouse', icon: <Layers className="w-5 h-5" />, path: 'warehouse' },
-      { id: 122, label: 'Vendor Portal', icon: <Truck className="w-5 h-5" />, path: 'suppliers' },
-      { id: 123, label: 'Bulk Processing', icon: <RefreshCw className="w-5 h-5" />, path: 'bulk' },
-    ]
-  },
-  {
-    label: 'Enterprise',
-    items: [
-      { id: 316, label: 'Enterprise Core', icon: <BrainCircuit className="w-5 h-5" />, path: 'enterprise' },
-      { id: 181, label: 'Governance & Security', icon: <ShieldCheck className="w-5 h-5" />, path: 'governance' },
-      { id: 185, label: 'Feature Gate Board', icon: <Lock className="w-5 h-5" />, path: 'toggles' },
-    ]
-  },
-  {
-    label: 'Extended',
-    items: [
-      { id: 301, label: 'Premium Features', icon: <Plus className="w-5 h-5" />, path: 'extended' },
-      { id: 241, label: 'Omnichannel Hub', icon: <Globe className="w-5 h-5" />, path: 'omnichannel' },
-    ]
-  },
-  {
-    label: 'Finance',
-    items: [
-      { id: 101, label: 'Finance Terminal', icon: <Wallet className="w-5 h-5" />, path: 'finance' },
-    ]
-  },
-  {
-    label: 'CRM & Loyalty',
-    items: [
-      { id: 188, label: 'Performance Analytics', icon: <Trophy className="w-5 h-5" />, path: 'performance' },
-    ]
-  },
-  {
-    label: 'Admin',
-    items: [
-      { id: 195, label: 'Staff Management', icon: <Users className="w-5 h-5" />, path: 'staff' },
-      { id: 199, label: 'Access Control', icon: <Shield className="w-5 h-5" />, path: 'roles' },
-      { id: 232, label: 'System Watchtower', icon: <Settings2 className="w-5 h-5" />, path: 'health' },
-    ]
-  }
-];
+import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ATOMIC_NAVIGATION, NavCategory, AtomicPage } from '../constants/navigation';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -117,144 +33,168 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeModule, onModuleChange }) => {
-  const { hasPermission, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  const filteredGroups = navGroups.map(group => ({
-    ...group,
-    items: group.items.filter(item => hasPermission(item.id))
-  })).filter(group => group.items.length > 0);
+  const handleCategoryClick = (categoryId: string) => {
+    if (isCollapsed) {
+      onToggle();
+      setExpandedCategory(categoryId);
+    } else {
+      setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
+    }
+  };
 
   return (
-    <motion.aside
+    <motion.aside 
       initial={false}
-      animate={{ width: isCollapsed ? '80px' : '280px' }}
-      className="h-screen bg-card border-r border-border flex flex-col transition-colors duration-500 sticky top-0 z-50"
+      animate={{ width: isCollapsed ? 64 : 260 }}
+      className="h-screen bg-[#0A0A0A] border-r border-white/5 flex flex-col relative z-50 overflow-hidden"
     >
-      <div className="p-8 flex items-center justify-between">
+      {/* Brand / Logo */}
+      <div className="h-16 flex items-center px-4 border-b border-white/5 shrink-0">
+        <div 
+          onClick={() => onModuleChange('command-center')}
+          className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition-transform"
+        >
+          <Zap className="w-5 h-5 text-black fill-black" />
+        </div>
         {!isCollapsed && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="ml-3"
           >
-            <div className="bg-primary p-2.5 rounded-2xl text-primary-foreground shadow-2xl shadow-primary/40 rotate-3 group-hover:rotate-0 transition-transform">
-              <Smartphone className="w-7 h-7" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-serif italic text-2xl tracking-tighter text-foreground leading-none">Lakki ERP</span>
-              <span className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mt-1.5 opacity-70">Enterprise Core</span>
-            </div>
+            <h1 className="text-white font-black tracking-tighter text-lg leading-none uppercase">LAKKI</h1>
+            <p className="text-[8px] text-white/40 font-mono tracking-widest uppercase mt-0.5">Terminal OS v2.6</p>
           </motion.div>
         )}
-        <button
-          onClick={onToggle}
-          className="p-3 hover:bg-surface-container rounded-2xl text-muted-foreground transition-all active:scale-90 border border-transparent hover:border-border"
-        >
-          {isCollapsed ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
-        </button>
       </div>
 
-      <nav className="flex-1 px-6 space-y-12 mt-8 overflow-y-auto no-scrollbar pb-10">
-        {/* Quick Access / Home */}
-        <div className="space-y-2">
-          <button
-            onClick={() => onModuleChange('pos')}
-            className={`w-full flex items-center gap-5 p-4 rounded-[1.5rem] transition-all group relative border ${
-              activeModule === 'pos' 
-                ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 border-primary' 
-                : 'text-muted-foreground hover:bg-primary/5 hover:text-primary border-transparent hover:border-primary/10'
-            }`}
-          >
-            <div className={`transition-all duration-500 ${activeModule === 'pos' ? 'scale-110 rotate-3' : 'group-hover:scale-110 group-hover:rotate-3'}`}>
-              <Home className="w-5 h-5" />
-            </div>
-            {!isCollapsed && (
-              <span className={`font-black text-[11px] uppercase tracking-[0.15em] transition-all ${activeModule === 'pos' ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
-                Dashboard Home
-              </span>
-            )}
-            {activeModule === 'pos' && (
-              <motion.div 
-                layoutId="active-pill"
-                className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
-              />
-            )}
-          </button>
-        </div>
-
-        {filteredGroups.map((group) => (
-          <div key={group.label} className="space-y-6">
-            {!isCollapsed && (
-              <div className="flex items-center gap-4 px-4">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-40 whitespace-nowrap">
-                  {group.label}
-                </p>
-                <div className="h-[1px] w-full bg-border opacity-20" />
-              </div>
-            )}
-            <div className="space-y-2">
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onModuleChange(item.path)}
-                  className={`w-full flex items-center gap-5 p-4 rounded-[1.5rem] transition-all group relative border ${
-                    activeModule === item.path 
-                      ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 border-primary' 
-                      : 'text-muted-foreground hover:bg-primary/5 hover:text-primary border-transparent hover:border-primary/10'
-                  }`}
-                >
-                  <div className={`transition-all duration-500 ${activeModule === item.path ? 'scale-110 rotate-3' : 'group-hover:scale-110 group-hover:rotate-3'}`}>
-                    {item.icon}
-                  </div>
-                  {!isCollapsed && (
-                    <span className={`font-black text-[11px] uppercase tracking-[0.15em] transition-all ${activeModule === item.path ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
-                      {item.label}
-                    </span>
-                  )}
-                  {isCollapsed && (
-                    <div className="absolute left-full ml-6 px-4 py-3 bg-foreground text-background text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-[60] shadow-2xl">
-                      {item.label}
-                    </div>
-                  )}
-                  {!isCollapsed && (
-                    <span className={`ml-auto text-[8px] font-mono font-black transition-opacity ${activeModule === item.path ? 'opacity-40' : 'opacity-0 group-hover:opacity-30'}`}>#{item.id}</span>
-                  )}
-                  
-                  {/* Active Indicator Dot */}
-                  {activeModule === item.path && (
-                    <motion.div 
-                      layoutId="active-pill"
-                      className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="p-6 border-t border-border bg-surface-container-lowest/50">
-        <div className={`flex items-center gap-5 p-4 rounded-[2rem] bg-surface border border-border shadow-sm ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-12 h-12 rounded-2xl bg-muted overflow-hidden border-2 border-primary/10 flex items-center justify-center text-primary font-black uppercase shadow-inner">
-            {user?.name ? (
-              <img 
-                src={`https://picsum.photos/seed/${user.name}/100/100`} 
-                alt={user.name} 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
-              />
-            ) : (
-              '??'
-            )}
+      {/* Navigation Tree */}
+      <div className="flex-1 py-4 flex flex-col gap-0.5 px-2 overflow-y-auto no-scrollbar">
+        {/* Command Center Quick Link */}
+        <button
+          onClick={() => onModuleChange('command-center')}
+          className={`
+            relative group flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300 mb-4
+            ${activeModule === 'command-center' ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}
+          `}
+        >
+          <div className={`shrink-0 transition-transform duration-300 group-hover:scale-110 ${activeModule === 'command-center' ? 'text-blue-500' : ''}`}>
+            <Home className="w-5 h-5" />
           </div>
           {!isCollapsed && (
-            <div className="overflow-hidden">
-              <p className="text-sm font-black text-foreground truncate tracking-tight">{user?.name || 'Guest'}</p>
-              <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] truncate opacity-70">{user?.role || 'No Role'}</p>
-            </div>
+            <span className="text-xs font-black tracking-tight uppercase">Command</span>
           )}
+          {activeModule === 'command-center' && (
+            <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-5 bg-white rounded-r-full" />
+          )}
+        </button>
+
+        <div className="px-3 mb-1">
+          <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Domains</p>
         </div>
+
+        {ATOMIC_NAVIGATION.map((category) => {
+          const isExpanded = expandedCategory === category.id;
+          const hasActivePage = category.pages.some(p => activeModule === p.path);
+
+          return (
+            <div key={category.id} className="flex flex-col gap-0.5">
+              <button
+                onClick={() => handleCategoryClick(category.id)}
+                className={`
+                  relative group flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300
+                  ${hasActivePage || isExpanded ? 'bg-white/5 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}
+                `}
+              >
+                <div className={`shrink-0 transition-transform duration-300 group-hover:scale-110 ${hasActivePage ? category.color : ''}`}>
+                  <category.icon className="w-5 h-5" />
+                </div>
+                
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-left text-[11px] font-bold tracking-tight uppercase">
+                      {category.label}
+                    </span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                  </>
+                )}
+
+                {isCollapsed && (
+                  <div className="absolute left-full ml-4 px-2 py-1 bg-white text-black text-[8px] font-black uppercase tracking-widest rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                    {category.label}
+                  </div>
+                )}
+              </button>
+
+              {/* Sub-pages */}
+              <AnimatePresence>
+                {!isCollapsed && isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden flex flex-col gap-0.5 ml-8 border-l border-white/5 pl-2 my-0.5"
+                  >
+                    {category.pages.map((page) => {
+                      const isActive = activeModule === page.path;
+                      return (
+                        <button
+                          key={page.id}
+                          onClick={() => onModuleChange(page.path)}
+                          className={`
+                            group flex items-center gap-2.5 p-1.5 rounded-lg text-left transition-all
+                            ${isActive ? 'text-white font-bold' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}
+                          `}
+                        >
+                          <div className={`w-1 h-1 rounded-full transition-all ${isActive ? 'bg-blue-500 scale-125' : 'bg-white/10 group-hover:bg-white/30'}`} />
+                          <span className="text-[10px] tracking-tight uppercase">{page.label}</span>
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+
+        <div className="my-4 border-t border-white/5 mx-2" />
+
+        {/* Quick Tools */}
+        <div className="space-y-0.5">
+          {[
+            { id: 'analytics', icon: BarChart3, label: 'Intelligence' },
+            { id: 'database', icon: Database, label: 'Data Lake' },
+            { id: 'security', icon: Lock, label: 'Vault' },
+          ].map((tool) => (
+            <button
+              key={tool.id}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl text-white/20 hover:text-white/60 transition-all group"
+            >
+              <tool.icon className="w-4 h-4 shrink-0" />
+              {!isCollapsed && (
+                <span className="text-[9px] font-black uppercase tracking-widest">{tool.label}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer / Settings */}
+      <div className="p-3 border-t border-white/5 bg-black/50 backdrop-blur-md">
+        <button 
+          onClick={onToggle}
+          className="w-full flex items-center gap-3 p-2.5 rounded-xl text-white/40 hover:bg-white/5 hover:text-white transition-all"
+        >
+          <Menu className="w-4 h-4 shrink-0" />
+          {!isCollapsed && (
+            <span className="text-[9px] font-black uppercase tracking-widest">Collapse</span>
+          )}
+        </button>
       </div>
     </motion.aside>
   );

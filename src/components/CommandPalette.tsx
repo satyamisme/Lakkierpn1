@@ -27,38 +27,29 @@ import {
   ClipboardCheck,
   Loader2,
   FileText,
-  User
+  User,
+  LayoutGrid,
+  Zap
 } from 'lucide-react';
+import { ATOMIC_NAVIGATION } from '../constants/navigation';
 
 interface CommandItem {
-  id: number;
+  id: string;
   label: string;
-  icon: React.ReactNode;
+  icon: any;
   path: string;
   category: string;
 }
 
-const commands: CommandItem[] = [
-  { id: 192, label: 'Executive Cockpit', icon: <BarChart3 className="w-4 h-4" />, path: 'cockpit', category: 'Executive' },
-  { id: 256, label: 'CRM Matrix', icon: <Users className="w-4 h-4" />, path: 'crm', category: 'Executive' },
-  { id: 1, label: 'Sales Terminal', icon: <ShoppingCart className="w-4 h-4" />, path: 'pos', category: 'Operations' },
-  { id: 61, label: 'Deep-Tech Repair Hub', icon: <Wrench className="w-4 h-4" />, path: 'repairs', category: 'Operations' },
-  { id: 31, label: 'Supply Chain Matrix', icon: <Package className="w-4 h-4" />, path: 'inventory', category: 'Operations' },
-  { id: 318, label: 'Cycle Count (Staff)', icon: <ClipboardCheck className="w-4 h-4" />, path: 'cycle-count/staff', category: 'Operations' },
-  { id: 318, label: 'Cycle Count (Manager)', icon: <ShieldCheck className="w-4 h-4" />, path: 'cycle-count/manager', category: 'Operations' },
-  { id: 121, label: 'Global Warehouse', icon: <Layers className="w-4 h-4" />, path: 'warehouse', category: 'Logistics' },
-  { id: 122, label: 'Vendor Portal', icon: <Truck className="w-4 h-4" />, path: 'suppliers', category: 'Logistics' },
-  { id: 123, label: 'Bulk Processing', icon: <RefreshCw className="w-4 h-4" />, path: 'bulk', category: 'Logistics' },
-  { id: 316, label: 'Enterprise Core', icon: <BrainCircuit className="w-4 h-4" />, path: 'enterprise', category: 'Enterprise' },
-  { id: 181, label: 'Governance & Security', icon: <ShieldCheck className="w-4 h-4" />, path: 'governance', category: 'Enterprise' },
-  { id: 185, label: 'Feature Gate Board', icon: <Lock className="w-4 h-4" />, path: 'toggles', category: 'Enterprise' },
-  { id: 301, label: 'Premium Features', icon: <Plus className="w-4 h-4" />, path: 'extended', category: 'Extended' },
-  { id: 241, label: 'Omnichannel Hub', icon: <Globe className="w-4 h-4" />, path: 'omnichannel', category: 'Extended' },
-  { id: 101, label: 'Finance Terminal', icon: <Wallet className="w-4 h-4" />, path: 'finance', category: 'Finance' },
-  { id: 188, label: 'Performance Analytics', icon: <Trophy className="w-4 h-4" />, path: 'performance', category: 'CRM & Loyalty' },
-  { id: 195, label: 'Access Control', icon: <Users className="w-4 h-4" />, path: 'roles', category: 'Admin' },
-  { id: 232, label: 'System Watchtower', icon: <Settings2 className="w-4 h-4" />, path: 'health', category: 'Admin' },
-];
+const commands: CommandItem[] = ATOMIC_NAVIGATION.flatMap(cat => 
+  cat.pages.map(page => ({
+    id: page.id,
+    label: page.label,
+    icon: React.createElement(cat.icon, { className: "w-4 h-4" }),
+    path: page.path,
+    category: cat.label
+  }))
+);
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -152,69 +143,78 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
           />
           
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className="relative w-full max-w-2xl bg-card border border-border shadow-2xl overflow-hidden rounded-2xl"
+            className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden rounded-[2rem]"
           >
-            <div className="flex items-center gap-4 p-4 border-b border-border">
-              {isSearching ? <Loader2 className="animate-spin text-primary" size={20} /> : <Search className="text-muted-foreground" size={20} />}
-              <input 
-                autoFocus
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search features, products, sales..."
-                className="flex-1 bg-transparent border-none outline-none text-lg font-bold uppercase tracking-widest placeholder:text-muted-foreground/50"
-              />
-              <div className="flex items-center gap-1 px-2 py-1 bg-muted border border-border rounded-lg text-[10px] font-black text-muted-foreground">
-                ESC
+            <div className="flex items-center gap-6 p-6 border-b border-white/5">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0">
+                <Zap className="w-6 h-6 text-black fill-black" />
+              </div>
+              <div className="flex-1 relative">
+                {isSearching && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                    <Loader2 className="animate-spin text-blue-500" size={20} />
+                  </div>
+                )}
+                <input 
+                  autoFocus
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="COMMAND SEARCH..."
+                  className="w-full bg-transparent border-none outline-none text-xl font-black uppercase tracking-widest text-white placeholder:text-white/10"
+                />
               </div>
             </div>
 
-            <div className="max-h-[500px] overflow-y-auto p-2 custom-scrollbar">
+            <div className="max-h-[500px] overflow-y-auto p-4 no-scrollbar">
               {filteredCommands.length === 0 && unifiedResults.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">No results found for "{search}"</p>
+                <div className="p-12 text-center">
+                  <p className="text-xs font-black text-white/20 uppercase tracking-[0.4em]">No results found for "{search}"</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {filteredCommands.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-50">System Modules</p>
+                    <div className="space-y-2">
+                      <p className="px-4 py-2 text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">System Modules</p>
                       {filteredCommands.map((cmd, index) => (
                         <button
-                          key={cmd.id}
+                          key={`${cmd.id}-${cmd.path}`}
                           onClick={() => {
                             onSelect(cmd.path);
                             onClose();
                           }}
                           onMouseEnter={() => setSelectedIndex(index)}
-                          className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${
-                            index === selectedIndex ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                          className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
+                            index === selectedIndex ? 'bg-white text-black' : 'hover:bg-white/5 text-white/60 hover:text-white'
                           }`}
                         >
-                          <div className={`p-2 rounded-lg ${index === selectedIndex ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                          <div className={`p-2 rounded-lg transition-colors ${index === selectedIndex ? 'bg-black/10 text-black' : 'bg-white/5 text-blue-500'}`}>
                             {cmd.icon}
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-xs font-black uppercase tracking-widest">{cmd.label}</p>
-                            <p className={`text-[10px] font-bold uppercase tracking-widest ${index === selectedIndex ? 'text-white/60' : 'text-muted-foreground'}`}>
+                            <p className="text-sm font-black uppercase tracking-tight">{cmd.label}</p>
+                            <p className={`text-[9px] font-bold uppercase tracking-widest opacity-60`}>
                               {cmd.category}
                             </p>
                           </div>
+                          {index === selectedIndex && (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
                         </button>
                       ))}
                     </div>
                   )}
 
                   {unifiedResults.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-50">Database Records</p>
+                    <div className="space-y-2">
+                      <p className="px-4 py-2 text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Database Records</p>
                       {unifiedResults.map((result, index) => {
                         const actualIndex = index + filteredCommands.length;
                         return (
@@ -225,19 +225,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                               onClose();
                             }}
                             onMouseEnter={() => setSelectedIndex(actualIndex)}
-                            className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all ${
-                              actualIndex === selectedIndex ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                            className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all ${
+                              actualIndex === selectedIndex ? 'bg-blue-500 text-white' : 'hover:bg-white/5 text-white/60 hover:text-white'
                             }`}
                           >
-                            <div className={`p-2 rounded-lg ${actualIndex === selectedIndex ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                            <div className={`p-2 rounded-lg transition-colors ${actualIndex === selectedIndex ? 'bg-white/20 text-white' : 'bg-white/5 text-blue-500'}`}>
                               {getIcon(result.type)}
                             </div>
                             <div className="flex-1 text-left">
-                              <p className="text-xs font-black uppercase tracking-widest">{result.title}</p>
-                              <p className={`text-[10px] font-bold uppercase tracking-widest ${actualIndex === selectedIndex ? 'text-white/60' : 'text-muted-foreground'}`}>
+                              <p className="text-sm font-black uppercase tracking-tight">{result.title}</p>
+                              <p className={`text-[9px] font-bold uppercase tracking-widest opacity-60`}>
                                 {result.type} • {result.subtitle}
                               </p>
                             </div>
+                            {actualIndex === selectedIndex && (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
                           </button>
                         );
                       })}
@@ -247,13 +250,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
               )}
             </div>
 
-            <div className="p-4 bg-muted/30 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1"><Command size={10} /> + K to toggle</span>
-                <span className="flex items-center gap-1">↑↓ to navigate</span>
-                <span className="flex items-center gap-1">↵ to select</span>
+            <div className="p-6 bg-white/5 border-t border-white/5 flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-white/20">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white/40">ESC</div>
+                  <span>Close</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white/40">↑↓</div>
+                  <span>Navigate</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-1.5 py-0.5 bg-white/10 rounded border border-white/10 text-white/40">↵</div>
+                  <span>Execute</span>
+                </div>
               </div>
-              <span>Lakki ERP v4.0</span>
+              <span className="text-blue-500/40">v2.6.0-OBSIDIAN</span>
             </div>
           </motion.div>
         </div>

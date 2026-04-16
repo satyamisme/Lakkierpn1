@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { QualityControlInspection } from "../components/organisms/QualityControlInspection";
+import { QualityControlHistory } from "../components/organisms/QualityControlHistory";
 import { ShieldCheck, List, Search } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-const QualityControlPage: React.FC = () => {
+export const QualityControl: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [refId, setRefId] = useState("");
 
@@ -68,16 +69,11 @@ const QualityControlPage: React.FC = () => {
               )}
             </div>
           )}
-          {activeTab === "history" && (
-            <div className="bg-card border border-border p-20 text-center rounded-[2.5rem] opacity-50">
-              <List size={48} className="mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest">Inspection History Coming Soon</p>
-            </div>
-          )}
+          {activeTab === "history" && <QualityControlHistory />}
         </motion.div>
       </AnimatePresence>
     </div>
   );
 };
 
-export default QualityControlPage;
+// export default QualityControlPage;

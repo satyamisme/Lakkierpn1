@@ -13,7 +13,9 @@ import {
   X,
   Smartphone,
   Tag,
-  Layers
+  Layers,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import { toast } from "sonner";
@@ -35,7 +37,18 @@ export const InventoryDashboard: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
+  const [intakeInitialItems, setIntakeInitialItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('sku') || "");
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleOpenIntake = (e: any) => {
+      setIntakeInitialItems(e.detail.products);
+      setIsIntakeModalOpen(true);
+    };
+    window.addEventListener('open-stock-intake', handleOpenIntake);
+    return () => window.removeEventListener('open-stock-intake', handleOpenIntake);
+  }, []);
 
   useEffect(() => {
     const sku = searchParams.get('sku');
@@ -91,9 +104,20 @@ export const InventoryDashboard: React.FC = () => {
     }
   };
 
+  const toggleProduct = (productId: string) => {
+    const newExpanded = new Set(expandedProducts);
+    if (newExpanded.has(productId)) {
+      newExpanded.delete(productId);
+    } else {
+      newExpanded.add(productId);
+    }
+    setExpandedProducts(newExpanded);
+  };
+
   const filteredProducts = allProducts.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+    p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.variants && p.variants.some((v: any) => v.sku.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   return (
@@ -214,76 +238,188 @@ export const InventoryDashboard: React.FC = () => {
 
       {/* Global Stock Table (ID 121) */}
       <Gate id={121}>
-        <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
-          <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div>
-              <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
-                <Package size={32} className="text-primary" />
-                Global Stock Matrix
-              </h2>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Real-time cross-node inventory synchronization</p>
-            </div>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
-              <input 
-                type="text" 
-                placeholder="Search Matrix..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
-              />
+        <div className="space-y-10">
+          <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
+            <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div>
+                <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
+                  <Smartphone size={32} className="text-primary" />
+                  IMEI / Serial Lookup
+                </h2>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Locate individual units across all nodes</p>
+              </div>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Scan IMEI or Serial..."
+                  className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value;
+                      if (val) {
+                        try {
+                          const res = await axios.get(`/api/inventory/lookup?q=${val}`);
+                          if (res.data) {
+                            toast.success(`Unit found: ${res.data.productName} (${res.data.status})`);
+                          } else {
+                            toast.error("Unit not found in matrix.");
+                          }
+                        } catch (err) {
+                          toast.error("Lookup failed.");
+                        }
+                      }
+                    }
+                  }}
+                />
+              </div>
             </div>
           </div>
-          <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-container-lowest border-b border-border">
-                  <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Product Identity</th>
-                  <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">SKU / Model</th>
-                  <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Category</th>
-                  <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40 text-right">Available</th>
-                  <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40 text-right">Value (KD)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="p-40 text-center">
-                      <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary opacity-20" />
-                    </td>
+
+          <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
+            <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div>
+                <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
+                  <Package size={32} className="text-primary" />
+                  Global Stock Matrix
+                </h2>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Real-time cross-node inventory synchronization</p>
+              </div>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
+                <input 
+                  type="text" 
+                  placeholder="Search Matrix..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
+                />
+              </div>
+              </div>
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-lowest border-b border-border">
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Product Identity</th>
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">SKU / Model</th>
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Category</th>
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40 text-right">Available</th>
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40 text-right">Value (KD)</th>
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40 text-right">Actions</th>
                   </tr>
-                ) : filteredProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-40 text-center text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30 italic">
-                      No matching assets found in matrix
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProducts.map((p) => (
-                    <tr key={p._id} className="hover:bg-surface transition-colors group">
-                      <td className="px-10 py-8">
-                        <div className="flex items-center gap-6">
-                          <div className="w-16 h-16 bg-muted rounded-2xl overflow-hidden flex-shrink-0 grayscale group-hover:grayscale-0 transition-all duration-700 border border-border shadow-sm">
-                            <img src={p.image} alt={p.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                          </div>
-                          <span className="text-sm font-black uppercase tracking-tighter group-hover:text-primary transition-colors">{p.name}</span>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="p-40 text-center">
+                        <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary opacity-20" />
                       </td>
-                      <td className="px-10 py-8 text-xs font-mono text-muted-foreground font-bold opacity-60">{p.sku}</td>
-                      <td className="px-10 py-8">
-                        <span className="px-4 py-1.5 bg-surface border border-border rounded-full text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm">
-                          {p.category}
-                        </span>
-                      </td>
-                      <td className="px-10 py-8 text-right">
-                        <span className={`text-lg font-black font-mono ${p.stock < 5 ? 'text-red-500' : 'text-foreground'}`}>{p.stock}</span>
-                      </td>
-                      <td className="px-10 py-8 text-sm font-black font-mono text-right text-primary">{(p.cost * p.stock).toFixed(3)}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-40 text-center text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] opacity-30 italic">
+                        No matching assets found in matrix
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <React.Fragment key={p._id}>
+                        <tr 
+                          className={`hover:bg-surface transition-colors group cursor-pointer ${expandedProducts.has(p._id) ? 'bg-surface' : ''}`}
+                          onClick={() => p.variants?.length > 0 && toggleProduct(p._id)}
+                        >
+                          <td className="px-10 py-8">
+                            <div className="flex items-center gap-6">
+                              {p.variants?.length > 0 ? (
+                                expandedProducts.has(p._id) ? <ChevronDown size={16} className="text-primary" /> : <ChevronRight size={16} className="text-muted-foreground" />
+                              ) : <div className="w-4" />}
+                              <div className="w-16 h-16 bg-muted rounded-2xl overflow-hidden flex-shrink-0 grayscale group-hover:grayscale-0 transition-all duration-700 border border-border shadow-sm">
+                                <img src={p.image} alt={p.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-black uppercase tracking-tighter group-hover:text-primary transition-colors">{p.name}</span>
+                                {p.variants?.length > 0 && (
+                                  <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-1">{p.variants.length} Variants</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-10 py-8 text-xs font-mono text-muted-foreground font-bold opacity-60">{p.sku}</td>
+                          <td className="px-10 py-8">
+                            <span className="px-4 py-1.5 bg-surface border border-border rounded-full text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm">
+                              {p.category}
+                            </span>
+                          </td>
+                          <td className="px-10 py-8 text-right">
+                            <span className={`text-lg font-black font-mono ${p.stock < 5 ? 'text-red-500' : 'text-foreground'}`}>{p.stock}</span>
+                          </td>
+                          <td className="px-10 py-8 text-sm font-black font-mono text-right text-primary">{(p.cost * p.stock).toFixed(3)}</td>
+                          <td className="px-10 py-8 text-right">
+                            {!p.isConfigurable && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIntakeInitialItems([p]);
+                                  setIsIntakeModalOpen(true);
+                                }}
+                                className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                              >
+                                Add Stock
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        
+                        {/* Variants Sub-table */}
+                        <AnimatePresence>
+                          {expandedProducts.has(p._id) && p.variants?.map((v: any) => (
+                            <motion.tr 
+                              key={v._id}
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="bg-surface/30 border-l-4 border-primary"
+                            >
+                              <td className="px-10 py-4 pl-24">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-muted rounded-lg overflow-hidden border border-border">
+                                    <img src={v.images?.[0] || p.image} alt="" className="w-full h-full object-cover" />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase tracking-tight">{Object.values(v.attributes).join(' / ')}</span>
+                                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">{v.trackingMethod.toUpperCase()} Tracking</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-10 py-4 text-[10px] font-mono text-muted-foreground font-bold">{v.sku}</td>
+                              <td className="px-10 py-4">
+                                <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">{v.binLocation || 'No Bin'}</span>
+                              </td>
+                              <td className="px-10 py-4 text-right">
+                                <span className={`text-sm font-black font-mono ${v.stock < 5 ? 'text-red-500' : 'text-foreground'}`}>{v.stock}</span>
+                              </td>
+                              <td className="px-10 py-4 text-right text-[10px] font-black font-mono text-primary/60">{(v.cost * v.stock).toFixed(3)}</td>
+                              <td className="px-10 py-4 text-right">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIntakeInitialItems([{ ...v, name: `${p.name} (${Object.values(v.attributes).join('/')})`, brand: p.brand }]);
+                                    setIsIntakeModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-primary/5 text-primary rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                >
+                                  Add Stock
+                                </button>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </React.Fragment>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </Gate>
@@ -303,9 +439,26 @@ export const InventoryDashboard: React.FC = () => {
 
       <StockIntakeModal 
         isOpen={isIntakeModalOpen}
-        onClose={() => setIsIntakeModalOpen(false)}
+        onClose={() => {
+          setIsIntakeModalOpen(false);
+          setIntakeInitialItems([]);
+        }}
         onSuccess={fetchData}
+        initialItems={intakeInitialItems}
       />
+
+      {/* Floating Quick Action (ID 122) */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.1, rotate: 90 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsAddModalOpen(true)}
+        className="fixed bottom-12 right-12 w-20 h-20 bg-primary text-primary-foreground rounded-full shadow-2xl shadow-primary/40 flex items-center justify-center z-50 border-4 border-surface-container-lowest group"
+      >
+        <Plus size={32} />
+        <span className="absolute right-full mr-6 px-4 py-2 bg-foreground text-background text-[10px] font-black uppercase tracking-[0.3em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap shadow-2xl">Register Asset (ID 122)</span>
+      </motion.button>
     </div>
   );
 };

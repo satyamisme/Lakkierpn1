@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
 import User from '../models/User.js';
+import Store from '../models/Store.js';
 import StoreProfile from '../models/StoreProfile.js';
 import TwoFactorLog from '../models/TwoFactorLog.js';
 
@@ -32,7 +33,31 @@ export const authController = {
       const user = await User.findOne({ email });
       
       if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+        if (user) {
+          await new TwoFactorLog({
+            userId: user._id,
+            action: 'login_failed',
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent')
+          }).save();
+        }
         return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // IP Whitelisting Validation (ID 186)
+      if (process.env.DEV_MODE_SECURITY !== 'true' && user.permissions.includes(186)) {
+        let whitelistedIPs: string[] = [];
+        if (user.storeId) {
+          const store = await Store.findById(user.storeId);
+          if (store) whitelistedIPs = store.whitelistedIPs;
+        } else {
+          const globalProfile = await StoreProfile.findOne();
+          if (globalProfile) whitelistedIPs = globalProfile.whitelistedIPs;
+        }
+
+        if (whitelistedIPs.length > 0 && !whitelistedIPs.includes(req.ip)) {
+          return res.status(403).json({ error: `IP Access Denied: Your IP ${req.ip} is not whitelisted.` });
+        }
       }
       
       // Geofencing Validation (ID 187)
@@ -41,13 +66,29 @@ export const authController = {
           return res.status(403).json({ error: 'Location required for login' });
         }
 
-        const store = await StoreProfile.findOne();
-        if (store) {
+        let storeLocation = null;
+        let radius = 500;
+
+        if (user.storeId) {
+          const store = await Store.findById(user.storeId);
+          if (store && store.location) {
+            storeLocation = store.location;
+            radius = store.geofenceRadius;
+          }
+        } else {
+          const globalProfile = await StoreProfile.findOne();
+          if (globalProfile && globalProfile.location) {
+            storeLocation = globalProfile.location;
+            radius = globalProfile.geofenceRadius;
+          }
+        }
+
+        if (storeLocation) {
           const R = 6371e3; // Earth's radius in meters
           const φ1 = latitude * Math.PI / 180;
-          const φ2 = store.location.latitude * Math.PI / 180;
-          const Δφ = (store.location.latitude - latitude) * Math.PI / 180;
-          const Δλ = (store.location.longitude - longitude) * Math.PI / 180;
+          const φ2 = storeLocation.latitude * Math.PI / 180;
+          const Δφ = (storeLocation.latitude - latitude) * Math.PI / 180;
+          const Δλ = (storeLocation.longitude - longitude) * Math.PI / 180;
 
           const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
                     Math.cos(φ1) * Math.cos(φ2) *
@@ -55,8 +96,8 @@ export const authController = {
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
           const distance = R * c;
 
-          if (distance > store.geofenceRadius) {
-            return res.status(403).json({ error: `Geofence violation: You are ${Math.round(distance)}m away from the store.` });
+          if (distance > radius) {
+            return res.status(403).json({ error: `Geofence violation: You are ${Math.round(distance)}m away from the authorized location.` });
           }
         }
       }
@@ -64,6 +105,13 @@ export const authController = {
       if (user.isTwoFactorEnabled) {
         return res.json({ requires2FA: true, userId: user._id });
       }
+
+      await new TwoFactorLog({
+        userId: user._id,
+        action: 'login',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      }).save();
       
       const token = jwt.sign(
         { id: user._id, permissions: user.permissions },
@@ -185,6 +233,17 @@ export const authController = {
       res.json({ message: "2FA disabled successfully" });
     } catch (error: any) {
       res.status(500).json({ error: "Failed to disable 2FA" });
+    }
+  },
+
+  getSecurityLogs: async (req: any, res: Response) => {
+    try {
+      const logs = await TwoFactorLog.find({ userId: req.user.id })
+        .sort({ createdAt: -1 })
+        .limit(10);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch security logs" });
     }
   }
 };

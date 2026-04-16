@@ -9,6 +9,8 @@ export interface IUser extends Document {
   twoFactorSecret?: string;
   isTwoFactorEnabled: boolean;
   isTrainingMode: boolean;
+  status: 'active' | 'inactive' | 'suspended';
+  storeId?: string;
   createdAt: Date;
 }
 
@@ -25,6 +27,12 @@ const UserSchema: Schema = new Schema({
   twoFactorSecret: { type: String },
   isTwoFactorEnabled: { type: Boolean, default: false },
   isTrainingMode: { type: Boolean, default: false },
+  status: { 
+    type: String, 
+    enum: ['active', 'inactive', 'suspended'], 
+    default: 'active' 
+  },
+  storeId: { type: Schema.Types.ObjectId, ref: 'Store' },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

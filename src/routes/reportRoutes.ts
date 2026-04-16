@@ -1,6 +1,7 @@
 import express from 'express';
 import Sale from '../models/Sale.js';
 import Repair from '../models/Repair.js';
+import PurchaseOrder from '../models/PurchaseOrder.js';
 import PDFDocument from 'pdfkit';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
@@ -89,11 +90,32 @@ router.get('/stats', authenticate, requirePermission(192), async (req, res) => {
     const revenue = (totalSales[0]?.total || 0) + (totalRepairs[0]?.total || 0);
     const units = (totalSales[0]?.count || 0);
 
+    // SLA Risks
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const repairRisks = await Repair.countDocuments({
+      createdAt: { $lt: fortyEightHoursAgo },
+      status: { $nin: ['ready', 'delivered', 'cancelled'] }
+    });
+
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const poRisks = await PurchaseOrder.countDocuments({
+      createdAt: { $lt: fiveDaysAgo },
+      status: 'sent'
+    });
+
+    // Target Progress (Mock logic: Revenue vs 10,000 KD monthly target)
+    const target = 10000;
+    const progress = Math.min(100, (revenue / target) * 100);
+
     res.json({
       revenue,
       units,
-      targetProgress: 85.8, // Mock for now
-      slaRisks: 12 // Mock for now
+      targetProgress: parseFloat(progress.toFixed(1)),
+      slaRisks: repairRisks + poRisks,
+      breakdown: {
+        repairRisks,
+        poRisks
+      }
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch stats' });

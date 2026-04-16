@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, MapPin, ShieldAlert, Loader2, Smartphone, Lock, Globe } from 'lucide-react';
+import { LogIn, MapPin, ShieldAlert, Loader2, Smartphone, Lock, Globe, Zap } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -35,8 +35,8 @@ export const Login: React.FC = () => {
       const data = await response.json();
       
       if (data.requires2FA) {
-        // Handle 2FA if needed, but for now let's assume simple login works
         toast.info("2FA required. Please verify.");
+        navigate(`/2fa-verify?userId=${data.userId}`);
         return;
       }
 
@@ -50,38 +50,42 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#050505] p-4 relative overflow-hidden">
       {/* Background Decorative Elements */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_2px_2px,var(--color-primary)_1px,transparent_0)] bg-[size:40px_40px]" />
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
       </div>
+      
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-surface-container-lowest p-10 rounded-[2.5rem] shadow-2xl border border-border relative z-10"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-md w-full bg-white/5 backdrop-blur-3xl p-12 rounded-[3rem] border border-white/10 relative z-10 shadow-[0_0_100px_rgba(0,0,0,0.5)]"
       >
-        <div className="text-center mb-10">
-          <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-inner">
-            <Smartphone className="w-10 h-10 text-primary" />
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-white/10">
+            <Zap className="w-10 h-10 text-black fill-black" />
           </div>
-          <h1 className="text-4xl font-black text-foreground uppercase tracking-tighter mb-2">
-            Lakki <span className="text-primary">Terminal</span>
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter mb-3 leading-none">
+            LAKKI<br />
+            <span className="text-blue-500">TERMINAL</span>
           </h1>
-          <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[10px]">
-            Enterprise OS v4.0 • Secure Access
+          <p className="text-white/40 font-black uppercase tracking-[0.4em] text-[9px]">
+            Enterprise OS v2.6 • Obsidian Shell
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Operator ID / Email</label>
+        <form onSubmit={handleLogin} className="space-y-8">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-1">Operator Identity</label>
             <div className="relative group">
-              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Globe className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type="email"
                 required
-                className="w-full pl-12 pr-4 py-4 bg-surface-container border border-border rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-sm"
+                className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-sm text-white placeholder:text-white/10"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="operator@lakkiphone.com"
@@ -89,14 +93,14 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Access Key</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-1">Access Key</label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type="password"
                 required
-                className="w-full pl-12 pr-4 py-4 bg-surface-container border border-border rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-sm"
+                className="w-full pl-14 pr-6 py-5 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-bold text-sm text-white placeholder:text-white/10"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -104,13 +108,13 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-surface-container p-5 rounded-2xl border border-border space-y-3">
+          <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+              <div className="flex items-center gap-2 text-[9px] font-black text-white/40 uppercase tracking-widest">
                 <MapPin className="w-3 h-3" />
                 Node Verification
               </div>
-              <div className="px-2 py-0.5 bg-primary/10 text-primary text-[8px] font-black rounded-full uppercase tracking-widest">
+              <div className="px-2 py-0.5 bg-blue-500/20 text-blue-500 text-[8px] font-black rounded-full uppercase tracking-widest">
                 Required
               </div>
             </div>
@@ -122,9 +126,9 @@ export const Login: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex items-center gap-2 text-xs font-bold text-muted-foreground"
+                  className="flex items-center gap-3 text-xs font-bold text-white/40"
                 >
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                   Pinging GPS Satellites...
                 </motion.div>
               ) : geoError ? (
@@ -133,7 +137,7 @@ export const Login: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex items-center gap-2 text-xs font-bold text-destructive"
+                  className="flex items-center gap-3 text-xs font-bold text-red-500"
                 >
                   <ShieldAlert className="w-4 h-4" />
                   Location Gated: {geoError}
@@ -144,9 +148,9 @@ export const Login: React.FC = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-xs font-bold text-secondary flex items-center gap-2"
+                  className="text-xs font-bold text-green-500 flex items-center gap-3"
                 >
-                  <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                   Node Locked: {latitude?.toFixed(4)}, {longitude?.toFixed(4)}
                 </motion.div>
               )}
@@ -157,7 +161,7 @@ export const Login: React.FC = () => {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-4 bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold rounded-2xl flex items-center gap-3"
+              className="p-5 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold rounded-2xl flex items-center gap-4"
             >
               <ShieldAlert className="w-5 h-5 shrink-0" />
               {error}
@@ -167,24 +171,23 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={isLoggingIn || geoLoading}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-primary/20 active:scale-[0.98]"
+            className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-[0.3em] text-xs hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-4 shadow-2xl shadow-white/10"
           >
             {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : (
               <>
-                Authorize & Enter Terminal
-                <LogIn className="w-4 h-4" />
+                Authorize & Enter
+                <LogIn className="w-5 h-5" />
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-10 pt-8 border-t border-border flex items-center justify-between text-[8px] font-black text-muted-foreground uppercase tracking-widest">
-          <div className="flex items-center gap-4">
-            <span className="hover:text-primary cursor-pointer transition-colors">Forgot Key?</span>
-            <span className="opacity-30">|</span>
-            <span className="hover:text-primary cursor-pointer transition-colors">Support</span>
+        <div className="mt-12 pt-10 border-t border-white/5 flex items-center justify-between text-[8px] font-black text-white/20 uppercase tracking-widest">
+          <div className="flex items-center gap-6">
+            <span className="hover:text-blue-500 cursor-pointer transition-colors">Forgot Key?</span>
+            <span className="hover:text-blue-500 cursor-pointer transition-colors">Support</span>
           </div>
-          <span>System Status: Optimal</span>
+          <span className="text-green-500/40">System Status: Optimal</span>
         </div>
       </motion.div>
     </div>

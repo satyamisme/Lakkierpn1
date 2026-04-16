@@ -11,6 +11,7 @@ import { ThermalReceipt } from '../../print/ThermalReceipt';
 import { A4Invoice } from '../../print/A4Invoice';
 import { printThermalReceipt, printA4Invoice } from '../../../utils/documentService';
 import { Printer, FileText, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Product {
   _id: string;
@@ -74,15 +75,16 @@ export const ProductGrid: React.FC = () => {
         setCart([]);
         setIsPaymentModalOpen(false);
         setIsSuccessModalOpen(true);
+        toast.success("Sale completed successfully");
         // Refresh products to show updated stock
         fetchProducts(searchTerm);
       } else {
         const error = await response.json();
-        alert(error.error || "Sale failed");
+        toast.error(error.error || "Sale failed");
       }
     } catch (error) {
       console.error("Sale processing error:", error);
-      alert("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     }
   };
 

@@ -22,7 +22,8 @@ import {
   FileText,
   Lock,
   History,
-  Printer
+  Printer,
+  ChevronRight
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useOfflineQueue } from "../hooks/useOfflineQueue";
@@ -46,15 +47,19 @@ interface Product {
   price: number;
   stock: number;
   image?: string;
-  isImeiRequired: boolean;
   category: string;
+  brand?: string;
+  isConfigurable?: boolean;
+  variants?: any[];
 }
 
 interface CartItem {
-  product: Product;
+  product: any; // Can be Product or Variant
   quantity: number;
   imei?: string;
   discount: number; // Line-item discount
+  isVariant?: boolean;
+  parentProduct?: Product;
 }
 
 interface POSProps {
@@ -71,7 +76,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [isImeiModalOpen, setIsImeiModalOpen] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [pendingProduct, setPendingProduct] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'knet' | 'store_credit'>('cash');
@@ -86,6 +91,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
   const [isLocked, setIsLocked] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
+
+  const [selectedProductForVariants, setSelectedProductForVariants] = useState<Product | null>(null);
 
   useEffect(() => {
     const lockTimer = setInterval(() => {
@@ -108,7 +115,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   }, [lastActivity]);
 
   const handleUnlock = () => {
-    // For demo, just unlock. In production, require PIN.
     setIsLocked(false);
     setLastActivity(Date.now());
   };
@@ -122,7 +128,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
           const response = await axios.get(`/api/sales/hold/${sessionId}`);
           if (response.status === 200) {
             const sale = response.data;
-            // Map items back to cart items
             const cartItems = await Promise.all(sale.items.map(async (item: any) => {
               const pRes = await axios.get(`/api/products/${item.productId}`);
               const product = pRes.data;
@@ -157,7 +162,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
       const response = await axios.get('/api/products');
       if (response.status === 200) {
         const data = response.data;
-        // Handle both array and paginated response
         const productsList = Array.isArray(data) ? data : (data.products || []);
         
         const productsWithImages = productsList.map((p: any) => ({
@@ -188,35 +192,55 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     });
   }, [products, searchTerm, activeCategory]);
 
-  const addToCart = (product: Product) => {
-    if (product.stock <= 0) {
+  const addToCart = (item: any, isVariant: boolean = false, parentProduct?: Product) => {
+    if (item.stock <= 0) {
       toast.error("Out of stock!");
       return;
     }
 
-    if (product.isImeiRequired) {
-      setPendingProduct(product);
+    const trackingMethod = isVariant ? item.trackingMethod : 'none';
+    const requiresImei = trackingMethod === 'imei' || trackingMethod === 'serial';
+
+    if (requiresImei) {
+      setPendingProduct({ ...item, isVariant, parentProduct });
       setIsImeiModalOpen(true);
     } else {
-      const existing = cart.find(item => item.product._id === product._id);
+      const existing = cart.find(ci => ci.product._id === item._id);
       if (existing) {
-        setCart(cart.map(item => 
-          item.product._id === product._id 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
+        setCart(cart.map(ci => 
+          ci.product._id === item._id 
+            ? { ...ci, quantity: ci.quantity + 1 } 
+            : ci
         ));
       } else {
-        setCart([...cart, { product, quantity: 1, discount: 0 }]);
+        setCart([...cart, { 
+          product: item, 
+          quantity: 1, 
+          discount: 0, 
+          isVariant, 
+          parentProduct 
+        }]);
       }
-      toast.success(`${product.name} added to cart`);
+      toast.success(`${item.name || (parentProduct?.name + ' ' + Object.values(item.attributes).join('/'))} added to cart`);
+    }
+    
+    if (isVariant) {
+      setSelectedProductForVariants(null);
     }
   };
 
   const handleImeiConfirm = (imei: string) => {
     if (pendingProduct) {
-      setCart([...cart, { product: pendingProduct, quantity: 1, imei, discount: 0 }]);
+      setCart([...cart, { 
+        product: pendingProduct, 
+        quantity: 1, 
+        imei, 
+        discount: 0,
+        isVariant: pendingProduct.isVariant,
+        parentProduct: pendingProduct.parentProduct
+      }]);
       setPendingProduct(null);
-      toast.success(`${pendingProduct.name} added with IMEI`);
+      toast.success("Item added with Serial/IMEI");
     }
   };
 
@@ -263,7 +287,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
     const saleData = {
       items: cart.map(item => ({
-        productId: item.product._id,
+        productId: item.isVariant ? item.parentProduct?._id : item.product._id,
+        variantId: item.isVariant ? item.product._id : undefined,
         quantity: item.quantity,
         price: item.product.price,
         imei: item.imei
@@ -291,7 +316,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
         const sale = response.data;
         setLastSale({
           items: cart.map(item => ({
-            name: item.product.name,
+            name: item.isVariant ? `${item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name,
             sku: item.product.sku,
             price: item.product.price,
             imei: item.imei
@@ -326,7 +351,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     const sessionId = Math.random().toString(36).substring(7);
     const saleData = {
       items: cart.map(item => ({
-        productId: item.product._id,
+        productId: item.isVariant ? item.parentProduct?._id : item.product._id,
+        variantId: item.isVariant ? item.product._id : undefined,
         quantity: item.quantity,
         price: item.product.price,
         imei: item.imei
@@ -364,34 +390,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const totalSplit = Object.values(splitPayments).reduce((sum, val) => sum + val, 0);
   const remainingSplit = total - totalSplit;
 
-  const handleRetrieveHeld = async (sessionId: string) => {
-    try {
-      const response = await axios.get(`/api/sales/hold/${sessionId}`);
-      if (response.status === 200) {
-        const sale = response.data;
-        const cartItems = await Promise.all(sale.items.map(async (item: any) => {
-          const pRes = await axios.get(`/api/products/${item.productId}`);
-          const product = pRes.data;
-          return {
-            product,
-            quantity: item.quantity,
-            imei: item.imei,
-            discount: 0
-          };
-        }));
-        setCart(cartItems);
-        setIsHeldCartsModalOpen(false);
-        toast.success("Cart resumed successfully.");
-      }
-    } catch (error) {
-      console.error("Resume error:", error);
-      toast.error("Failed to resume cart.");
-    }
-  };
-
   return (
     <Gate id={1}>
-      {/* Auto-Lock Overlay (ID 325) */}
       <AnimatePresence>
         {isLocked && (
           <motion.div 
@@ -535,7 +535,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                 ))}
               </div>
 
-              {/* Background Accent */}
               <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-[100px] pointer-events-none" />
             </div>
 
@@ -546,23 +545,29 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <p className="text-[12px] font-black uppercase tracking-[0.5em]">Syncing Matrix...</p>
                 </div>
               ) : (
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-8" : "flex flex-col gap-4"}>
+                <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-6" : "flex flex-col gap-4"}>
                   {filteredProducts.map((product) => (
                     <motion.div
                       key={product._id}
                       layout
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ y: -12 }}
+                      whileHover={{ y: -8 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => addToCart(product)}
-                      className={`bg-surface-container-lowest border border-border cursor-pointer hover:border-primary transition-all group relative overflow-hidden rounded-[3rem] shadow-sm hover:shadow-2xl ${
-                        viewMode === 'grid' ? 'p-8' : 'p-6 flex items-center gap-10'
+                      onClick={() => {
+                        if (product.isConfigurable && product.variants && product.variants.length > 0) {
+                          setSelectedProductForVariants(product);
+                        } else {
+                          addToCart(product);
+                        }
+                      }}
+                      className={`bg-surface-container-lowest border border-border cursor-pointer hover:border-primary transition-all group relative overflow-hidden rounded-[2.5rem] shadow-sm hover:shadow-xl ${
+                        viewMode === 'grid' ? 'p-6' : 'p-4 flex items-center gap-8'
                       }`}
                     >
                       {viewMode === 'grid' ? (
                         <>
-                          <div className="aspect-square mb-8 bg-muted rounded-[2.5rem] relative overflow-hidden shadow-inner">
+                          <div className="aspect-square mb-6 bg-muted rounded-[2rem] relative overflow-hidden shadow-inner">
                             <img 
                               src={product.image} 
                               alt={product.name}
@@ -570,15 +575,17 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                               className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000 scale-110 group-hover:scale-100"
                             />
                             <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/20 transition-all flex items-center justify-center">
-                              <Plus size={48} className="text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100" />
+                              {product.isConfigurable ? <ChevronRight size={32} className="text-white opacity-0 group-hover:opacity-100 transition-all" /> : <Plus size={32} className="text-white opacity-0 group-hover:opacity-100 transition-all scale-50 group-hover:scale-100" />}
                             </div>
                           </div>
-                          <div className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em] mb-3">{product.category}</div>
-                          <h3 className="text-lg font-black uppercase tracking-tighter mb-6 line-clamp-2 leading-tight group-hover:text-primary transition-colors">{product.name}</h3>
+                          <div className="text-[9px] font-black text-primary/40 uppercase tracking-[0.3em] mb-2">{product.category}</div>
+                          <h3 className="text-sm font-black uppercase tracking-tighter mb-4 line-clamp-2 leading-tight group-hover:text-primary transition-colors">{product.name}</h3>
                           <div className="flex items-end justify-between mt-auto">
-                            <div className="text-2xl font-black text-primary font-mono tracking-tighter">{product.price.toFixed(3)} <span className="text-[11px]">KD</span></div>
-                            <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl border ${product.stock < 5 ? 'bg-red-500/5 text-red-500 border-red-500/10' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                              {product.stock} Units
+                            <div className="text-xl font-black text-primary font-mono tracking-tighter">
+                              {product.isConfigurable ? 'From ' : ''}{product.price.toFixed(3)} <span className="text-[10px]">KD</span>
+                            </div>
+                            <div className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${product.stock < 5 ? 'bg-red-500/5 text-red-500 border-red-500/10' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                              {product.stock}
                             </div>
                           </div>
                         </>
@@ -604,15 +611,9 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                             </div>
                           </div>
                           <div className="p-6 text-primary opacity-0 group-hover:opacity-100 transition-all translate-x-10 group-hover:translate-x-0">
-                            <Plus size={32} />
+                            {product.isConfigurable ? <ChevronRight size={32} /> : <Plus size={32} />}
                           </div>
                         </>
-                      )}
-                      
-                      {product.isImeiRequired && (
-                        <div className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-indigo-500 text-[9px] font-black text-white uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/40">
-                          <Tag size={12} /> Serial Required
-                        </div>
                       )}
                     </motion.div>
                   ))}
@@ -661,7 +662,12 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                       className="p-8 bg-surface border border-border rounded-[2.5rem] space-y-6 group hover:border-primary/50 transition-all shadow-sm"
                     >
                       <div className="flex justify-between items-start gap-6">
-                        <h4 className="text-sm font-black uppercase tracking-tighter leading-tight flex-1 line-clamp-2 group-hover:text-primary transition-colors">{item.product.name}</h4>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-black uppercase tracking-tighter leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                            {item.isVariant ? `${item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name}
+                          </h4>
+                          <p className="text-[9px] font-mono text-muted-foreground font-bold mt-1">{item.product.sku}</p>
+                        </div>
                         <span className="text-xl font-black font-mono text-primary tracking-tighter">{(item.product.price * item.quantity).toFixed(3)}</span>
                       </div>
                       {item.imei && (
@@ -724,7 +730,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     try {
                       const quoteData = {
                         items: cart.map(item => ({
-                          productId: item.product._id,
+                          productId: item.isVariant ? item.parentProduct?._id : item.product._id,
+                          variantId: item.isVariant ? item.product._id : undefined,
                           quantity: item.quantity,
                           price: item.product.price,
                           imei: item.imei
@@ -783,7 +790,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
               </button>
             </div>
 
-            {/* Background Accent */}
             <div className="absolute bottom-0 left-0 w-full h-64 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
           </div>
         </div>
@@ -793,170 +799,57 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
         isOpen={isImeiModalOpen}
         onClose={() => setIsImeiModalOpen(false)}
         onConfirm={handleImeiConfirm}
-        productName={pendingProduct?.name || ""}
+        productName={pendingProduct?.name || (pendingProduct?.parentProduct?.name + ' ' + Object.values(pendingProduct?.attributes || {}).join('/'))}
+        variantId={pendingProduct?.isVariant ? pendingProduct._id : undefined}
+        productId={!pendingProduct?.isVariant ? pendingProduct?._id : undefined}
       />
 
-      <HeldCartsModal 
-        isOpen={isHeldCartsModalOpen}
-        onClose={() => setIsHeldCartsModalOpen(false)}
-        onRetrieve={handleRetrieveHeld}
-      />
-
-      <BulkImportModal 
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        onSuccess={fetchProducts}
-      />
-
-      {/* Success Modal with Print Options */}
+      {/* Variant Selection Modal */}
       <AnimatePresence>
-        {isSuccessModalOpen && lastSale && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        {selectedProductForVariants && (
+          <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gray-900/80 backdrop-blur-md"
+              onClick={() => setSelectedProductForVariants(null)}
+              className="absolute inset-0 bg-background/60 backdrop-blur-3xl"
             />
-            
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.9, opacity: 0, y: 40 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100"
+              exit={{ scale: 0.9, opacity: 0, y: 40 }}
+              className="relative bg-surface-container-lowest border border-border rounded-[4rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="p-12 text-center space-y-8">
-                <div className="bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                  <CheckCircle2 className="w-12 h-12 text-green-600" />
-                </div>
-                
+              <div className="p-12 border-b border-border flex items-start justify-between">
                 <div>
-                  <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tighter">Sale Successful!</h2>
-                  <p className="text-gray-500 font-bold uppercase tracking-widest mt-2">Order #{lastSale.orderId} has been processed</p>
+                  <h2 className="text-4xl font-serif italic tracking-tight">{selectedProductForVariants.name}</h2>
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Select Variant to Add</p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Gate id={21}>
-                    <button 
-                      onClick={() => printThermalReceipt(lastSale.orderId)}
-                      className="flex flex-col items-center gap-4 p-8 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <Printer className="w-10 h-10 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                      <div className="text-center">
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-widest">Thermal Receipt</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">80mm Bilingual (ID 21)</p>
-                      </div>
-                    </button>
-                  </Gate>
-
-                  <Gate id={25}>
-                    <button 
-                      onClick={() => printA4Invoice(lastSale.orderId)}
-                      className="flex flex-col items-center gap-4 p-8 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
-                    >
-                      <FileText className="w-10 h-10 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                      <div className="text-center">
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-widest">A4 Invoice</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Professional B2B (ID 25)</p>
-                      </div>
-                    </button>
-                  </Gate>
-                </div>
-
-                <button 
-                  onClick={() => setIsSuccessModalOpen(false)}
-                  className="w-full bg-gray-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95"
-                >
-                  Return to Terminal
+                <button onClick={() => setSelectedProductForVariants(null)} className="p-4 hover:bg-surface-container rounded-full text-muted-foreground transition-all">
+                  <X size={24} />
                 </button>
               </div>
-
-              {/* Hidden Print Templates */}
-              <div className="hidden">
-                <div id="thermal-receipt">
-                  <ThermalReceipt 
-                    id="thermal-receipt-component"
-                    orderId={lastSale.orderId}
-                    date={new Date().toLocaleString()}
-                    items={lastSale.items}
-                    payments={lastSale.payments}
-                    total={lastSale.total}
-                  />
-                </div>
-                <div id="a4-invoice">
-                  <A4Invoice 
-                    id="a4-invoice-component"
-                    orderId={lastSale.orderId}
-                    date={new Date().toLocaleDateString()}
-                    items={lastSale.items}
-                    payments={lastSale.payments}
-                    total={lastSale.total}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Split Payment Modal */}
-      <AnimatePresence>
-        {isSplitModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsSplitModalOpen(false)}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-md bg-card border border-border p-8 rounded-[3rem] shadow-2xl"
-            >
-              <h3 className="text-3xl font-serif italic mb-2">Split Transaction</h3>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-8">Allocate payments across multiple methods</p>
-              
-              <div className="space-y-6">
-                <div className="flex justify-between items-center p-6 bg-primary/5 border border-primary/20 rounded-3xl">
-                  <span className="text-[10px] font-black text-primary uppercase tracking-widest">Remaining Balance</span>
-                  <span className="text-2xl font-mono font-black text-primary">{remainingSplit.toFixed(3)} KD</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {['Cash', 'Card', 'K-Net', 'Store Credit'].map(method => (
-                    <div key={method} className="space-y-2">
-                      <label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest ml-2">{method}</label>
-                      <input 
-                        type="number" 
-                        placeholder="0.000"
-                        value={splitPayments[method] || ''}
-                        onChange={(e) => handleSplitPayment(method, parseFloat(e.target.value) || 0)}
-                        className="w-full bg-muted border border-border p-3 rounded-xl text-xs font-black font-mono outline-none focus:ring-2 ring-primary/20"
-                      />
+              <div className="flex-1 overflow-y-auto p-12 grid grid-cols-2 gap-6">
+                {selectedProductForVariants.variants?.map((v: any) => (
+                  <button 
+                    key={v._id}
+                    onClick={() => addToCart(v, true, selectedProductForVariants)}
+                    disabled={v.stock <= 0}
+                    className="p-6 bg-surface border border-border rounded-[2rem] text-left hover:border-primary transition-all group disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">{v.sku}</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md border ${v.stock < 5 ? 'bg-red-500/5 text-red-500 border-red-500/10' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                        {v.stock}
+                      </span>
                     </div>
-                  ))}
-                </div>
-
-                <div className="pt-6 border-t border-border flex gap-4">
-                  <button 
-                    onClick={() => {
-                      setSplitPayments({});
-                      setIsSplitModalOpen(false);
-                    }}
-                    className="flex-1 py-4 bg-muted border border-border rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-muted/80 transition-all"
-                  >
-                    Reset
+                    <p className="text-lg font-black uppercase tracking-tighter group-hover:text-primary transition-colors">
+                      {Object.values(v.attributes).join(' / ')}
+                    </p>
+                    <p className="text-2xl font-black font-mono text-primary mt-4">{v.price.toFixed(3)} KD</p>
                   </button>
-                  <button 
-                    onClick={() => setIsSplitModalOpen(false)}
-                    className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
-                  >
-                    Apply Split
-                  </button>
-                </div>
+                ))}
               </div>
             </motion.div>
           </div>
@@ -965,3 +858,10 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     </Gate>
   );
 };
+
+const X = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);

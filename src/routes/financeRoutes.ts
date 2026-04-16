@@ -3,6 +3,7 @@ import Expense from '../models/Expense.js';
 import Sale from '../models/Sale.js';
 import Product from '../models/Product.js';
 import Repair from '../models/Repair.js';
+import CashSweep from '../models/CashSweep.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -98,14 +99,58 @@ router.get('/cash-flow', authenticate, requirePermission(102), async (req, res) 
     const totalCashExpenses = cashExpenses.reduce((sum, e) => sum + e.amount, 0);
     cashInDrawer -= totalCashExpenses;
 
+    // Deduct cash sweeps
+    const sweeps = await CashSweep.find();
+    const totalSwept = sweeps.reduce((sum, s) => sum + s.amount, 0);
+    cashInDrawer -= totalSwept;
+    bankBalance += totalSwept;
+
     res.json({
       cashInDrawer,
       bankBalance,
       storeCredit,
-      totalLiquidity: cashInDrawer + bankBalance
+      totalLiquidity: cashInDrawer + bankBalance,
+      lastSweep: sweeps[0] ? sweeps[sweeps.length - 1].createdAt : null
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch cash flow' });
+  }
+});
+
+// POST /api/finance/cash-sweep (permission 192)
+router.post('/cash-sweep', authenticate, requirePermission(192), async (req, res) => {
+  try {
+    const sales = await Sale.find({ status: 'completed' });
+    let cashInDrawer = 0;
+
+    sales.forEach(sale => {
+      sale.payments.forEach(p => {
+        if (p.method === 'cash') cashInDrawer += p.amount;
+      });
+    });
+
+    const cashExpenses = await Expense.find({ category: { $ne: 'Rent' } });
+    const totalCashExpenses = cashExpenses.reduce((sum, e) => sum + e.amount, 0);
+    cashInDrawer -= totalCashExpenses;
+
+    const sweeps = await CashSweep.find();
+    const totalSwept = sweeps.reduce((sum, s) => sum + s.amount, 0);
+    cashInDrawer -= totalSwept;
+
+    if (cashInDrawer <= 0) {
+      return res.status(400).json({ error: 'No cash available for sweep' });
+    }
+
+    const sweep = new CashSweep({
+      amount: cashInDrawer,
+      userId: (req as any).user.id,
+      notes: 'Automatic Executive Cash Sweep'
+    });
+
+    await sweep.save();
+    res.status(201).json(sweep);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to perform cash sweep' });
   }
 });
 

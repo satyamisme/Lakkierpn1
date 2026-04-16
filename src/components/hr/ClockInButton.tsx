@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { MapPin, Clock, Loader2, CheckCircle2, LogOut } from 'lucide-react';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { toast } from 'sonner';
 
 interface ClockInButtonProps {
   onSuccess: () => void;
@@ -11,11 +12,10 @@ export const ClockInButton: React.FC<ClockInButtonProps> = ({ onSuccess }) => {
   const { latitude, longitude, error: geoError, loading: geoLoading } = useGeolocation();
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
 
   const handleClockAction = async (action: 'in' | 'out') => {
     if (action === 'in' && !latitude) {
-      alert("Location required to clock in.");
+      toast.error("Location required to clock in.");
       return;
     }
 
@@ -33,15 +33,14 @@ export const ClockInButton: React.FC<ClockInButtonProps> = ({ onSuccess }) => {
 
       if (response.ok) {
         setIsClockedIn(action === 'in');
-        setStatus(`Successfully clocked ${action}!`);
+        toast.success(`Successfully clocked ${action}!`);
         onSuccess();
-        setTimeout(() => setStatus(null), 3000);
       } else {
         const data = await response.json();
-        alert(data.error || `Clock-${action} failed`);
+        toast.error(data.error || `Clock-${action} failed`);
       }
     } catch (err) {
-      alert('Network error. Please try again.');
+      toast.error('Network error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -94,16 +93,6 @@ export const ClockInButton: React.FC<ClockInButtonProps> = ({ onSuccess }) => {
           </button>
         )}
       </div>
-
-      {status && (
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-3 bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-        >
-          <CheckCircle2 size={14} /> {status}
-        </motion.div>
-      )}
 
       {geoError && (
         <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">

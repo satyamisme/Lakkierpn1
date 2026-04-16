@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { Star, Search, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Gate } from '../../PermissionGuard';
 
+import { toast } from 'sonner';
+
 interface LoyaltyPaymentProps {
   onRedeem: (discount: number) => void;
   totalAmount: number;
@@ -56,10 +58,10 @@ export const LoyaltyPayment: React.FC<LoyaltyPaymentProps> = ({ onRedeem, totalA
         setCustomer({ ...customer, loyaltyPoints: customer.loyaltyPoints - pointsToRedeem });
       } else {
         const data = await response.json();
-        alert(data.error || 'Redemption failed');
+        toast.error(data.error || 'Redemption failed');
       }
     } catch (err) {
-      alert('Network error');
+      toast.error('Network error');
     } finally {
       setIsRedeeming(false);
     }

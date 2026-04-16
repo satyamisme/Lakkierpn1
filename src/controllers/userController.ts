@@ -5,17 +5,19 @@ import User from '../models/User.js';
 export const userController = {
   create: async (req: Request, res: Response) => {
     try {
-      const { name, email, password, role, permissions } = req.body;
+      const { name, email, password, role, permissions, status, storeId } = req.body;
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = new User({
         name,
         email,
         password: hashedPassword,
         role,
-        permissions
+        permissions,
+        status,
+        storeId
       });
       await user.save();
-      res.status(201).json({ id: user._id, name: user.name, email: user.email, role: user.role });
+      res.status(201).json({ id: user._id, name: user.name, email: user.email, role: user.role, status: user.status });
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -42,10 +44,13 @@ export const userController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const { password, role, ...updateData } = req.body;
+      const { password, role, status, storeId, ...updateData } = req.body;
       if (password) {
         updateData.password = await bcrypt.hash(password, 10);
       }
+      
+      if (status) updateData.status = status;
+      if (storeId) updateData.storeId = storeId;
       
       if (role) {
         updateData.role = role;

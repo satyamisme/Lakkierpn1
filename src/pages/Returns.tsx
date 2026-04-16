@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { returnsService, ReturnRequest } from "../api/services/returns";
 import { toast } from "sonner";
+import { ProcessReturnModal } from "../components/ProcessReturnModal";
 
 /**
  * ID 143: Returns Matrix (Returns.tsx)
@@ -25,6 +26,7 @@ export const Returns: React.FC = () => {
   const [returns, setReturns] = useState<ReturnRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
 
   useEffect(() => {
     fetchReturns();
@@ -66,13 +68,21 @@ export const Returns: React.FC = () => {
             Reverse Logistics & Warranty Claim Orchestration (ID 143)
           </p>
         </div>
-        <div className="flex items-center gap-6 px-8 py-4 bg-surface-container-lowest border border-border rounded-2xl shadow-sm">
-          <div className="text-right">
-            <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Active Claims</div>
-            <div className="text-sm font-black uppercase tracking-tighter">{returns.filter(r => r.status === 'pending').length} Units</div>
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => setIsProcessModalOpen(true)}
+            className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+          >
+            <RotateCcw size={18} /> Process Return
+          </button>
+          <div className="flex items-center gap-6 px-8 py-4 bg-surface-container-lowest border border-border rounded-2xl shadow-sm">
+            <div className="text-right">
+              <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Active Claims</div>
+              <div className="text-sm font-black uppercase tracking-tighter">{returns.filter(r => r.status === 'pending').length} Units</div>
+            </div>
+            <div className="w-px h-8 bg-border" />
+            <RotateCcw className="text-primary" size={20} />
           </div>
-          <div className="w-px h-8 bg-border" />
-          <RotateCcw className="text-primary" size={20} />
         </div>
       </header>
 
@@ -219,6 +229,12 @@ export const Returns: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <ProcessReturnModal 
+        isOpen={isProcessModalOpen}
+        onClose={() => setIsProcessModalOpen(false)}
+        onSuccess={fetchReturns}
+      />
     </div>
   );
 };

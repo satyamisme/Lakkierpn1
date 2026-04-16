@@ -34,7 +34,6 @@ export const sendTemplate = async (to: string, templateName: string, variables: 
     }
   } else {
     // Mock Mode (ID 251 Fallback)
-    console.log(`[MOCK WHATSAPP] To: ${to} | Template: ${templateName} | Message: ${message}`);
     return true;
   }
 };

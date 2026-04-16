@@ -13,6 +13,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { Gate } from '../PermissionGuard';
+import { toast } from 'sonner';
 
 /**
  * ID 71: QC Terminal & Checklist
@@ -59,7 +60,7 @@ export const QCTerminal: React.FC = () => {
     
     const allPassed = checklistItems.every(item => qcChecklist[item]);
     if (!allPassed) {
-      alert("Please complete all QC checks before passing.");
+      toast.error("Please complete all QC checks before passing.");
       return;
     }
 

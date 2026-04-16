@@ -124,7 +124,6 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     // Listen for real-time permission updates (ID 185 requirement)
     socket.on('PERMISSION_UPDATE', (data: { userId: string, permissions: number[] }) => {
-      console.log('Real-time permission update received:', data);
       // In a real app, check if data.userId matches current user
       setPermissions(data.permissions);
     });

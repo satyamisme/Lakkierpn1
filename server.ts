@@ -7,6 +7,7 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import auditRoutes from "./src/routes/auditRoutes.js";
 import quoteRoutes from "./src/routes/quoteRoutes.js";
 import bulkRoutes from "./src/routes/bulkRoutes.js";
 import featureToggleRoutes from "./src/routes/featureToggleRoutes.js";
@@ -172,6 +173,7 @@ async function startServer() {
 
   // API Routes
   app.use("/api/auth", authRoutes);
+  app.use("/api/audit", auditRoutes);
   app.use("/api/quotes", quoteRoutes);
   app.use("/api/bulk", bulkRoutes);
   app.use("/api/feature-toggles", featureToggleRoutes);

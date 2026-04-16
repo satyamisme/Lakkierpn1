@@ -9,7 +9,6 @@ export const trainingModeMiddleware = (req: Request, res: Response, next: NextFu
   
   if (user?.isTrainingMode && req.method !== 'GET') {
     // For non-GET requests in training mode, simulate success without modifying DB
-    console.log(`[TRAINING MODE] Mocking ${req.method} ${req.originalUrl}`);
     return res.status(200).json({ 
       _id: 'mock_' + Math.random().toString(36).substr(2, 9),
       isMock: true,

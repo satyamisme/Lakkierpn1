@@ -1,27 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Users, Plus, Search, Mail, Shield, User, Trash2, Edit2, Loader2, X, CheckCircle2, Key, AlertTriangle } from "lucide-react";
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  Mail, 
+  Shield, 
+  User, 
+  Trash2, 
+  Edit2, 
+  Loader2, 
+  X, 
+  CheckCircle2, 
+  Key, 
+  AlertTriangle,
+  Store,
+  Activity,
+  UserX,
+  ShieldAlert,
+  RefreshCw
+} from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import axios from "axios";
 import { toast } from "sonner";
 
 export const Staff: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
+  const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     role: "cashier",
+    status: "active",
+    storeId: "",
     permissions: [] as number[]
   });
 
   useEffect(() => {
     fetchUsers();
+    fetchStores();
   }, []);
 
   const fetchUsers = async () => {
@@ -32,6 +58,15 @@ export const Staff: React.FC = () => {
       toast.error("Failed to fetch staff members");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStores = async () => {
+    try {
+      const response = await axios.get("/api/stores");
+      setStores(response.data);
+    } catch (error) {
+      console.error("Failed to fetch stores");
     }
   };
 
@@ -47,7 +82,7 @@ export const Staff: React.FC = () => {
       }
       setIsModalOpen(false);
       setEditingUser(null);
-      setFormData({ name: "", email: "", password: "", role: "cashier", permissions: [] });
+      setFormData({ name: "", email: "", password: "", role: "cashier", status: "active", storeId: "", permissions: [] });
       fetchUsers();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Operation failed");
@@ -65,6 +100,21 @@ export const Staff: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async (id: string) => {
+    if (!newPassword) {
+      toast.error("Please enter a new password");
+      return;
+    }
+    try {
+      await axios.post(`/api/users/${id}/reset-password`, { newPassword });
+      toast.success("Password reset successfully");
+      setIsResettingPassword(null);
+      setNewPassword("");
+    } catch (error: any) {
+      toast.error("Failed to reset password");
+    }
+  };
+
   const openEditModal = (user: any) => {
     setEditingUser(user);
     setFormData({
@@ -72,6 +122,8 @@ export const Staff: React.FC = () => {
       email: user.email,
       password: "", // Don't show password
       role: user.role,
+      status: user.status || "active",
+      storeId: user.storeId || "",
       permissions: user.permissions || []
     });
     setIsModalOpen(true);
@@ -81,6 +133,24 @@ export const Staff: React.FC = () => {
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'text-green-500 bg-green-500/10 border-green-500/20';
+      case 'inactive': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+      case 'suspended': return 'text-red-500 bg-red-500/10 border-red-500/20';
+      default: return 'text-gray-500 bg-gray-500/10 border-gray-500/20';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': return <Activity size={12} />;
+      case 'inactive': return <UserX size={12} />;
+      case 'suspended': return <ShieldAlert size={12} />;
+      default: return <User size={12} />;
+    }
+  };
 
   return (
     <Gate id={195}>
@@ -95,7 +165,7 @@ export const Staff: React.FC = () => {
           <button 
             onClick={() => {
               setEditingUser(null);
-              setFormData({ name: "", email: "", password: "", role: "cashier", permissions: [] });
+              setFormData({ name: "", email: "", password: "", role: "cashier", status: "active", storeId: "", permissions: [] });
               setIsModalOpen(true);
             }}
             className="px-10 py-5 bg-primary text-primary-foreground rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
@@ -137,13 +207,22 @@ export const Staff: React.FC = () => {
                   </div>
                   <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
                     <button 
+                      onClick={() => setIsResettingPassword(user._id)}
+                      title="Reset Password"
+                      className="p-4 bg-surface border border-border hover:bg-yellow-500 hover:text-white rounded-2xl transition-all active:scale-90 shadow-sm"
+                    >
+                      <RefreshCw size={18} />
+                    </button>
+                    <button 
                       onClick={() => openEditModal(user)}
+                      title="Edit User"
                       className="p-4 bg-surface border border-border hover:bg-primary hover:text-white rounded-2xl transition-all active:scale-90 shadow-sm"
                     >
                       <Edit2 size={18} />
                     </button>
                     <button 
                       onClick={() => setIsDeleting(user._id)}
+                      title="Delete User"
                       className="p-4 bg-surface border border-border hover:bg-red-500 hover:text-white rounded-2xl transition-all active:scale-90 shadow-sm"
                     >
                       <Trash2 size={18} />
@@ -151,13 +230,23 @@ export const Staff: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-2xl font-serif italic mb-2 group-hover:text-primary transition-colors">{user.name}</h3>
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-2xl font-serif italic group-hover:text-primary transition-colors">{user.name}</h3>
+                  <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 ${getStatusColor(user.status)}`}>
+                    {getStatusIcon(user.status)}
+                    {user.status}
+                  </div>
+                </div>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-8 opacity-60">{user.email}</p>
                 
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     <div className="p-2 bg-muted rounded-lg"><Shield size={14} className="text-primary" /></div>
                     Role: <span className="text-foreground">{user.role}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="p-2 bg-muted rounded-lg"><Store size={14} className="text-primary" /></div>
+                    Store: <span className="text-foreground">{stores.find(s => s._id === user.storeId)?.name || 'Unassigned'}</span>
                   </div>
                   <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     <div className="p-2 bg-muted rounded-lg"><Key size={14} className="text-primary" /></div>
@@ -179,7 +268,7 @@ export const Staff: React.FC = () => {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 bg-red-600/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center"
+                      className="absolute inset-0 bg-red-600/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center z-10"
                     >
                       <AlertTriangle size={48} className="text-white mb-6 animate-bounce" />
                       <h4 className="text-2xl font-serif italic text-white mb-2">Terminate Access?</h4>
@@ -196,6 +285,48 @@ export const Staff: React.FC = () => {
                           className="flex-1 py-4 bg-white text-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-black/20"
                         >
                           Confirm
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Reset Password Overlay */}
+                <AnimatePresence>
+                  {isResettingPassword === user._id && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-yellow-600/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center z-10"
+                    >
+                      <Key size={48} className="text-white mb-6 animate-pulse" />
+                      <h4 className="text-2xl font-serif italic text-white mb-2">Reset Password</h4>
+                      <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] mb-6">Enter a new secure access key for this operator.</p>
+                      
+                      <input 
+                        type="password"
+                        placeholder="New Password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full bg-white/20 border border-white/30 rounded-xl p-4 text-white placeholder:text-white/50 text-xs font-black uppercase tracking-widest mb-6 outline-none focus:bg-white/30"
+                      />
+
+                      <div className="flex gap-4 w-full">
+                        <button 
+                          onClick={() => {
+                            setIsResettingPassword(null);
+                            setNewPassword("");
+                          }}
+                          className="flex-1 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={() => handleResetPassword(user._id)}
+                          className="flex-1 py-4 bg-white text-yellow-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-black/20"
+                        >
+                          Update Key
                         </button>
                       </div>
                     </motion.div>
@@ -221,7 +352,7 @@ export const Staff: React.FC = () => {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 40 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="relative bg-surface-container-lowest border border-border rounded-[4rem] shadow-2xl w-full max-w-2xl overflow-hidden"
+                className="relative bg-surface-container-lowest border border-border rounded-[4rem] shadow-2xl w-full max-w-3xl overflow-hidden"
               >
                 <div className="absolute top-0 left-0 w-full h-3 bg-primary" />
                 <button 
@@ -279,20 +410,53 @@ export const Staff: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">System Role</label>
-                      <div className="grid grid-cols-2 gap-4">
-                        {['superadmin', 'manager', 'cashier', 'technician'].map((role) => (
-                          <button
-                            key={role}
-                            type="button"
-                            onClick={() => setFormData({...formData, role})}
-                            className={`py-5 rounded-2xl border font-black text-[11px] uppercase tracking-[0.2em] transition-all duration-500 ${formData.role === role ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105' : 'bg-surface border-border text-muted-foreground hover:border-primary/50'}`}
-                          >
-                            {role}
-                          </button>
-                        ))}
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">System Role</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {['superadmin', 'manager', 'cashier', 'technician', 'inventory', 'auditor'].map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => setFormData({...formData, role})}
+                              className={`py-4 rounded-xl border font-black text-[9px] uppercase tracking-[0.1em] transition-all duration-300 ${formData.role === role ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' : 'bg-surface border-border text-muted-foreground hover:border-primary/50'}`}
+                            >
+                              {role}
+                            </button>
+                          ))}
+                        </div>
                       </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Account Status</label>
+                        <div className="grid grid-cols-1 gap-3">
+                          {['active', 'inactive', 'suspended'].map((status) => (
+                            <button
+                              key={status}
+                              type="button"
+                              onClick={() => setFormData({...formData, status})}
+                              className={`py-4 rounded-xl border font-black text-[9px] uppercase tracking-[0.1em] transition-all duration-300 flex items-center justify-center gap-2 ${formData.status === status ? (status === 'active' ? 'bg-green-500 text-white border-green-500' : status === 'inactive' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-red-500 text-white border-red-500') : 'bg-surface border-border text-muted-foreground hover:border-primary/50'}`}
+                            >
+                              {getStatusIcon(status)}
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 opacity-60">Assigned Store</label>
+                      <select 
+                        value={formData.storeId}
+                        onChange={(e) => setFormData({...formData, storeId: e.target.value})}
+                        className="w-full bg-surface border border-border rounded-[1.5rem] p-5 text-xs font-black uppercase tracking-[0.1em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner appearance-none"
+                      >
+                        <option value="">Select a store...</option>
+                        {stores.map(store => (
+                          <option key={store._id} value={store._id}>{store.name}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <button 
@@ -312,3 +476,4 @@ export const Staff: React.FC = () => {
     </Gate>
   );
 };
+

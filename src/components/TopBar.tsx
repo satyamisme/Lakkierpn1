@@ -1,201 +1,139 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
   Search, 
+  Bell, 
+  User, 
   Moon, 
   Sun, 
-  Bell, 
-  MapPin, 
-  Printer, 
-  ChevronRight, 
-  Home, 
-  Command,
-  FileText,
-  CreditCard,
+  Plus, 
+  Activity,
+  Cpu,
+  Network,
   LogOut,
-  User,
-  Plus,
-  ArrowLeft
+  ChevronDown,
+  ChevronRight,
+  Command
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
-import { Gate, usePermissions } from './PermissionGuard';
-import { RoleSwitcher } from './RoleSwitcher';
-import { printThermalReceipt, printA4Invoice } from '../utils/documentService';
+import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TopBarProps {
   activeModule: string;
   onSearchClick: () => void;
   onAddProductClick: () => void;
+  onToggleActivityFeed: () => void;
 }
 
-/**
- * ID 219, 195: Control Center (TopBar.tsx)
- * Left: Breadcrumbs & Back Navigation.
- * Center: Global Search (Ctrl+K).
- * Right: Theme Toggle (ID 219), Role Switcher (ID 195), and Quick-Action Print (ID 21, 25).
- */
-export const TopBar: React.FC<TopBarProps> = ({ activeModule, onSearchClick, onAddProductClick }) => {
+export const TopBar: React.FC<TopBarProps> = ({ 
+  activeModule, 
+  onSearchClick, 
+  onAddProductClick,
+  onToggleActivityFeed 
+}) => {
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { logout, user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const handleBack = () => {
-    navigate(-1);
-  };
-
-  // Generate breadcrumbs from path
-  const pathSegments = location.pathname.split('/').filter(Boolean);
 
   return (
-    <header className="h-24 bg-surface-container-lowest/60 border-b border-border flex items-center justify-between px-10 transition-all duration-500 sticky top-0 z-40 backdrop-blur-2xl">
-      {/* Left: Breadcrumbs & Back Button (ID 184) */}
-      <div className="flex items-center gap-6 flex-1">
-        <button 
-          onClick={handleBack}
-          className="p-3 hover:bg-surface-container rounded-2xl text-muted-foreground hover:text-primary transition-all active:scale-90 border border-border shadow-sm group"
-        >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-        </button>
-
-        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">
-          <Home className="w-4 h-4 cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')} />
-          <ChevronRight className="w-3 h-3" />
-          <span className="font-serif italic lowercase text-lg tracking-normal opacity-100 text-foreground">
-            {pathSegments.length > 0 ? pathSegments[0].replace(/-/g, ' ') : 'dashboard'}
-          </span>
-          {pathSegments.length > 1 && (
-            <>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-primary tracking-[0.4em] font-black">
-                {pathSegments[pathSegments.length - 1].replace(/-/g, ' ')}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Center: Global Search (Ctrl+K) (ID 3) */}
-      <div className="flex-1 max-w-2xl px-12">
-        <Gate id={3}>
-          <div 
-            onClick={onSearchClick}
-            className={`relative group cursor-pointer transition-all duration-500 ${isSearchFocused ? 'scale-[1.02]' : ''}`}
-          >
-            <Search className={`absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 transition-all duration-500 ${isSearchFocused ? 'text-primary rotate-90' : 'text-muted-foreground'}`} />
-            <div className="w-full pl-16 pr-20 py-4 bg-surface border border-border rounded-[2rem] text-muted-foreground/40 font-black text-[10px] uppercase tracking-[0.2em] flex items-center shadow-inner group-hover:border-primary/30 transition-all">
-              Search features, tools, and reports...
-            </div>
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-2 px-3 py-1.5 bg-surface-container border border-border rounded-xl text-[9px] font-black text-muted-foreground uppercase tracking-widest shadow-sm group-hover:text-primary group-hover:border-primary/20 transition-all">
-              <Command className="w-3 h-3" /> K
+    <header className="h-14 px-6 flex items-center justify-between bg-[#0A0A0A]/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-40">
+      {/* Left: Module Context & Breadcrumbs */}
+      <div className="flex items-center gap-6">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">System Stage</span>
+            <ChevronRight className="w-2 h-2 text-white/10" />
+            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500/60">Active</span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            <h2 className="text-sm font-black tracking-tighter uppercase text-white/90">
+              {activeModule.replace('-', ' ')}
+            </h2>
+            <div className="flex gap-0.5">
+              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+              <div className="w-1 h-1 rounded-full bg-blue-500/20" />
             </div>
           </div>
-        </Gate>
+        </div>
       </div>
 
-      {/* Right: Actions (ID 219, 195, 21, 25) */}
-      <div className="flex items-center gap-6 flex-1 justify-end">
-        {/* Quick-Action Print (ID 21, 25) */}
-        <div className="flex items-center gap-3 border-r border-border pr-6">
-          <Gate id={122}>
-            <button 
-              onClick={onAddProductClick}
-              className="p-3.5 bg-primary/5 rounded-2xl text-primary hover:bg-primary hover:text-primary-foreground transition-all active:scale-90 border border-primary/10 group relative shadow-sm"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="absolute -bottom-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-foreground text-background text-[9px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 shadow-2xl">Add Product (ID 122)</span>
-            </button>
-          </Gate>
-          <Gate id={21}>
-            <button 
-              onClick={() => printThermalReceipt('QUICK-PRINT')}
-              className="p-3.5 bg-surface-container rounded-2xl text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all active:scale-90 border border-border group relative shadow-sm"
-            >
-              <Printer className="w-5 h-5" />
-              <span className="absolute -bottom-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-foreground text-background text-[9px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 shadow-2xl">Thermal (ID 21)</span>
-            </button>
-          </Gate>
-          <Gate id={25}>
-            <button 
-              onClick={() => printA4Invoice('QUICK-PRINT')}
-              className="p-3.5 bg-surface-container rounded-2xl text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all active:scale-90 border border-border group relative shadow-sm"
-            >
-              <FileText className="w-5 h-5" />
-              <span className="absolute -bottom-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-foreground text-background text-[9px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 shadow-2xl">Invoice (ID 25)</span>
-            </button>
-          </Gate>
+      {/* Center: Command Search - Floating Style */}
+      <div className="flex-1 max-w-xl mx-12">
+        <button 
+          onClick={onSearchClick}
+          className="w-full h-9 bg-white/5 border border-white/10 rounded-xl px-4 flex items-center justify-between group hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300"
+        >
+          <div className="flex items-center gap-3">
+            <Search className="w-3.5 h-3.5 text-white/20 group-hover:text-blue-500 transition-colors" />
+            <span className="text-[10px] font-bold text-white/30 tracking-tight uppercase">Execute Command...</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/40 rounded-md border border-white/5">
+            <Command className="w-2.5 h-2.5 text-white/20" />
+            <span className="text-[9px] font-black text-white/20">K</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Right: System & User Intelligence */}
+      <div className="flex items-center gap-4">
+        {/* Real-time Telemetry */}
+        <div className="hidden xl:flex items-center gap-5 px-4 py-1.5 bg-white/[0.02] rounded-xl border border-white/5">
+          <div className="flex flex-col items-end">
+            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">CPU Load</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
+                <div className="w-1/3 h-full bg-blue-500/60" />
+              </div>
+              <span className="text-[9px] font-mono font-bold text-white/60">14%</span>
+            </div>
+          </div>
+          <div className="w-px h-5 bg-white/5" />
+          <div className="flex flex-col items-end">
+            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">Network</span>
+            <div className="flex items-center gap-1">
+              <Network className="w-2.5 h-2.5 text-green-500/60" />
+              <span className="text-[9px] font-mono font-bold text-white/60">12ms</span>
+            </div>
+          </div>
         </div>
 
-        {/* Role Switcher (ID 195) */}
-        <RoleSwitcher />
-
-        {/* Theme Toggle (ID 219) */}
-        <Gate id={219}>
+        {/* Global Actions */}
+        <div className="flex items-center gap-1.5">
+          <button 
+            onClick={onToggleActivityFeed}
+            className="p-2 hover:bg-white/5 rounded-lg transition-all relative group"
+          >
+            <Activity className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full border border-[#0A0A0A]" />
+          </button>
+          
           <button 
             onClick={toggleTheme}
-            className="p-4 bg-surface-container rounded-[1.5rem] text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all active:scale-90 border border-border shadow-sm"
+            className="p-2 hover:bg-white/5 rounded-lg transition-all group"
           >
-            {theme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-white/40 group-hover:text-white" /> : <Moon className="w-4 h-4 text-white/40 group-hover:text-white" />}
           </button>
-        </Gate>
 
-        <button className="p-4 bg-surface-container rounded-[1.5rem] text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all active:scale-90 border border-border relative shadow-sm">
-          <Bell className="w-6 h-6" />
-          <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full border-4 border-surface-container shadow-sm" />
-        </button>
+          <div className="w-px h-6 bg-white/5 mx-1" />
 
-        <div className="h-12 w-[1px] bg-border mx-2 opacity-50" />
+          {/* User Profile - Compact & Pro */}
+          <div className="flex items-center gap-3 pl-1.5 pr-1 py-1 bg-white/[0.02] border border-white/5 rounded-xl">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-black tracking-tight text-white/80">{user?.email?.split('@')[0]}</span>
+              <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">Root Admin</span>
+            </div>
+            <button className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-[10px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-transform">
+              {user?.email?.[0].toUpperCase() || 'U'}
+            </button>
+          </div>
 
-        <div className="flex items-center gap-4">
           <button 
-            onClick={handleLogout}
-            className="p-4 bg-destructive/5 rounded-[1.5rem] text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all active:scale-90 border border-destructive/10 group relative shadow-sm"
+            onClick={logout}
+            className="p-2 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+            title="Logout"
           >
-            <LogOut className="w-6 h-6" />
-            <span className="absolute -bottom-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-foreground text-background text-[9px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 shadow-2xl">Logout Terminal</span>
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
-
-        <Gate id={199}>
-          <div className="hidden xl:flex items-center gap-3 bg-primary/10 px-4 py-2 rounded-2xl border border-primary/20 cursor-pointer hover:bg-primary/20 transition-all group relative">
-            <MapPin className="w-5 h-5 text-primary" />
-            <div className="text-[10px]">
-              <p className="text-primary font-black uppercase tracking-widest leading-none">Lakki Main Branch</p>
-              <p className="text-primary/60 font-black mt-0.5 uppercase tracking-widest text-[8px]">ID 199 • Switch Store</p>
-            </div>
-            
-            {/* Store Switcher Dropdown */}
-            <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2">
-              <p className="px-4 py-2 text-[8px] font-black text-muted-foreground uppercase tracking-widest border-b border-border mb-2">Select Active Node</p>
-              {[
-                { id: 1, name: 'Lakki Main Branch', status: 'Active' },
-                { id: 2, name: 'Salmiya Warehouse', status: 'Ready' },
-                { id: 3, name: 'Hawally Retail', status: 'Ready' },
-                { id: 4, name: 'Fahaheel Hub', status: 'Offline' }
-              ].map(store => (
-                <button key={store.id} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted rounded-xl transition-colors group/item">
-                  <div className="text-left">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-foreground">{store.name}</p>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Node ID {store.id}</p>
-                  </div>
-                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                    store.status === 'Active' ? 'bg-green-500/10 text-green-500' : 
-                    store.status === 'Ready' ? 'bg-primary/10 text-primary' : 'bg-red-500/10 text-red-500'
-                  }`}>
-                    {store.status}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </Gate>
       </div>
     </header>
   );

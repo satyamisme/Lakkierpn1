@@ -1,6 +1,6 @@
 {
-  "name": "Lakki Terminal OS",
-  "description": "Enterprise-grade ERP and POS system for telecommunications and mobile retail networks, featuring advanced logistics, finance, and AI-driven analytics.",
+  "name": "Lakki Enterprise Shell",
+  "description": "A mission-critical ERP & POS ecosystem for high-scale mobile retail. Features a 360-degree feature universe, real-time system pulse, and deep-tech logistics matrix.",
   "requestFramePermissions": [
     "geolocation"
   ]

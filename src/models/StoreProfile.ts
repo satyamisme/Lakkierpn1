@@ -9,6 +9,12 @@ export interface IStoreProfile extends Document {
     longitude: number;
   }; // ID 187: Geofencing
   geofenceRadius: number; // in meters, default 500
+  passwordPolicy: {
+    minLength: number;
+    requireNumbers: boolean;
+    requireSymbols: boolean;
+    expiryDays: number;
+  }; // ID 189: Password Policy
   createdAt: Date;
 }
 
@@ -21,6 +27,12 @@ const StoreProfileSchema: Schema = new Schema({
     longitude: { type: Number, required: true }
   },
   geofenceRadius: { type: Number, default: 500 },
+  passwordPolicy: {
+    minLength: { type: Number, default: 8 },
+    requireNumbers: { type: Boolean, default: true },
+    requireSymbols: { type: Boolean, default: false },
+    expiryDays: { type: Number, default: 90 }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

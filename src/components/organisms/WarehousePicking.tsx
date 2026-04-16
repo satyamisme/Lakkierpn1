@@ -1,15 +1,29 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useWarehouseStore } from "../../store/useWarehouseStore";
-import { Package, CheckCircle, MapPin, Loader2, Search } from "lucide-react";
+import { Package, CheckCircle, MapPin, Loader2, Search, Edit2, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import axios from "axios";
 
 export const WarehousePicking: React.FC = () => {
   const { pickingLists, isLoading, fetchPickingLists, completePicking } = useWarehouseStore();
+  const [editingItem, setEditingItem] = useState<{ listId: string, productId: string, bin: string } | null>(null);
 
   useEffect(() => {
     fetchPickingLists();
   }, []);
+
+  const handleUpdateBin = async () => {
+    if (!editingItem) return;
+    try {
+      await axios.put(`/api/products/${editingItem.productId}`, { binLocation: editingItem.bin });
+      toast.success("Bin location updated");
+      setEditingItem(null);
+      fetchPickingLists();
+    } catch (error) {
+      toast.error("Failed to update bin location");
+    }
+  };
 
   const handleComplete = async (id: string) => {
     try {
@@ -65,7 +79,33 @@ export const WarehousePicking: React.FC = () => {
                       <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         <span>SKU: {item.sku}</span>
                         <span className="w-1 h-1 bg-border rounded-full" />
-                        <span className="flex items-center gap-1 text-primary"><MapPin size={10} /> {item.location}</span>
+                        <div className="flex items-center gap-1 group/bin">
+                          <span className="flex items-center gap-1 text-primary"><MapPin size={10} /> 
+                            {editingItem?.listId === list.id && editingItem?.productId === item.productId ? (
+                              <input 
+                                autoFocus
+                                value={editingItem.bin}
+                                onChange={(e) => setEditingItem({ ...editingItem, bin: e.target.value })}
+                                className="bg-white/5 border border-white/10 rounded px-1 text-[10px] w-16 outline-none focus:border-primary"
+                              />
+                            ) : (
+                              item.location
+                            )}
+                          </span>
+                          {editingItem?.listId === list.id && editingItem?.productId === item.productId ? (
+                            <div className="flex gap-1">
+                              <button onClick={handleUpdateBin} className="text-green-500 hover:scale-110 transition-transform"><Check size={10} /></button>
+                              <button onClick={() => setEditingItem(null)} className="text-red-500 hover:scale-110 transition-transform"><X size={10} /></button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => setEditingItem({ listId: list.id, productId: item.productId, bin: item.location })}
+                              className="opacity-0 group-hover/bin:opacity-100 text-muted-foreground hover:text-primary transition-all"
+                            >
+                              <Edit2 size={8} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

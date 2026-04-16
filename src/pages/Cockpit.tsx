@@ -15,42 +15,54 @@ import {
   Clock
 } from 'lucide-react';
 import { Gate } from '../components/PermissionGuard';
+import axios from 'axios';
+import { toast } from 'sonner';
+
+import { useNavigate } from 'react-router-dom';
 
 /**
  * ID 192: Executive Cockpit
  * High-density revenue and security watchtower.
  */
 export const Cockpit: React.FC = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<any[]>([]);
   const [criticalInventory, setCriticalInventory] = useState<any[]>([]);
+  const [nodeDistribution, setNodeDistribution] = useState<any[]>([]);
+  const [slaRisks, setSlaRisks] = useState<any>({ repairRisks: 0, poRisks: 0 });
 
   const fetchCockpitData = async () => {
     try {
       setIsLoading(true);
-      // Simulate fetching from multiple endpoints
-      const [statsRes, inventoryRes] = await Promise.all([
-        fetch('/api/reports/stats', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/inventory/low-stock', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+      const [statsRes, inventoryRes, nodeRes] = await Promise.all([
+        axios.get('/api/reports/stats'),
+        axios.get('/api/inventory/low-stock'),
+        axios.get('/api/inventory/node-distribution')
       ]);
 
-      if (statsRes.ok) {
-        const data = await statsRes.json();
+      if (statsRes.data) {
+        const data = statsRes.data;
         setStats([
-          { label: 'Total Revenue', value: `${data.revenue.toFixed(3)} KD`, trend: '+12.4%', up: true, icon: <DollarSign className="w-5 h-5" /> },
-          { label: 'Target Progress', value: `${data.targetProgress}%`, trend: 'On Track', up: true, icon: <Activity className="w-5 h-5" /> },
-          { label: 'SLA Risks', value: data.slaRisks.toString(), trend: 'Critical', up: false, icon: <AlertTriangle className="w-5 h-5" /> },
-          { label: 'Units Sold', value: data.units.toLocaleString(), trend: '+5.2%', up: true, icon: <Package className="w-5 h-5" /> },
+          { label: 'Total Revenue', value: `${data.revenue.toFixed(3)} KD`, trend: '+12.4%', up: true, icon: <DollarSign className="w-5 h-5" />, path: 'exec/revenue' },
+          { label: 'Target Progress', value: `${data.targetProgress}%`, trend: 'On Track', up: true, icon: <Activity className="w-5 h-5" />, path: 'exec/comparison' },
+          { label: 'SLA Risks', value: data.slaRisks.toString(), trend: 'Critical', up: false, icon: <AlertTriangle className="w-5 h-5" />, path: 'exec/anomalies' },
+          { label: 'Units Sold', value: data.units.toLocaleString(), trend: '+5.2%', up: true, icon: <Package className="w-5 h-5" />, path: 'exec/affinity' },
         ]);
+        setSlaRisks(data.breakdown || { repairRisks: 0, poRisks: 0 });
       }
       
-      if (inventoryRes.ok) {
-        const lowStock = await inventoryRes.json();
-        setCriticalInventory(lowStock.slice(0, 4));
+      if (inventoryRes.data) {
+        setCriticalInventory(inventoryRes.data.slice(0, 4));
+      }
+
+      if (nodeRes.data) {
+        setNodeDistribution(nodeRes.data);
       }
 
     } catch (error) {
       console.error("Cockpit fetch error:", error);
+      toast.error("Failed to fetch executive data");
     } finally {
       setIsLoading(false);
     }
@@ -59,6 +71,26 @@ export const Cockpit: React.FC = () => {
   useEffect(() => {
     fetchCockpitData();
   }, []);
+
+  const handleBulkReorder = async () => {
+    try {
+      const res = await axios.post('/api/inventory/bulk-reorder');
+      toast.success(res.data.message);
+      fetchCockpitData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Bulk reorder failed");
+    }
+  };
+
+  const handleCashSweep = async () => {
+    try {
+      const res = await axios.post('/api/finance/cash-sweep');
+      toast.success(`Cash sweep successful: ${res.data.amount.toFixed(3)} KD`);
+      fetchCockpitData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Cash sweep failed");
+    }
+  };
 
   return (
     <div className="space-y-10 pb-20">
@@ -82,8 +114,18 @@ export const Cockpit: React.FC = () => {
           >
             <RefreshCcw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="px-8 py-4 bg-surface-container border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all">Bulk Reorder</button>
-          <button className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">Cash Sweep</button>
+          <button 
+            onClick={handleBulkReorder}
+            className="px-8 py-4 bg-surface-container border border-border rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all"
+          >
+            Bulk Reorder
+          </button>
+          <button 
+            onClick={handleCashSweep}
+            className="px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+          >
+            Cash Sweep
+          </button>
         </div>
       </header>
 
@@ -94,7 +136,8 @@ export const Cockpit: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-surface-container-lowest border border-border p-8 rounded-[2.5rem] shadow-sm group hover:border-primary/50 transition-all relative overflow-hidden"
+            onClick={() => navigate(`/${stat.path}`)}
+            className="bg-surface-container-lowest border border-border p-8 rounded-[2.5rem] shadow-sm group hover:border-primary/50 transition-all relative overflow-hidden cursor-pointer"
           >
             <div className="flex justify-between items-start mb-6 relative z-10">
               <div className="p-3 bg-muted rounded-2xl text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">
@@ -106,9 +149,12 @@ export const Cockpit: React.FC = () => {
               </div>
             </div>
             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2 relative z-10">{stat.label}</p>
-            <h2 className={`text-3xl font-mono font-black relative z-10 ${stat.label === 'Total Revenue' ? 'text-primary' : 'text-foreground'}`}>
-              {stat.value}
-            </h2>
+            <div className="flex items-center justify-between relative z-10">
+              <h2 className={`text-3xl font-mono font-black ${stat.label === 'Total Revenue' ? 'text-primary' : 'text-foreground'}`}>
+                {stat.value}
+              </h2>
+              <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-40 transition-opacity" />
+            </div>
             <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all" />
           </motion.div>
         ))}
@@ -148,7 +194,7 @@ export const Cockpit: React.FC = () => {
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-muted rounded-xl overflow-hidden grayscale group-hover:grayscale-0 transition-all">
-                            <img src={`https://picsum.photos/seed/${item.sku}/100/100`} alt="" className="w-full h-full object-cover" />
+                            <img src={`https://picsum.photos/seed/${item.sku}/100/100`} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                           <span className="font-black uppercase text-xs tracking-tighter">{item.name}</span>
                         </div>
@@ -190,12 +236,12 @@ export const Cockpit: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {[
+                  {(nodeDistribution.length > 0 ? nodeDistribution : [
                     { node: 'Salmiya Branch #04', stock: 1240, transit: 150, value: 45200.000, status: 'Optimal' },
                     { node: 'Hawally Hub #01', stock: 3850, transit: 420, value: 128400.000, status: 'Surplus' },
                     { node: 'Main Warehouse', stock: 12400, transit: 0, value: 842900.000, status: 'Optimal' },
                     { node: 'Airport Kiosk #09', stock: 180, transit: 45, value: 12400.000, status: 'Low' },
-                  ].map((node) => (
+                  ]).map((node) => (
                     <tr key={node.node} className="hover:bg-muted/10 transition-colors group">
                       <td className="px-8 py-6 font-black uppercase text-xs tracking-tighter">{node.node}</td>
                       <td className="px-8 py-6 text-right font-mono font-black">{node.stock.toLocaleString()}</td>
@@ -222,8 +268,8 @@ export const Cockpit: React.FC = () => {
             <h3 className="text-2xl font-serif italic mb-8">SLA Risk Watchtower</h3>
             <div className="space-y-6">
               {[
-                { label: 'Repair Ticket Breach', value: '8', status: 'critical', desc: 'Tickets > 48h without QC' },
-                { label: 'B2B Order Breach', value: '2', status: 'warning', desc: 'PO pending > 5 days' },
+                { label: 'Repair Ticket Breach', value: slaRisks.repairRisks.toString(), status: slaRisks.repairRisks > 5 ? 'critical' : 'normal', desc: 'Tickets > 48h without QC' },
+                { label: 'B2B Order Breach', value: slaRisks.poRisks.toString(), status: slaRisks.poRisks > 0 ? 'warning' : 'normal', desc: 'PO pending > 5 days' },
                 { label: 'RMA Validation', value: '14', status: 'normal', desc: 'Supplier returns pending' },
               ].map((risk) => (
                 <div key={risk.label} className="p-6 bg-muted/20 rounded-[2rem] border border-border group hover:border-red-500/30 transition-all">

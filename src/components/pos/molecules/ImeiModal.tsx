@@ -8,12 +8,36 @@ interface ImeiModalProps {
   onClose: () => void;
   onConfirm: (imei: string) => void;
   productName: string;
+  variantId?: string;
+  productId?: string;
 }
 
-export const ImeiModal: React.FC<ImeiModalProps> = ({ isOpen, onClose, onConfirm, productName }) => {
+export const ImeiModal: React.FC<ImeiModalProps> = ({ isOpen, onClose, onConfirm, productName, variantId, productId }) => {
   const [imei, setImei] = useState("");
   const [error, setError] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [availableImeis, setAvailableImeis] = useState<string[]>([]);
+  const [isLoadingImeis, setIsLoadingImeis] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && (variantId || productId)) {
+      fetchAvailableImeis();
+    }
+  }, [isOpen, variantId, productId]);
+
+  const fetchAvailableImeis = async () => {
+    try {
+      setIsLoadingImeis(true);
+      const res = await axios.get(`/api/inventory/available-imeis`, {
+        params: { variantId, productId }
+      });
+      setAvailableImeis(res.data);
+    } catch (err) {
+      console.error("Failed to fetch IMEIs", err);
+    } finally {
+      setIsLoadingImeis(false);
+    }
+  };
 
   const validateImei = async () => {
     if (imei.length !== 15) {
@@ -69,16 +93,46 @@ export const ImeiModal: React.FC<ImeiModalProps> = ({ isOpen, onClose, onConfirm
 
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Enter 15-Digit IMEI</label>
-                <input
-                  type="text"
-                  maxLength={15}
-                  value={imei}
-                  onChange={(e) => setImei(e.target.value.replace(/\D/g, ""))}
-                  placeholder="000000000000000"
-                  className="w-full bg-muted border border-border p-4 text-xl font-mono tracking-[0.2em] text-center focus:border-primary outline-none transition-all"
-                  autoFocus
-                />
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Select or Scan Identifier</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={imei}
+                    onChange={(e) => setImei(e.target.value)}
+                    placeholder="Scan or Enter IMEI/Serial..."
+                    className="w-full bg-muted border border-border p-4 text-sm font-mono tracking-widest text-center focus:border-primary outline-none transition-all rounded-xl"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">Available in Stock</label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2 no-scrollbar">
+                  {isLoadingImeis ? (
+                    <div className="col-span-2 py-8 flex justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary/20" />
+                    </div>
+                  ) : availableImeis.length > 0 ? (
+                    availableImeis.map((id) => (
+                      <button 
+                        key={id}
+                        onClick={() => {
+                          setImei(id);
+                          onConfirm(id);
+                          onClose();
+                        }}
+                        className="p-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-mono font-bold text-white/60 hover:text-white hover:bg-primary/20 hover:border-primary/50 transition-all text-center"
+                      >
+                        {id}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-2 py-8 text-center border border-dashed border-white/5 rounded-2xl">
+                      <p className="text-[8px] font-black text-white/10 uppercase tracking-widest">No identifiers found</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error && (

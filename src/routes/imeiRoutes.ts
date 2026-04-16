@@ -16,8 +16,8 @@ router.get('/check/:imei', authenticate, async (req, res) => {
       return res.json({ exists: false, available: false, error: 'IMEI not found' });
     }
     
-    if (imeiDoc.status === 'sold') {
-      return res.json({ exists: true, available: false, error: 'IMEI already sold' });
+    if (imeiDoc.status !== 'in_stock') {
+      return res.json({ exists: true, available: false, error: `IMEI status is ${imeiDoc.status}` });
     }
 
     // Check if reserved

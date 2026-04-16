@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Wrench, ClipboardCheck, Receipt, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gate } from '../PermissionGuard';
+import { toast } from 'sonner';
 import { JobCardForm } from './JobCardForm';
 import { FaultMatrix } from './FaultMatrix';
 import { calculateEstimatedQuote } from '../../utils/repairLogic';
@@ -38,7 +39,7 @@ export const RepairDashboard: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.customerName || !formData.phoneModel || !formData.imei) {
-      alert("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -57,16 +58,17 @@ export const RepairDashboard: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setSuccessData(data);
+        toast.success("Job card created successfully");
         // Reset form
         setFormData({ customerName: '', customerPhone: '', phoneModel: '', imei: '' });
         setSelectedFaults([]);
       } else {
         const error = await response.json();
-        alert(error.error || "Failed to create job card");
+        toast.error(error.error || "Failed to create job card");
       }
     } catch (error) {
       console.error("Submission error:", error);
-      alert("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

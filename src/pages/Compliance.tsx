@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { ComplianceReport } from "../components/organisms/ComplianceReport";
+import { AuditLogViewer } from "../components/organisms/AuditLogViewer";
+import { ZReportReconciler } from "../components/organisms/ZReportReconciler";
 import { ShieldCheck, List, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-const CompliancePage: React.FC = () => {
+export const Compliance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"export" | "audit" | "z-report">("export");
 
   const tabs = [
@@ -45,22 +47,12 @@ const CompliancePage: React.FC = () => {
           transition={{ duration: 0.2 }}
         >
           {activeTab === "export" && <ComplianceReport />}
-          {activeTab === "audit" && (
-            <div className="bg-card border border-border p-20 text-center rounded-[2.5rem] opacity-50">
-              <List size={48} className="mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest">Audit Log Viewer Coming Soon</p>
-            </div>
-          )}
-          {activeTab === "z-report" && (
-            <div className="bg-card border border-border p-20 text-center rounded-[2.5rem] opacity-50">
-              <ShieldCheck size={48} className="mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest">Z-Report Reconciler Coming Soon</p>
-            </div>
-          )}
+          {activeTab === "audit" && <AuditLogViewer />}
+          {activeTab === "z-report" && <ZReportReconciler />}
         </motion.div>
       </AnimatePresence>
     </div>
   );
 };
 
-export default CompliancePage;
+// export default CompliancePage;

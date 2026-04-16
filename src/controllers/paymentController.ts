@@ -17,7 +17,6 @@ export const paymentController = {
       
       if (!stripe) {
         // Mock fallback (ID 237)
-        console.log(`[MOCK PAYMENT] Creating intent for ${amount} ${currency}`);
         return res.json({
           clientSecret: 'mock_secret_' + Math.random().toString(36).substr(2, 9),
           isMock: true

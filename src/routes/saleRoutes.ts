@@ -1,10 +1,13 @@
 import express from 'express';
 import Sale from '../models/Sale.js';
 import Product from '../models/Product.js';
+import Variant from '../models/Variant.js';
 import Inventory from '../models/Inventory.js';
-import Imei from '../models/Imei.js';
+import SerialNumber, { Imei } from '../models/Imei.js';
 import ImeiReservation from '../models/ImeiReservation.js';
 import Customer from '../models/Customer.js';
+import Return from '../models/Return.js';
+import ImeiHistory from '../models/ImeiHistory.js';
 import { sendTemplate } from '../services/whatsappService.js';
 import mongoose from 'mongoose';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
@@ -15,30 +18,49 @@ const router = express.Router();
 router.post('/', authenticate, requirePermission(1), async (req, res) => {
   try {
     const { items, payments, subtotal, discount, total, status, sessionId, customerId, storeId } = req.body;
-    console.log(`Processing sale: ${status}, Total: ${total}`);
     
-    // 0. Validate IMEI and Stock for products
+    // 0. Validate IMEI and Stock for products/variants
     for (const item of items) {
       const product = await Product.findById(item.productId);
       if (!product) {
         throw new Error(`Product not found: ${item.productId}`);
       }
-      if (product.isImeiRequired && !item.imei) {
-        throw new Error(`IMEI required for product: ${product.name}`);
+
+      let variant = null;
+      if (item.variantId) {
+        variant = await Variant.findById(item.variantId);
+        if (!variant) throw new Error(`Variant not found: ${item.variantId}`);
       }
+
+      const trackingMethod = variant ? variant.trackingMethod : 'none';
+      const requiresImei = trackingMethod === 'imei' || trackingMethod === 'serial';
+
+      if (requiresImei && !item.imei) {
+        throw new Error(`Serial/IMEI required for item: ${variant ? Object.values(variant.attributes).join('/') : product.name}`);
+      }
+
       if (item.imei) {
-        const imeiDoc = await Imei.findOne({ imei: item.imei, productId: item.productId });
-        if (!imeiDoc) {
-          throw new Error(`IMEI ${item.imei} not found in system for this product.`);
+        const serialDoc = await SerialNumber.findOne({ 
+          identifier: item.imei, 
+          productId: item.productId,
+          ...(item.variantId ? { variantId: item.variantId } : {})
+        });
+        if (!serialDoc) {
+          throw new Error(`Serial/IMEI ${item.imei} not found in system for this item.`);
         }
-        if (imeiDoc.status !== 'in_stock' && status === 'completed') {
-          throw new Error(`IMEI ${item.imei} is not available (Status: ${imeiDoc.status})`);
+        if (serialDoc.status !== 'in_stock' && status === 'completed') {
+          throw new Error(`Serial/IMEI ${item.imei} is not available (Status: ${serialDoc.status})`);
         }
       }
+
       if (status === 'completed') {
-        const inventory = await Inventory.findOne({ productId: item.productId, storeId });
+        const inventoryQuery = item.variantId 
+          ? { variantId: item.variantId, storeId }
+          : { productId: item.productId, storeId };
+          
+        const inventory = await Inventory.findOne(inventoryQuery);
         if (!inventory || inventory.quantity < item.quantity) {
-          throw new Error(`Insufficient stock for product: ${product.name} at this store.`);
+          throw new Error(`Insufficient stock for item at this store.`);
         }
       }
     }
@@ -71,14 +93,16 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
     if (status === 'completed') {
       // 4. Deduct stock and mark IMEIs as sold
       for (const item of items) {
-        // FIX: 1A - Atomic stock deduction
-        const inventory = await Inventory.findOne({ productId: item.productId, storeId });
+        const inventoryQuery = item.variantId 
+          ? { variantId: item.variantId, storeId }
+          : { productId: item.productId, storeId };
+
+        const inventory = await Inventory.findOne(inventoryQuery);
         const currentVersion = inventory ? inventory.version : 0;
         
         const result = await Inventory.findOneAndUpdate(
           { 
-            productId: item.productId, 
-            storeId, 
+            ...inventoryQuery,
             quantity: { $gte: item.quantity }, 
             version: currentVersion 
           },
@@ -89,19 +113,31 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
         );
 
         if (!result) {
-          throw new Error(`Stock changed or insufficient for product: ${item.productId}. Please refresh cart.`);
+          throw new Error(`Stock changed or insufficient for item: ${item.productId}. Please refresh cart.`);
         }
 
-        // Also update global product stock for backward compatibility/reporting
+        // Update variant stock if applicable
+        if (item.variantId) {
+          await Variant.findByIdAndUpdate(item.variantId, { $inc: { stock: -item.quantity } });
+        }
+        
+        // Update global product stock
         await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } });
         
         if (item.imei) {
-          await Imei.findOneAndUpdate(
-            { imei: item.imei },
+          await SerialNumber.findOneAndUpdate(
+            { identifier: item.imei },
             { status: 'sold', soldAt: new Date(), customerId }
           );
-          // FIX: 1B - Delete reservation
           await ImeiReservation.deleteOne({ imei: item.imei });
+
+          // Create history record
+          await new ImeiHistory({
+            imei: item.imei,
+            eventType: 'sold',
+            referenceId: sale._id,
+            userId: (req as any).user.id
+          }).save();
         }
       }
 
@@ -160,10 +196,14 @@ router.patch('/:id/void', authenticate, requirePermission(29), async (req, res) 
     if (sale.status === 'completed') {
       // Restore stock and IMEI status
       for (const item of sale.items) {
+        if (item.variantId) {
+          await Variant.findByIdAndUpdate(item.variantId, { $inc: { stock: item.quantity } }).session(session);
+        }
         await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } }).session(session);
+        
         if (item.imei) {
-          await Imei.findOneAndUpdate(
-            { imei: item.imei },
+          await SerialNumber.findOneAndUpdate(
+            { identifier: item.imei },
             { status: 'in_stock', $unset: { soldAt: 1 } }
           ).session(session);
         }
@@ -178,6 +218,97 @@ router.patch('/:id/void', authenticate, requirePermission(29), async (req, res) 
   } catch (error) {
     await session.abortTransaction();
     res.status(500).json({ error: 'Voiding failed' });
+  } finally {
+    session.endSession();
+  }
+});
+
+// GET /lookup?q=... (lookup sale by receipt or IMEI)
+router.get('/lookup', authenticate, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.json(null);
+
+    // Search by saleNumber
+    let sale = await Sale.findOne({ saleNumber: q as string }).populate('customerId');
+    
+    if (!sale) {
+      // Search by IMEI in items
+      sale = await Sale.findOne({ 'items.imei': q as string }).populate('customerId');
+    }
+
+    if (!sale) return res.status(404).json({ error: 'Sale not found' });
+    
+    res.json(sale);
+  } catch (error) {
+    res.status(500).json({ error: 'Lookup failed' });
+  }
+});
+
+// POST /returns (process return) - requires permission 330 (Manager PIN)
+router.post('/returns', authenticate, requirePermission(330), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { saleId, items, refundMethod, totalRefund } = req.body;
+    
+    const sale = await Sale.findById(saleId).session(session);
+    if (!sale) throw new Error('Sale not found');
+
+    const returnNumber = 'RET-' + Date.now().toString().slice(-6);
+    const returnDoc = new Return({
+      returnNumber,
+      saleId,
+      items,
+      totalRefund,
+      refundMethod,
+      processedBy: (req as any).user.id
+    });
+    await returnDoc.save({ session });
+
+    for (const item of items) {
+      // Update SerialNumber status
+      if (item.identifier) {
+        const newStatus = item.condition === 'restock' ? 'in_stock' : 'defective';
+        await SerialNumber.findOneAndUpdate(
+          { identifier: item.identifier },
+          { status: newStatus, $unset: { soldAt: 1 } }
+        ).session(session);
+
+        // Create history record
+        await new ImeiHistory({
+          imei: item.identifier,
+          eventType: 'returned',
+          referenceId: returnDoc._id,
+          userId: (req as any).user.id
+        }).save({ session });
+      }
+
+      // Update stock if restocking
+      if (item.condition === 'restock') {
+        if (item.variantId) {
+          await Variant.findByIdAndUpdate(item.variantId, { $inc: { stock: item.quantity } }).session(session);
+        }
+        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } }).session(session);
+        
+        // Update store inventory
+        const inventoryQuery = item.variantId 
+          ? { variantId: item.variantId, storeId: sale.storeId }
+          : { productId: item.productId, storeId: sale.storeId };
+          
+        await Inventory.findOneAndUpdate(
+          inventoryQuery,
+          { $inc: { quantity: item.quantity, version: 1 } }
+        ).session(session);
+      }
+    }
+
+    await session.commitTransaction();
+    res.status(201).json(returnDoc);
+  } catch (error: any) {
+    await session.abortTransaction();
+    console.error("Return processing error:", error);
+    res.status(500).json({ error: error.message || 'Return failed' });
   } finally {
     session.endSession();
   }
