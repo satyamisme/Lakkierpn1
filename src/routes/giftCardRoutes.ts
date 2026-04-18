@@ -1,16 +1,81 @@
-import { Router } from 'express';
-import { giftCardController } from '../controllers/giftCardController.js';
-import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
+import express from 'express';
+import GiftCard from '../models/GiftCard.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 
-const router = Router();
+const router = express.Router();
 
-router.use(authenticate);
+// GET all gift cards
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const cards = await GiftCard.find({ storeId: (req as any).user.storeId }).populate('customerId');
+    res.json(cards);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch gift cards' });
+  }
+});
 
-router.post('/', requirePermission(336), giftCardController.create);
-router.get('/', requirePermission(336), giftCardController.getAll);
-router.post('/validate', requirePermission(336), giftCardController.validate);
-router.get('/:id', requirePermission(336), giftCardController.getById);
-router.post('/:code/redeem', requirePermission(336), giftCardController.redeem);
-router.patch('/:id/void', requirePermission(336), giftCardController.void);
+// GET gift card by code
+router.get('/:code', authenticate, async (req, res) => {
+  try {
+    const card = await GiftCard.findOne({ 
+      code: req.params.code, 
+      storeId: (req as any).user.storeId,
+      status: 'active'
+    });
+    if (!card) return res.status(404).json({ error: 'Valid gift card not found' });
+    
+    if (card.expiryDate && new Date() > card.expiryDate) {
+      card.status = 'expired';
+      await card.save();
+      return res.status(400).json({ error: 'Gift card has expired' });
+    }
+
+    res.json(card);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch gift card' });
+  }
+});
+
+// CREATE a gift card (Sale of a gift card)
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { code, balance, expiryDate, customerId } = req.body;
+    const newCard = new GiftCard({
+      code,
+      initialBalance: balance,
+      currentBalance: balance,
+      expiryDate,
+      customerId,
+      storeId: (req as any).user.storeId
+    });
+    await newCard.save();
+    res.status(201).json(newCard);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create gift card' });
+  }
+});
+
+// USE a gift card
+router.post('/redeem', authenticate, async (req, res) => {
+  try {
+    const { code, amount } = req.body;
+    const card = await GiftCard.findOne({ 
+      code, 
+      storeId: (req as any).user.storeId,
+      status: 'active'
+    });
+    
+    if (!card) return res.status(404).json({ error: 'Valid gift card not found' });
+    if (card.currentBalance < amount) return res.status(400).json({ error: 'Insufficient balance' });
+
+    card.currentBalance -= amount;
+    if (card.currentBalance === 0) card.status = 'exhausted';
+    
+    await card.save();
+    res.json(card);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to redeem gift card' });
+  }
+});
 
 export default router;

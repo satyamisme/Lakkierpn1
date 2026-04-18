@@ -1,7 +1,7 @@
 import React from "react";
 import { HardwareSettings } from "../components/organisms/HardwareSettings";
 
-const HardwarePage: React.FC = () => {
+export const Hardware: React.FC = () => {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
       <div>
@@ -12,5 +12,3 @@ const HardwarePage: React.FC = () => {
     </div>
   );
 };
-
-export default HardwarePage;

@@ -3,9 +3,49 @@ import Product from '../models/Product.js';
 import Sale from '../models/Sale.js';
 import Customer from '../models/Customer.js';
 import Repair from '../models/Repair.js';
+import Imei from '../models/Imei.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// GET /deep-product (ID 319) - Focused on POS high-density search
+router.get('/deep-product', authenticate, async (req, res) => {
+  try {
+    const query = req.query.q as string;
+    if (!query || query.length < 2) return res.json({ products: [], assets: [] });
+
+    // 1. Search for specific asset identifiers (IMEI/Serial)
+    const assets = await Imei.find({
+      $or: [
+        { identifier: { $regex: query, $options: 'i' } },
+        { imei: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .populate('productId')
+    .limit(10);
+
+    // 2. Search for general products
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { sku: { $regex: query, $options: 'i' } },
+        { brand: { $regex: query, $options: 'i' } }
+      ]
+    })
+    .limit(20);
+
+    res.json({
+      products,
+      assets: assets.map(a => ({
+        ...a.toObject(),
+        product: a.productId // flattened for easier consumer usage
+      }))
+    });
+  } catch (error) {
+    console.error("Deep search error:", error);
+    res.status(500).json({ error: 'Deep product search failed' });
+  }
+});
 
 // GET /unified (ID 319)
 router.get('/unified', authenticate, async (req, res) => {

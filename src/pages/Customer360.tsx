@@ -128,7 +128,7 @@ export const Customer360: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
             <div className="lg:col-span-3 space-y-8">
               <div className="flex gap-2 p-1.5 bg-surface-container border border-border rounded-2xl w-fit shadow-sm">
-                {['repairs', 'sales', 'loyalty'].map((tab) => (
+                {['repairs', 'sales', 'loyalty', 'timeline'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -143,6 +143,58 @@ export const Customer360: React.FC = () => {
 
               <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-10 min-h-[500px] shadow-sm">
                 <AnimatePresence mode="wait">
+                  {activeTab === 'timeline' && (
+                    <motion.div 
+                      key="timeline"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-12"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-3xl font-serif italic text-foreground/80">Affinity Vector Timeline</h3>
+                        <div className="flex items-center gap-2">
+                           <span className="w-2 h-2 rounded-full bg-primary" />
+                           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">360 Synapse Active</span>
+                        </div>
+                      </div>
+
+                      <div className="relative pl-12 space-y-12 before:absolute before:left-[1.85rem] before:top-2 before:bottom-2 before:w-px before:bg-border before:border-l before:border-dashed">
+                        {[
+                          ...data.history.sales.map(s => ({ ...s, type: 'sale', timestamp: s.createdAt })),
+                          ...data.history.repairs.map(r => ({ ...r, type: 'repair', timestamp: r.createdAt })),
+                          ...data.history.loyalty.map(l => ({ ...l, type: 'loyalty', timestamp: l.createdAt }))
+                        ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 10).map((event, idx) => (
+                          <div key={idx} className="relative">
+                            <div className="absolute -left-12 top-0 w-10 h-10 rounded-full bg-surface border border-border shadow-sm flex items-center justify-center z-10">
+                              {event.type === 'sale' && <ShoppingBag size={14} className="text-emerald-500" />}
+                              {event.type === 'repair' && <Wrench size={14} className="text-primary" />}
+                              {event.type === 'loyalty' && <Star size={14} className="text-amber-500" />}
+                            </div>
+                            <div className="bg-muted/30 p-6 rounded-3xl border border-border shadow-inner hover:border-primary/20 transition-colors">
+                              <div className="flex justify-between items-start mb-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
+                                  {new Date(event.timestamp).toLocaleDateString()} // {new Date(event.timestamp).toLocaleTimeString()}
+                                </p>
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                  event.type === 'sale' ? 'bg-emerald-500/10 text-emerald-500' :
+                                  event.type === 'repair' ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'
+                                }`}>
+                                  {event.type}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-black uppercase tracking-tight text-foreground/80">
+                                {event.type === 'sale' ? `TRANSACTION ${event.saleNumber || 'INV-'+event._id.slice(-4).toUpperCase()}` : 
+                                 event.type === 'repair' ? `REPAIR NODE: ${event.phoneModel}` : `LOYALTY SYNC: ${event.reason}`}
+                              </h4>
+                              {event.total && <p className="text-[9px] font-mono font-black text-primary mt-2">{event.total.toFixed(3)} KD</p>}
+                              {event.issue && <p className="text-[10px] text-muted-foreground mt-2 font-medium italic">"{event.issue}"</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
                   {activeTab === 'repairs' && (
                     <motion.div 
                       key="repairs"

@@ -9,11 +9,22 @@ export const auditLogger = async (req, res, next) => {
       
       // Map path to entity (ID 195)
       const pathPart = req.path.split('/')[1] === 'api' ? req.path.split('/')[2] : req.path.split('/')[1];
-      const entityMap: Record<string, 'sale' | 'repair' | 'product' | 'user'> = {
+      const entityMap: Record<string, any> = {
         'sales': 'sale',
         'repairs': 'repair',
         'products': 'product',
-        'users': 'user'
+        'users': 'user',
+        'customers': 'customer',
+        'inventory': 'inventory',
+        'transfers': 'transfer',
+        'stores': 'store',
+        'shift': 'shift',
+        'loyalty': 'loyalty',
+        'finance': 'finance',
+        'hr': 'hrm',
+        'leave': 'hrm',
+        'marketing': 'marketing',
+        'warehouse': 'warehouse'
       };
       
       const entity = entityMap[pathPart];

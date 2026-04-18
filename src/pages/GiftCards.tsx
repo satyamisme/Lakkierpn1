@@ -1,7 +1,7 @@
 import React from "react";
 import { GiftCardForm } from "../components/organisms/GiftCardForm";
 
-const GiftCardsPage: React.FC = () => {
+export const GiftCards: React.FC = () => {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
       <div>
@@ -12,5 +12,3 @@ const GiftCardsPage: React.FC = () => {
     </div>
   );
 };
-
-export default GiftCardsPage;

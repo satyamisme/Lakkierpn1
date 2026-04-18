@@ -22,9 +22,9 @@ export interface ZReport {
 }
 
 export const complianceService = {
-  // GET /api/compliance/logs
+  // GET /api/audit/logs
   getAuditLogs: async (params?: any) => {
-    const response = await client.get<AuditLog[]>("/compliance/logs", { params });
+    const response = await client.get<any>("/audit/logs", { params });
     return response.data;
   },
 

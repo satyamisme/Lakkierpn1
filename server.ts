@@ -41,6 +41,7 @@ import commissionRoutes from "./src/routes/commissionRoutes.js";
 import complianceRoutes from "./src/routes/complianceRoutes.js";
 import qualityControlRoutes from "./src/routes/qualityControlRoutes.js";
 import rmaRoutes from "./src/routes/rmaRoutes.js";
+import returnRoutes from "./src/routes/returnRoutes.js";
 import webhookRoutes from "./src/routes/webhookRoutes.js";
 import storeRoutes from "./src/routes/storeRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
@@ -55,6 +56,7 @@ import { initBackupCron } from "./src/services/backupService.js";
 import StoreProfile from "./src/models/StoreProfile.js";
 import User from "./src/models/User.js";
 import Product from "./src/models/Product.js";
+import Store from "./src/models/Store.js";
 
 dotenv.config();
 
@@ -101,13 +103,29 @@ async function startServer() {
       const storeCount = await StoreProfile.countDocuments();
       if (storeCount === 0) {
         await StoreProfile.create({
-          name: "Lakki Phone Main Branch",
+          name: "Lakki Phone Main Branch Profile",
           address: "Kuwait City, Kuwait",
           whitelistedIPs: ["127.0.0.1", "::1"],
           location: { latitude: 29.3759, longitude: 47.9774 }, // Kuwait City coords
           geofenceRadius: 500
         });
         console.log("Seeded Store Profile");
+      }
+
+      const actualStoreCount = await Store.countDocuments();
+      let defaultStoreId = null;
+      if (actualStoreCount === 0) {
+        const defaultStore = await Store.create({
+          name: "Main Branch (OBSIDIAN)",
+          address: "Kuwait City, Al-Hamra Tower",
+          phone: "+965 2222 1111",
+          status: "active"
+        });
+        defaultStoreId = defaultStore._id;
+        console.log("Seeded Main Store");
+      } else {
+        const store = await Store.findOne();
+        defaultStoreId = store?._id;
       }
 
       const hashedPassword = await bcrypt.hash("admin123", 10);
@@ -119,6 +137,7 @@ async function startServer() {
           name: "Super Admin",
           password: hashedPassword,
           role: "superadmin",
+          storeId: defaultStoreId,
           permissions: [0, ...fullPermissions]
         },
         { upsert: true, new: true }
@@ -130,6 +149,7 @@ async function startServer() {
           name: "Satyam Admin",
           password: hashedPassword,
           role: "superadmin",
+          storeId: defaultStoreId,
           permissions: [0, ...fullPermissions]
         },
         { upsert: true, new: true }
@@ -206,6 +226,7 @@ async function startServer() {
   app.use("/api/compliance", complianceRoutes);
   app.use("/api/quality-control", qualityControlRoutes);
   app.use("/api/returns", rmaRoutes);
+  app.use("/api/pos-returns", returnRoutes);
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/stores", storeRoutes);
   app.use("/api/users", userRoutes);

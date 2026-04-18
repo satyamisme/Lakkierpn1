@@ -23,10 +23,13 @@ export const customerController = {
 
   search: async (req: Request, res: Response) => {
     try {
-      const { phone } = req.query;
-      if (!phone) return res.status(400).json({ error: 'Phone query parameter is required' });
+      const { q } = req.query;
+      if (!q) return res.status(400).json({ error: 'Search query parameter (q) is required' });
       const customers = await Customer.find({ 
-        phone: new RegExp(phone as string, 'i') 
+        $or: [
+          { phone: new RegExp(q as string, 'i') },
+          { name: new RegExp(q as string, 'i') }
+        ]
       });
       res.json(customers);
     } catch (error: any) {

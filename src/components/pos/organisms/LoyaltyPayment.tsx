@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Star, Search, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Gate } from '../../PermissionGuard';
@@ -8,14 +8,38 @@ import { toast } from 'sonner';
 interface LoyaltyPaymentProps {
   onRedeem: (discount: number) => void;
   totalAmount: number;
+  customerId?: string;
 }
 
-export const LoyaltyPayment: React.FC<LoyaltyPaymentProps> = ({ onRedeem, totalAmount }) => {
+export const LoyaltyPayment: React.FC<LoyaltyPaymentProps> = ({ onRedeem, totalAmount, customerId }) => {
   const [phone, setPhone] = useState('');
   const [customer, setCustomer] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (customerId) {
+      fetchCustomer(customerId);
+    } else {
+      setCustomer(null);
+    }
+  }, [customerId]);
+
+  const fetchCustomer = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/customers/${id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      setCustomer(data);
+    } catch (err) {
+      console.error('Fetch customer failed', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const searchCustomer = async () => {
     setIsLoading(true);

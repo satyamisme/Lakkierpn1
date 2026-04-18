@@ -13,12 +13,15 @@ export interface ISale extends Document {
     amount: number;
   }[];
   subtotal: number;
+  tax: number;
   discount: number;
   total: number;
-  status: 'completed' | 'voided' | 'held';
+  status: 'completed' | 'voided' | 'held' | 'layaway';
   saleNumber: string;
   sessionId?: string;
+  notes?: string;
   storeId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   customerId?: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -40,16 +43,19 @@ const SaleSchema: Schema = new Schema({
     amount: { type: Number, required: true },
   }],
   subtotal: { type: Number, required: true },
+  tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
   total: { type: Number, required: true },
   status: { 
     type: String, 
-    enum: ['completed', 'voided', 'held'], 
+    enum: ['completed', 'voided', 'held', 'layaway'], 
     default: 'completed' 
   },
   saleNumber: { type: String, unique: true },
   sessionId: { type: String },
+  notes: { type: String },
   storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },
 }, { timestamps: true });
 

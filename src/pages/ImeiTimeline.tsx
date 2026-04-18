@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { ImeiTimeline } from "../components/organisms/ImeiTimeline";
+import { ImeiTimeline as ImeiTimelineOrg } from "../components/organisms/ImeiTimeline";
 import { useImeiTimelineStore } from "../store/useImeiTimelineStore";
 import { Search, Smartphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const ImeiTimelinePage: React.FC = () => {
+export const ImeiTimeline: React.FC = () => {
   const [imei, setImei] = useState("");
   const { history, isLoading, fetchHistory } = useImeiTimelineStore();
 
@@ -46,9 +46,7 @@ const ImeiTimelinePage: React.FC = () => {
         </button>
       </form>
 
-      {history.length > 0 && <ImeiTimeline imei={imei} history={history} />}
+      {history.length > 0 && <ImeiTimelineOrg imei={imei} history={history} />}
     </div>
   );
 };
-
-export default ImeiTimelinePage;

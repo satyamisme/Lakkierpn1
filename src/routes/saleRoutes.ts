@@ -6,6 +6,7 @@ import Inventory from '../models/Inventory.js';
 import SerialNumber, { Imei } from '../models/Imei.js';
 import ImeiReservation from '../models/ImeiReservation.js';
 import Customer from '../models/Customer.js';
+import LoyaltyTransaction from '../models/LoyaltyTransaction.js';
 import Return from '../models/Return.js';
 import ImeiHistory from '../models/ImeiHistory.js';
 import { sendTemplate } from '../services/whatsappService.js';
@@ -13,6 +14,43 @@ import mongoose from 'mongoose';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// GET / (list sales)
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const { limit = 50, status } = req.query;
+    const query: any = {};
+    if (status) query.status = status;
+    
+    const sales = await Sale.find(query)
+      .populate('customerId', 'name phone')
+      .populate('userId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(Number(limit));
+      
+    res.json(sales);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch sales' });
+  }
+});
+
+// GET /search (search sale by number or other criteria)
+router.get('/search', authenticate, async (req, res) => {
+  try {
+    const { number } = req.query;
+    if (!number) return res.status(400).json({ error: 'Search term required' });
+
+    const sale = await Sale.findOne({ saleNumber: number })
+      .populate('customerId')
+      .populate('items.productId')
+      .populate('items.variantId');
+
+    if (!sale) return res.status(404).json({ error: 'Sale not found' });
+    res.json(sale);
+  } catch (error) {
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
 
 // POST / (create sale) - requires permission 1
 router.post('/', authenticate, requirePermission(1), async (req, res) => {
@@ -65,11 +103,19 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
       }
     }
 
-    // 1. Validate total payments equals sale total
+    // 1. Validate total payments equals sale total (unless it's a layaway)
     if (status === 'completed') {
       const totalPaid = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
       if (Math.abs(totalPaid - total) > 0.001) {
         return res.status(400).json({ error: `Payment mismatch: Total paid (${totalPaid.toFixed(3)}) must equal sale total (${total.toFixed(3)})` });
+      }
+    } else if (status === 'layaway') {
+      const totalPaid = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+      if (totalPaid <= 0) {
+        return res.status(400).json({ error: 'Down payment required for layaway' });
+      }
+      if (totalPaid >= total) {
+        return res.status(400).json({ error: 'Full payment detected. Use "completed" status instead of "layaway".' });
       }
     }
 
@@ -87,7 +133,19 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
 
     // 3. Create Sale record
     const saleNumber = 'INV-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
-    const sale = new Sale({ items, payments, subtotal, discount, total, status, sessionId, customerId, storeId, saleNumber });
+    const sale = new Sale({ 
+      items, 
+      payments, 
+      subtotal, 
+      discount, 
+      total, 
+      status, 
+      sessionId, 
+      customerId, 
+      storeId, 
+      saleNumber,
+      userId: (req as any).user.id 
+    });
     await sale.save();
     
     if (status === 'completed') {
@@ -122,7 +180,27 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
         }
         
         // Update global product stock
-        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } });
+        const productData = await Product.findById(item.productId);
+        if (productData) {
+          await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } });
+          
+          // ID 127: Product Bundling Logic
+          if (productData.isBundle && productData.bundledProducts) {
+            for (const bundleItem of productData.bundledProducts) {
+              const bundleQty = bundleItem.quantity * item.quantity;
+              
+              const bInvQuery = bundleItem.variantId 
+                ? { variantId: bundleItem.variantId, storeId }
+                : { productId: bundleItem.productId, storeId };
+                
+              await Inventory.findOneAndUpdate(bInvQuery, { $inc: { quantity: -bundleQty, version: 1 } });
+              if (bundleItem.variantId) {
+                await Variant.findByIdAndUpdate(bundleItem.variantId, { $inc: { stock: -bundleQty } });
+              }
+              await Product.findByIdAndUpdate(bundleItem.productId, { $inc: { stock: -bundleQty } });
+            }
+          }
+        }
         
         if (item.imei) {
           await SerialNumber.findOneAndUpdate(
@@ -139,6 +217,20 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
             userId: (req as any).user.id
           }).save();
         }
+      }
+
+      // ID 18: Auto-Accrue Loyalty Points
+      if (customerId) {
+        const points = Math.floor(total); 
+        await Customer.findByIdAndUpdate(customerId, { 
+          $inc: { loyaltyPoints: points, totalSpent: total } 
+        });
+        await new LoyaltyTransaction({
+          customerId,
+          saleId: sale._id,
+          pointsEarned: points,
+          reason: 'Sale Accrual'
+        }).save();
       }
 
       // 5. WhatsApp Receipt (ID 24)

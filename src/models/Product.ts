@@ -18,6 +18,12 @@ export interface IProduct extends Document {
   isSerialRequired: boolean;
   imeiHistory: string[];
   isConfigurable: boolean;
+  isBundle: boolean;
+  bundledProducts?: {
+    productId: mongoose.Types.ObjectId;
+    variantId?: mongoose.Types.ObjectId;
+    quantity: number;
+  }[];
   attributes: {
     name: string;
     values: string[];
@@ -44,6 +50,12 @@ const ProductSchema: Schema = new Schema({
   isSerialRequired: { type: Boolean, default: false },
   imeiHistory: { type: [String], default: [] },
   isConfigurable: { type: Boolean, default: false },
+  isBundle: { type: Boolean, default: false },
+  bundledProducts: [{
+    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    variantId: { type: Schema.Types.ObjectId, ref: 'Variant' },
+    quantity: { type: Number, default: 1 }
+  }],
   attributes: [{
     name: { type: String },
     values: { type: [String] }

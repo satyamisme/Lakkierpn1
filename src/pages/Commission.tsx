@@ -1,7 +1,7 @@
 import React from "react";
 import { CommissionReport } from "../components/organisms/CommissionReport";
 
-const CommissionPage: React.FC = () => {
+export const Commission: React.FC = () => {
   const mockReport = {
     staffId: "mock-staff-id",
     name: "John Doe",
@@ -26,5 +26,3 @@ const CommissionPage: React.FC = () => {
     </div>
   );
 };
-
-export default CommissionPage;

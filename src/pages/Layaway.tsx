@@ -1,7 +1,7 @@
 import React from "react";
 import { LayawayForm } from "../components/organisms/LayawayForm";
 
-const LayawayPage: React.FC = () => {
+export const Layaway: React.FC = () => {
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
       <div>
@@ -12,5 +12,3 @@ const LayawayPage: React.FC = () => {
     </div>
   );
 };
-
-export default LayawayPage;

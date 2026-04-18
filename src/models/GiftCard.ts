@@ -2,24 +2,27 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGiftCard extends Document {
   code: string;
-  amount: number;
-  balance: number;
-  issuedTo?: mongoose.Types.ObjectId; // Customer ID
-  issuedBy: mongoose.Types.ObjectId; // User ID
-  expiresAt?: Date;
-  status: 'active' | 'redeemed' | 'void';
+  initialBalance: number;
+  currentBalance: number;
+  expiryDate?: Date;
+  status: 'active' | 'exhausted' | 'expired' | 'canceled';
+  customerId?: mongoose.Types.ObjectId;
+  storeId: mongoose.Types.ObjectId;
   createdAt: Date;
 }
 
 const GiftCardSchema: Schema = new Schema({
   code: { type: String, required: true, unique: true },
-  amount: { type: Number, required: true },
-  balance: { type: Number, required: true },
-  issuedTo: { type: Schema.Types.ObjectId, ref: 'User' },
-  issuedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  expiresAt: { type: Date },
-  status: { type: String, enum: ['active', 'redeemed', 'void'], default: 'active' },
-  createdAt: { type: Date, default: Date.now }
-});
+  initialBalance: { type: Number, required: true },
+  currentBalance: { type: Number, required: true },
+  expiryDate: { type: Date },
+  status: { 
+    type: String, 
+    enum: ['active', 'exhausted', 'expired', 'canceled'], 
+    default: 'active' 
+  },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },
+  storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+}, { timestamps: true });
 
-export default mongoose.model<IGiftCard>('GiftCard', GiftCardSchema);
+export default mongoose.models.GiftCard || mongoose.model<IGiftCard>('GiftCard', GiftCardSchema);
