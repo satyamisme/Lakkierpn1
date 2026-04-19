@@ -16,11 +16,7 @@ export const paymentController = {
       const { amount, currency = 'kd' } = req.body;
       
       if (!stripe) {
-        // Mock fallback (ID 237)
-        return res.json({
-          clientSecret: 'mock_secret_' + Math.random().toString(36).substr(2, 9),
-          isMock: true
-        });
+        return res.status(400).json({ error: 'Stripe integration not configured. Please add STRIPE_SECRET_KEY to environment variables.' });
       }
 
       const paymentIntent = await stripe.paymentIntents.create({

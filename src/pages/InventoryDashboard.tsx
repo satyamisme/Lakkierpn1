@@ -15,10 +15,14 @@ import {
   Tag,
   Layers,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Edit2,
+  Trash2,
+  ExternalLink
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { GlobalAddProductModal } from "../components/GlobalAddProductModal";
 import { BulkImportModal } from "../components/BulkImportModal";
 import { Upload } from "lucide-react";
@@ -40,6 +44,7 @@ export const InventoryDashboard: React.FC = () => {
   const [intakeInitialItems, setIntakeInitialItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('sku') || "");
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   useEffect(() => {
     const handleOpenIntake = (e: any) => {
@@ -101,6 +106,28 @@ export const InventoryDashboard: React.FC = () => {
     } catch (error) {
       console.error("Receive error:", error);
       toast.error("Failed to process transfer.");
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    if (!window.confirm("Soft-delete this product?")) return;
+    try {
+      await axios.delete(`/api/products/${id}`);
+      toast.success("Product deleted.");
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Delete failed.");
+    }
+  };
+
+  const deleteVariant = async (id: string) => {
+    if (!window.confirm("Soft-delete this variant?")) return;
+    try {
+      await axios.delete(`/api/variants/${id}`);
+      toast.success("Variant deleted.");
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Delete failed.");
     }
   };
 
@@ -248,7 +275,14 @@ export const InventoryDashboard: React.FC = () => {
                 </h2>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Locate individual units across all nodes</p>
               </div>
-              <div className="relative w-full md:w-96">
+              <div className="flex items-center gap-6">
+                <Link 
+                  to="/inventory/serial-matrix"
+                  className="px-6 py-3 bg-surface border border-border rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-primary transition-all flex items-center gap-2"
+                >
+                  <ExternalLink size={14} /> Full Registry
+                </Link>
+                <div className="relative w-full md:w-96">
                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
                 <input 
                   type="text" 
@@ -275,8 +309,9 @@ export const InventoryDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
+        <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
             <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div>
                 <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
@@ -355,18 +390,39 @@ export const InventoryDashboard: React.FC = () => {
                           </td>
                           <td className="px-10 py-8 text-sm font-black font-mono text-right text-primary">{(p.cost * p.stock).toFixed(3)}</td>
                           <td className="px-10 py-8 text-right">
-                            {!p.isConfigurable && (
+                            <div className="flex items-center justify-end gap-3">
+                              {!p.isConfigurable && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIntakeInitialItems([p]);
+                                    setIsIntakeModalOpen(true);
+                                  }}
+                                  className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                >
+                                  Add Stock
+                                </button>
+                              )}
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setIntakeInitialItems([p]);
-                                  setIsIntakeModalOpen(true);
+                                  setEditingProduct(p);
+                                  setIsAddModalOpen(true);
                                 }}
-                                className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-primary transition-all"
                               >
-                                Add Stock
+                                <Edit2 size={14} />
                               </button>
-                            )}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteProduct(p._id);
+                                }}
+                                className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-red-500 transition-all"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         
@@ -400,16 +456,27 @@ export const InventoryDashboard: React.FC = () => {
                               </td>
                               <td className="px-10 py-4 text-right text-[10px] font-black font-mono text-primary/60">{(v.cost * v.stock).toFixed(3)}</td>
                               <td className="px-10 py-4 text-right">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIntakeInitialItems([{ ...v, name: `${p.name} (${Object.values(v.attributes).join('/')})`, brand: p.brand }]);
-                                    setIsIntakeModalOpen(true);
-                                  }}
-                                  className="px-3 py-1.5 bg-primary/5 text-primary rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
-                                >
-                                  Add Stock
-                                </button>
+                                <div className="flex items-center justify-end gap-3">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIntakeInitialItems([{ ...v, name: `${p.name} (${Object.values(v.attributes).join('/')})`, brand: p.brand }]);
+                                      setIsIntakeModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-primary/5 text-primary rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                  >
+                                    Add Stock
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteVariant(v._id);
+                                    }}
+                                    className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </td>
                             </motion.tr>
                           ))}
@@ -433,7 +500,11 @@ export const InventoryDashboard: React.FC = () => {
 
       <GlobalAddProductModal 
         isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+        initialData={editingProduct}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingProduct(null);
+        }} 
         onSuccess={fetchData}
       />
 

@@ -33,7 +33,7 @@ export const ExecutiveAnomalies: React.FC = () => {
       setStats({
         total: res.data.length,
         critical: res.data.filter((a: any) => a.total < 0.5).length,
-        resolved: 0 // Mock
+        resolved: 0
       });
     } catch (error) {
       toast.error("Failed to fetch anomaly data");

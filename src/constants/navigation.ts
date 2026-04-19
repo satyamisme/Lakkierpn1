@@ -148,6 +148,7 @@ export const ATOMIC_NAVIGATION: NavCategory[] = [
       { id: 'p62', label: 'Cycle Count', featureIds: ['135', '158', '159', '160', '318'], description: 'Staff count (no expected qty), manager discrepancy', path: 'inventory/cycle-count' },
       { id: 'p63', label: 'Stock Recon', featureIds: ['168', '288'], description: 'System suggests fixes', path: 'inventory/recon' },
       { id: 'p64', label: 'Bin Locations', featureIds: ['155', '156', '157', '173'], description: 'UOM, shelf/rack, QR pick list', path: 'inventory/bins' },
+      { id: 'p101', label: 'Serial Matrix', featureIds: ['192'], description: 'Global ID & Authenticity registry', path: 'inventory/serial-matrix' },
     ]
   },
   {

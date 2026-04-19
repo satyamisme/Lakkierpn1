@@ -67,6 +67,8 @@ const CycleCountManager = lazy(() => import('../pages/CycleCountManager').then(m
 const CycleCountStaff = lazy(() => import('../pages/CycleCountStaff').then(m => ({ default: m.CycleCountStaff })));
 
 
+const SerialManagement = lazy(() => import('../pages/SerialManagement').then(m => ({ default: m.SerialManagement })));
+
 interface ModuleRendererProps {
   activeModule: string;
   onModuleChange: (module: string) => void;
@@ -221,6 +223,7 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
             if (page.path === 'exec/routing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="routing" />} />;
             if (page.path === 'exec/coalescing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="coalescing" />} />;
             if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer' || page.path === 'inventory/intake') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
+            if (page.path === 'inventory/serial-matrix' || page.path === 'inventory/imei-reg') return <Route key={page.id} path={page.path} element={<SerialManagement />} />;
             if (page.path === 'repairs/assignment' || page.path === 'repairs/tech-stats') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
             
             // CRM & Omni

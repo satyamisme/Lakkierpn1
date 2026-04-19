@@ -27,10 +27,10 @@ export const ExecutiveComparison: React.FC = () => {
       // Enhance with some mock performance data for comparison
       const enhancedData = res.data.map((node: any) => ({
         ...node,
-        revenue: node.value * 0.15, // Mock revenue
-        growth: (Math.random() * 20 - 5).toFixed(1), // Mock growth %
-        efficiency: (Math.random() * 30 + 70).toFixed(1), // Mock efficiency %
-        repairs: Math.floor(Math.random() * 100 + 20)
+        revenue: node.value * 0.1, // Conservative estimate based on stock value
+        growth: 0, // Placeholder for real growth calculation logic
+        efficiency: node.stock > 0 ? 95 : 0, // Simplified efficiency metric
+        repairs: 0 // Placeholder for repair count
       }));
       setComparisonData(enhancedData);
     } catch (error) {

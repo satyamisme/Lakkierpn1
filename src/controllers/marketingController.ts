@@ -58,7 +58,6 @@ export const marketingController = {
       
       // Logic to send campaign via email/sms/whatsapp would go here
       campaign.status = 'active';
-      campaign.sentCount += 100; // Mocking sent count
       await campaign.save();
       
       res.json(campaign);

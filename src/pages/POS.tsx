@@ -180,6 +180,10 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [taxRate, setTaxRate] = useState(0); // 0% by default in Kuwait
   
   const [activeStage, setActiveStage] = useState<'grid' | 'exchange' | 'customers' | 'loyalty' | 'receipts' | 'sync' | 'layaway' | 'tax' | 'bundles' | 'records' | 'instalments' | 'setup' | 'network'>('grid');
+  const [stats, setStats] = useState({
+    todayRevenue: 0,
+    todayTransactions: 0
+  });
   
   const [stores, setStores] = useState<any[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(user?.storeId || null);
@@ -354,6 +358,16 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     fetchProducts();
     fetchStores();
     resumeHeldSession();
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get('/api/analytics/summary');
+        if (res.data) setStats({
+          todayRevenue: res.data.todayRevenue || 0,
+          todayTransactions: res.data.todaySales || 0
+        });
+      } catch (e) { console.error(e); }
+    };
+    fetchStats();
   }, []);
 
   const fetchProducts = async () => {
@@ -366,14 +380,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
         
         const productsWithImages = productsList.map((p: any) => ({
           ...p,
-          image: p.image || `https://picsum.photos/seed/${p.sku}/400/400`,
-          // Audit Wiring: Enrich with lifecycle metadata
-          imei: p.sku.startsWith('P') ? `449200${Math.floor(Math.random() * 1000000000)}` : undefined,
-          serial: `SN-${p.sku}-${Math.floor(Math.random() * 1000)}`,
-          purchaseDate: new Date(Date.now() - Math.random() * 10000000000).toISOString().split('T')[0],
-          supplier: ['OMNI-DIST', 'GLOBAL-TECH', 'AL-KUWAIT LOGISTICS'][Math.floor(Math.random() * 3)],
-          warrantyPeriod: ['1 Year', '2 Years', 'Limited Life'][Math.floor(Math.random() * 3)],
-          condition: ['New', 'Refurbished', 'Used'][Math.floor(Math.random() * 3)]
+          image: p.image || `https://picsum.photos/seed/${p.sku}/400/400`
         }));
         setProducts(productsWithImages);
       }
@@ -416,12 +423,15 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     const trackingMethod = isVariant ? item.trackingMethod : 'none';
     const requiresImei = trackingMethod === 'imei' || trackingMethod === 'serial';
 
-    if (requiresImei) {
+    // Auto-update optimization: if unit already has an identifier vector, bypass modal
+    const preDefinedImei = item.imei || item.serial;
+
+    if (requiresImei && !preDefinedImei) {
       setPendingProduct({ ...item, isVariant, parentProduct });
       setIsImeiModalOpen(true);
     } else {
-      const existing = cart.find(ci => ci.product._id === item._id);
-      if (existing) {
+      const existing = cart.find(ci => ci.product._id === item._id && (!requiresImei || ci.imei === preDefinedImei));
+      if (existing && !requiresImei) {
         setCart(cart.map(ci => 
           ci.product._id === item._id 
             ? { ...ci, quantity: ci.quantity + 1 } 
@@ -431,6 +441,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
         setCart([...cart, { 
           product: item, 
           quantity: 1, 
+          imei: preDefinedImei,
           discount: 0, 
           isVariant, 
           parentProduct 
@@ -498,9 +509,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const taxAmount = totalBeforeTax * taxRate;
   
   let total = totalBeforeTax + taxAmount;
-  
-  // Terminal Status Simulation
-  const revenueTrend = [45, 52, 49, 62, 58, 71, 84]; // Last 7 sessions
   
   // Precision Rounding Protocol (KW Standards)
   if (roundingMethod === '5fils') {
@@ -723,24 +731,25 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
           <aside className="w-20 lg:w-28 bg-surface-container-low/60 backdrop-blur-xl border border-white/5 rounded-[2.5rem] flex flex-col items-center py-8 space-y-1 relative overflow-hidden flex-shrink-0">
              <div className="absolute top-0 left-0 w-full h-32 bg-primary/5 blur-[40px] pointer-events-none" />
              {[
-               { id: 'grid', label: 'Terminal', icon: Smartphone },
-               { id: 'customers', label: 'Client 360', icon: Users },
-               { id: 'exchange', label: 'Returns', icon: RefreshCcw },
-               { id: 'records', label: 'Records', icon: History },
-               { id: 'loyalty', label: 'Loyalty', icon: Gift },
-               { id: 'instalments', label: 'Instalment', icon: CreditCard },
-               { id: 'setup', label: 'Setup', icon: Settings },
-               { id: 'network', label: 'Network', icon: Activity },
+               { id: 'grid', label: 'Terminal', icon: Smartphone, title: 'Main POS Terminal Matrix' },
+               { id: 'customers', label: 'Client 360', icon: Users, title: 'Customer Lead & CRM Vector' },
+               { id: 'exchange', label: 'Returns', icon: RefreshCcw, title: 'Exchange & Returns Hub' },
+               { id: 'records', label: 'Records', icon: History, title: 'Historical Sale Records Audit' },
+               { id: 'loyalty', label: 'Loyalty', icon: Gift, title: 'Loyalty Rewards & Gift Matrix' },
+               { id: 'instalments', label: 'Instalment', icon: CreditCard, title: 'Instalment Payment Monitoring' },
+               { id: 'setup', label: 'Setup', icon: Settings, title: 'Terminal Configuration & Setup' },
+               { id: 'network', label: 'Network', icon: Activity, title: 'Regional Cluster & Sync Performance' },
              ].map((item) => (
                <button 
                 key={item.id}
                 onClick={() => setActiveStage(item.id as any)}
+                title={item.title}
                 className={`w-full px-2 group flex flex-col items-center py-3 transition-all relative ${activeStage === item.id ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}
                >
                  {activeStage === item.id && (
                    <motion.div layoutId="nav-glow" className="absolute inset-y-0 left-0 w-1 bg-primary rounded-r-full shadow-[0_0_15px_rgba(var(--primary),0.8)]" />
                  )}
-                 <div className={`p-3 rounded-2xl border transition-all ${activeStage === item.id ? 'bg-primary border-primary shadow-xl shadow-primary/20 scale-110 text-white' : 'bg-white/5 border-white/5 text-white'}`}>
+                 <div className={`p-3 rounded-2xl border transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${activeStage === item.id ? 'bg-primary border-primary shadow-xl shadow-primary/20 scale-110 text-white' : 'bg-white/5 border-white/5 text-white shadow-sm'}`}>
                     <item.icon size={20} />
                  </div>
                  <span className="text-[6px] font-black uppercase tracking-[0.3em] mt-3 lg:block text-center">{item.label}</span>
@@ -777,19 +786,18 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                    <span className="text-[8px] font-mono font-black tracking-tighter shrink-0">{stores.find(s => s._id === (selectedStoreId || user?.storeId))?.name || 'ROOT'}</span>
                 </div>
              </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
+          </div>           <div className="flex items-center gap-1.5">
             {[
-              { id: 'config', icon: Settings, action: () => setShowConfigPanel(true) },
-              { id: 'history', icon: History, action: () => setIsHistoryModalOpen(true) },
-              { id: 'held', icon: Pause, action: () => setIsHeldCartsModalOpen(true) },
-              { id: 'telemetry', icon: Activity, action: () => setIsDetailedView(!isDetailedView), active: isDetailedView },
-              { id: 'operator', icon: Users, action: () => setActiveStage('customers'), active: activeStage === 'customers' }
+              { id: 'config', icon: Settings, action: () => setShowConfigPanel(true), title: 'Global Terminal Configuration' },
+              { id: 'history', icon: History, action: () => setIsHistoryModalOpen(true), title: 'Daily Order History Vector' },
+              { id: 'held', icon: Pause, action: () => setIsHeldCartsModalOpen(true), title: 'Held Cart Registry' },
+              { id: 'telemetry', icon: Activity, action: () => setIsDetailedView(!isDetailedView), active: isDetailedView, title: 'Toggle Detailed Data Telemetry' },
+              { id: 'operator', icon: Users, action: () => setActiveStage('customers'), active: activeStage === 'customers', title: 'Agent & Lead Vector Matrix' }
             ].map((btn) => (
               <button
                 key={btn.id}
                 onClick={btn.action}
+                title={btn.title}
                 className={`w-9 h-9 rounded-xl border transition-all flex items-center justify-center group ${
                   btn.active 
                     ? 'bg-primary/30 border-primary-foreground/50 text-primary-foreground shadow-lg shadow-primary/20 scale-105' 
@@ -826,8 +834,10 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
           {/* Main Stage Selection (8 cols) */}
           <div className="xl:col-span-8 flex flex-col min-h-0 space-y-6">
             {activeStage === 'grid' && (
-              <div className="flex flex-col gap-6 bg-surface-container-low/40 backdrop-blur-sm border border-white/5 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden flex-1">
-                <div className="flex items-center gap-4 relative z-10 w-full">
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex flex-col gap-6 bg-surface-container-low/40 backdrop-blur-sm border border-white/5 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden flex-1 group/matrix hover:border-primary/20 transition-all duration-500">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none opacity-0 group-hover/matrix:opacity-100 transition-opacity" />
+                  <div className="flex items-center gap-4 relative z-10 w-full">
                   <div className="flex-1">
                     <CustomerSelector 
                       selectedCustomer={selectedCustomer}
@@ -921,9 +931,10 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   </div>
                 
                 <div className="flex items-center gap-3">
-                  <Gate id={137}>
+                  <Gate id={121}>
                     <button 
                       onClick={() => setIsBulkModalOpen(true)}
+                      title="Bulk Inventory Intake & Processing Hub"
                       className="bg-white/[0.02] border border-white/5 px-5 py-3.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2.5 hover:bg-white/5 transition-all shadow-sm text-white/40 hover:text-white"
                     >
                       <Upload size={14} /> Bulk
@@ -932,6 +943,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <Gate id={122}>
                     <button 
                       onClick={onAddProductClick}
+                      title="Register New Unit Vector to Registry"
                       className="bg-primary-foreground text-white px-6 py-3.5 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-primary-foreground/20"
                     >
                       <Plus size={14} /> Register
@@ -940,6 +952,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <div className="flex items-center gap-1.5 p-1 bg-white/[0.02] rounded-2xl border border-white/5">
                     <button 
                       onClick={() => setIsWholesale(!isWholesale)}
+                      title="Toggle Wholesale B2B Pricing Matrix"
                       className={`px-4 py-2.5 rounded-xl transition-all text-[8px] font-black uppercase tracking-widest flex items-center gap-2 ${isWholesale ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20 shadow-xl shadow-amber-500/10' : 'text-white/20 hover:text-white/40'}`}
                     >
                       <Zap size={12} fill={isWholesale ? 'currentColor' : 'none'} /> Wholesale
@@ -947,18 +960,21 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     <div className="w-px h-6 bg-white/5 mx-1" />
                     <button 
                       onClick={() => setViewMode('grid')}
+                      title="Density View: High-Performance Product Grid"
                       className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-primary/20 text-white shadow-xl' : 'text-white/10 hover:text-white/30'}`}
                     >
                       <Store size={18} />
                     </button>
                     <button 
                       onClick={() => setViewMode('list')}
+                      title="Inventory View: Detailed Analytical List"
                       className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-primary/20 text-white shadow-xl' : 'text-white/10 hover:text-white/30'}`}
                     >
                       <Tag size={18} />
                     </button>
                     <button 
                       onClick={() => setViewMode('table')}
+                      title="Tabular Matrix: Rapid Asset Audit View"
                       className={`p-2.5 rounded-xl transition-all ${viewMode === 'table' ? 'bg-primary/20 text-white shadow-xl' : 'text-white/10 hover:text-white/30'}`}
                     >
                       <LayoutList size={18} />
@@ -970,6 +986,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
               <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar relative z-10 pr-20">
                 <button
                   onClick={() => setActiveCategory('All')}
+                  title="Show All Inventory Segments"
                   className={`px-8 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border whitespace-nowrap ${
                     activeCategory === 'All' ? 'bg-primary-foreground text-white border-primary-foreground shadow-2xl shadow-primary-foreground/20 scale-105 z-10' : 'bg-white/[0.02] border-white/5 text-white/30 hover:border-white/20'
                   }`}
@@ -980,6 +997,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
+                    title={`Filter by ${cat} Domain`}
                     className={`px-8 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border whitespace-nowrap ${
                       activeCategory === cat ? 'bg-primary-foreground text-white border-primary-foreground shadow-2xl shadow-primary-foreground/20 scale-105 z-10' : 'bg-white/[0.02] border-white/5 text-white/30 hover:border-white/20'
                     }`}
@@ -1014,63 +1032,77 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
               <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-[100px] pointer-events-none" />
 
-            <div className="flex-1 overflow-y-auto pr-6 custom-scrollbar">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full opacity-10">
-                  <Loader2 className="w-20 h-20 animate-spin text-primary mb-6" />
-                  <p className="text-[12px] font-black uppercase tracking-[0.5em]">Syncing Matrix...</p>
-                </div>
-              ) : (
-                <div className="space-y-10">
-                  {viewMode === 'table' ? (
-                    <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden">
-                       <table className="w-full text-left border-collapse">
-                          <thead>
-                             <tr className="bg-white/5 border-b border-white/5">
-                                <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest">Identifier</th>
-                                <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest">Asset Name</th>
-                                <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-right">Unit Val</th>
-                                <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-center">Depth</th>
-                                <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-right">Vector</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {filteredProducts.map((product) => (
-                               <tr 
-                                 key={product._id}
-                                 onClick={() => addToCart(product)}
-                                 className="border-b border-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer group"
-                               >
-                                  <td className="px-6 py-4">
-                                     <p className="text-[9px] font-black text-white/40 font-mono tracking-tighter">{product.sku}</p>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                     <div className="flex items-center gap-4">
-                                        <div className="w-8 h-8 rounded-lg bg-white/5 overflow-hidden">
-                                           <img src={product.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                        </div>
-                                        <div>
-                                           <p className="text-[10px] font-black text-white uppercase tracking-tighter">{product.name}</p>
-                                           <p className="text-[7px] font-black text-primary/40 uppercase mt-0.5">{product.brand}</p>
-                                        </div>
-                                     </div>
-                                  </td>
-                                  <td className="px-6 py-4 text-right">
-                                     <p className="text-[12px] font-black text-white font-mono">{product.price.toFixed(3)}</p>
-                                  </td>
-                                  <td className="px-6 py-4 text-center">
-                                     <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${product.stock < 10 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                        {product.stock} units
-                                     </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-right">
-                                     <button className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">Add+</button>
-                                  </td>
-                               </tr>
-                             ))}
-                          </tbody>
-                       </table>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar scroll-smooth overflow-x-hidden">
+               <div className="pr-4">
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center h-full opacity-10">
+                      <Loader2 className="w-20 h-20 animate-spin text-primary mb-6" />
+                      <p className="text-[12px] font-black uppercase tracking-[0.5em]">Syncing Matrix...</p>
                     </div>
+                  ) : (
+                    <div className="space-y-10">
+                      {viewMode === 'table' ? (
+                     <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden shadow-sm">
+                        <table className="w-full text-left border-collapse table-auto">
+                           <thead>
+                              <tr className="bg-white/5 border-b border-white/5">
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest whitespace-nowrap">Identifier</th>
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest">Asset Name</th>
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-right">Unit Val</th>
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-center">Depth</th>
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-center">Identity Vector</th>
+                                 <th className="px-6 py-4 text-[8px] font-black text-white/20 uppercase tracking-widest text-right">Vector</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {filteredProducts.map((product) => (
+                                <tr 
+                                  key={product._id}
+                                  onClick={() => addToCart(product)}
+                                  className="border-b border-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer group"
+                                  title={`Click to add ${product.name} to transaction matrix`}
+                                >
+                                   <td className="px-6 py-4">
+                                      <p className="text-[9px] font-black text-white/40 font-mono tracking-tighter">{product.sku}</p>
+                                   </td>
+                                   <td className="px-6 py-4">
+                                      <div className="flex items-center gap-4">
+                                         <div className="w-8 h-8 rounded-lg bg-white/5 overflow-hidden shadow-inner">
+                                            <img src={product.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                         </div>
+                                         <div className="min-w-0">
+                                            <p className="text-[10px] font-black text-white uppercase tracking-tighter truncate">{product.name}</p>
+                                            <p className="text-[7px] font-black text-primary/40 uppercase mt-0.5">{product.brand}</p>
+                                         </div>
+                                      </div>
+                                   </td>
+                                   <td className="px-6 py-4 text-right">
+                                      <p className="text-[12px] font-black text-white font-mono">{product.price.toFixed(3)}</p>
+                                   </td>
+                                   <td className="px-6 py-4 text-center">
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${product.stock < 10 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                         {product.stock} units
+                                      </span>
+                                   </td>
+                                   <td className="px-6 py-4">
+                                      <div className="flex flex-col gap-1 items-center">
+                                         {product.imei ? (
+                                           <span className="text-[8px] font-mono text-primary font-black uppercase tracking-tighter px-1.5 py-0.5 bg-primary/10 rounded">I:{product.imei}</span>
+                                         ) : product.serial ? (
+                                           <span className="text-[8px] font-mono text-white/40 font-black uppercase tracking-tighter px-1.5 py-0.5 bg-white/5 rounded">S:{product.serial}</span>
+                                         ) : (
+                                           <span className="text-[6px] font-black opacity-10 uppercase italic">Untracked</span>
+                                         )}
+                                      </div>
+                                   </td>
+                                   <td className="px-6 py-4 text-right">
+                                      <button className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white">Add+</button>
+                                   </td>
+                                </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                     </div>
                   ) : (
                     <div className="space-y-12">
                       <div className={viewMode === 'grid' ? "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3" : "flex flex-col gap-2"}>
@@ -1093,7 +1125,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                           viewMode === 'grid' ? 'p-2 pb-3' : 'p-3 flex items-center gap-6'
                         }`}
                       >
-                        {viewMode === 'grid' ? (
+                        {viewMode === 'grid' ? 
                           <>
                             <div className="aspect-square bg-muted rounded-lg relative overflow-hidden shadow-inner flex items-center justify-center mb-2">
                               <img 
@@ -1102,8 +1134,18 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
                               />
-                                <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-                                  <span className="px-1 py-0.5 bg-black/80 text-white text-[6px] font-black uppercase tracking-widest rounded shadow-lg border border-white/5"> {product.sku}</span>
+                                <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-20">
+                                  <span className="px-1.5 py-0.5 bg-black/80 text-white text-[7px] font-black uppercase tracking-widest rounded shadow-xl border border-white/10 backdrop-blur-md" title="Asset Registry Key (SKU)"> {product.sku}</span>
+                                  {product.imei && (
+                                    <span className="px-1.5 py-0.5 bg-primary/90 text-white text-[6px] font-black uppercase tracking-widest rounded shadow-xl border border-white/10 flex items-center gap-1 animate-in fade-in slide-in-from-left-2" title="Synchronized IMEI Identifier Vector">
+                                      <Smartphone size={6} /> {product.imei.slice(-8)}
+                                    </span>
+                                  )}
+                                  {!product.imei && product.serial && (
+                                    <span className="px-1.5 py-0.5 bg-white/30 text-white text-[6px] font-black uppercase tracking-widest rounded shadow-xl border border-white/10 backdrop-blur-lg flex items-center gap-1 animate-in fade-in slide-in-from-left-2" title="Hardware Serial Number Registry">
+                                      <Layers size={6} /> {product.serial.slice(-8)}
+                                    </span>
+                                  )}
                                 </div>
                               <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-all flex items-center justify-center">
                                 {product.isConfigurable ? <ChevronRight size={16} className="text-white opacity-0 group-hover:opacity-100" /> : <Plus size={16} className="text-white opacity-0 group-hover:opacity-100" />}
@@ -1117,7 +1159,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                               </div>
                             </div>
 
-                            <h3 className="font-black uppercase tracking-tight transition-colors group-hover:text-primary text-sm line-clamp-2 h-7 leading-tight mb-2">
+                            <h3 className="font-black uppercase tracking-tight transition-colors group-hover:text-primary text-sm line-clamp-2 h-7 leading-tight mb-2" title={product.name}>
                               {product.name}
                             </h3>
                             
@@ -1128,12 +1170,12 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                 </p>
                                 <p className="text-[6px] font-black text-white/10 uppercase tracking-widest mt-0.5">{product.sku}</p>
                               </div>
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all shadow-sm ${product.stock < 5 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all shadow-sm ${product.stock < 5 ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`} title="Add Unit to Registry">
                                  <Plus size={12} />
                               </div>
                             </div>
                           </>
-                        ) : (
+                         : 
                           <>
                             <div className="w-16 h-16 bg-muted rounded-2xl overflow-hidden flex-shrink-0 shadow-inner group-hover:scale-110 transition-transform">
                               <img 
@@ -1160,17 +1202,19 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                               </div>
 
                               <div className="col-span-3">
-                                 <div className="flex flex-col gap-1">
+                                 <div className="flex flex-col gap-1.5">
                                     {product.imei && (
-                                      <div className="flex items-center gap-2 px-2 py-1 bg-primary/5 border border-primary/10 rounded-md">
-                                        <Smartphone size={10} className="text-primary" />
-                                        <span className="text-[8px] font-mono font-black text-primary">{product.imei}</span>
+                                      <div className="flex items-center gap-2.5 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-lg group-hover:bg-primary/10 transition-colors" title="IMEI Matrix Authenticated">
+                                        <Smartphone size={12} className="text-primary" />
+                                        <span className="text-[9px] font-mono font-black text-primary tracking-tight">{product.imei}</span>
                                       </div>
                                     )}
-                                    <div className="flex items-center gap-2 px-2 py-1 bg-muted rounded-md border border-border/50">
-                                      <Layers size={10} className="text-muted-foreground" />
-                                      <span className="text-[8px] font-mono font-black text-muted-foreground truncate max-w-[120px]">{product.serial}</span>
-                                    </div>
+                                    {product.serial && (
+                                      <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5 group-hover:border-white/20 transition-all" title="Serial Number Vector Entry">
+                                        <Layers size={12} className="text-white/40" />
+                                        <span className="text-[9px] font-mono font-black text-white/50 truncate tracking-tight">{product.serial}</span>
+                                      </div>
+                                    )}
                                  </div>
                               </div>
                               
@@ -1192,8 +1236,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                     <div className="flex flex-col items-end">
                                        <span className="text-[6px] font-black uppercase text-muted-foreground opacity-60">Market Trend</span>
                                        <div className="flex items-center gap-0.5 h-4 mt-1">
-                                          {[4, 7, 5, 8, 10, 6, 9].map((h, i) => (
-                                            <div key={i} className={`w-1 rounded-sm ${i === 6 ? 'bg-green-500' : 'bg-white/10'}`} style={{ height: `${h * 10}%` }} />
+                                          {[0, 0, 0, 0, 0, 0, 0].map((h, i) => (
+                                            <div key={i} className="w-1 rounded-sm bg-white/5" style={{ height: `10%` }} />
                                           ))}
                                        </div>
                                     </div>
@@ -1201,7 +1245,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                               </div>
 
                               <div className="col-span-2 text-right px-4">
-                                 <div className="text-xl font-black text-primary font-mono tracking-tighter">{product.price.toFixed(3)} <span className="text-[8px]">KD</span></div>
+                                 <div className="text-xl font-black text-primary font-mono tracking-tighter" title="Unit Price (Inc. Tax)">{product.price.toFixed(3)} <span className="text-[8px]">KD</span></div>
                                  <div className="flex items-center justify-end gap-1 mt-1">
                                     <Scale size={10} className="text-muted-foreground opacity-40" />
                                     <span className="text-[8px] font-black text-muted-foreground opacity-40 uppercase">Inc. VAT</span>
@@ -1213,7 +1257,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                               {product.isConfigurable ? <ChevronRight size={24} /> : <Plus size={24} />}
                             </div>
                           </>
-                        )}
+                        }
                       </motion.div>
                         ))}
                       </div>
@@ -1221,12 +1265,12 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     {/* Summary Dashboard Cards Row */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-8 border-t border-white/5">
                       {[
-                        { label: "Today's Revenue", value: " KD 4,822.400", sub: "+12.5%", icon: Activity, trend: 'up' },
-                        { label: "Units Sold", value: "28 Devices", sub: "Avg. 18.2m", icon: ShoppingCart },
-                        { label: "Critical Inventory", value: "6 SKU Alerts", sub: "Attention Required", icon: AlertTriangle, color: 'text-amber-500' },
-                        { label: "System health", value: "Node: Stable", sub: "Latency 14ms", icon: ShieldCheck, color: 'text-emerald-500' }
+                        { label: "Today's Revenue", value: `KD ${stats.todayRevenue.toFixed(3)}`, sub: "Live Session", icon: Activity, title: 'Aggregated Daily Revenue Matrix' },
+                        { label: "Units Sold", value: `${stats.todayTransactions} Transactions`, sub: "Recent Volume", icon: ShoppingCart, title: 'Total Inventory Throughput' },
+                        { label: "Critical SKU", value: `${products.filter((p: any) => p.stock < 5).length} SKU Alerts`, sub: "Below Threshold", icon: AlertTriangle, color: 'text-amber-500', title: 'Low Stock & Variance Vectors' },
+                        { label: "Connectivity", value: isOnline ? "Active" : "Isolated", sub: isOnline ? "Synced" : "Queued", icon: ShieldCheck, color: isOnline ? 'text-emerald-500' : 'text-red-500', title: 'Network Connectivity Status' }
                       ].map((card, i) => (
-                        <div key={i} className="bg-surface-container-low/40 border border-white/5 p-5 rounded-[1.5rem] flex items-center gap-5 group hover:bg-white/[0.02] transition-all">
+                        <div key={i} title={card.title} className="bg-surface-container-low/40 border border-white/5 p-5 rounded-[1.5rem] flex items-center gap-5 group hover:bg-white/[0.02] transition-all cursor-help">
                           <div className={`p-3 bg-white/5 rounded-xl ${card.color || 'text-primary-foreground'} border border-white/5 shadow-sm group-hover:scale-110 transition-transform`}>
                             <card.icon size={20} />
                           </div>
@@ -1234,9 +1278,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                             <p className="text-[7px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">{card.label}</p>
                             <div className="flex items-center gap-2">
                                <h4 className="text-sm font-black whitespace-nowrap text-white">{card.value}</h4>
-                               {card.trend && <span className="text-[8px] font-black text-secondary">{card.sub}</span>}
                             </div>
-                            {!card.trend && <p className="text-[8px] font-bold text-white/10 uppercase tracking-widest mt-0.5">{card.sub}</p>}
+                            <p className="text-[8px] font-bold text-white/10 uppercase tracking-widest mt-0.5">{card.sub}</p>
                           </div>
                         </div>
                       ))}
@@ -1245,15 +1288,17 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-            {activeStage === 'customers' && (
-              <div className="flex-1 bg-surface-container-low/40 backdrop-blur-sm border border-white/5 p-8 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
-                 <Client360 />
-              </div>
-            )}
+        {activeStage === 'customers' && (
+          <div className="flex-1 bg-surface-container-low/40 backdrop-blur-sm border border-white/5 p-8 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
+            <Client360 />
+          </div>
+        )}
 
             {activeStage === 'exchange' && (
               <div className="flex-1 bg-surface-container-low/40 backdrop-blur-sm border border-white/5 p-8 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col">
@@ -1413,8 +1458,6 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
             </AnimatePresence>
           )}
 
-          {/* Previous Tax Stage removed - integrated into Config Panel */}
-
         </div>
 
           {/* Cart Sidebar (4 cols) */}
@@ -1464,7 +1507,12 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     <p className="text-[10px] font-black uppercase tracking-[0.6em] text-white">Matrix Empty</p>
                   </motion.div>
                 ) : (
-                  <>
+                  <motion.div 
+                    key="cart-content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
                     <div className="space-y-3">
                       {cart.map((item, index) => (
                         <motion.div 
@@ -1554,7 +1602,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                           )}
                        </div>
                     </div>
-                  </>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -1674,10 +1722,15 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
               <button 
                 onClick={() => handleProcessSale()}
                 disabled={isProcessing || cart.length === 0}
-                className="w-full bg-gradient-to-br from-primary-foreground to-primary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl shadow-primary/30 flex items-center justify-center gap-4"
+                title="Synchronize Transaction and Commit to Blockchain Ledger"
+                className="w-full bg-gradient-to-br from-primary-foreground to-primary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 group"
               >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 size={20} />}
-                Finalize
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform" />
+                )}
+                <span className="group-hover:translate-x-1 transition-transform">Finalize</span>
               </button>
             </div>
 

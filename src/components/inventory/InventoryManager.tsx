@@ -3,6 +3,9 @@ import { Package, Search, Filter, Loader2, DollarSign, TrendingUp, AlertCircle }
 import { Gate } from '../PermissionGuard';
 import { StockTable } from './StockTable';
 import { calculateInventoryValue, calculateProjectedProfit } from '../../utils/stockLogic';
+import { GlobalAddProductModal } from '../GlobalAddProductModal';
+import { toast } from 'sonner';
+import axios from 'axios';
 
 /**
  * ID 31: Inventory Matrix Organism
@@ -13,6 +16,8 @@ export const InventoryManager: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   const fetchInventory = async () => {
     try {
@@ -32,6 +37,22 @@ export const InventoryManager: React.FC = () => {
   useEffect(() => {
     fetchInventory();
   }, []);
+
+  const handleEdit = (item: any) => {
+    setEditingItem(item);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this product? All its variants will also be removed.")) return;
+    try {
+      await axios.delete(`/api/products/${id}`);
+      setItems(items.filter(i => i._id !== id));
+      toast.success("Product removed from matrix.");
+    } catch (error) {
+      toast.error("Failed to delete product.");
+    }
+  };
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -131,8 +152,22 @@ export const InventoryManager: React.FC = () => {
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Indexing Inventory Matrix...</p>
           </div>
         ) : (
-          <StockTable items={filteredItems} />
+          <StockTable 
+            items={filteredItems} 
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
+
+        <GlobalAddProductModal 
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+          }}
+          onSuccess={fetchInventory}
+          initialData={editingItem}
+        />
       </div>
     </Gate>
   );

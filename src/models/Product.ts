@@ -29,6 +29,7 @@ export interface IProduct extends Document {
     values: string[];
   }[];
   defaultImage?: string;
+  deletedAt?: Date;
   createdAt: Date;
 }
 
@@ -61,6 +62,7 @@ const ProductSchema: Schema = new Schema({
     values: { type: [String] }
   }],
   defaultImage: { type: String },
+  deletedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

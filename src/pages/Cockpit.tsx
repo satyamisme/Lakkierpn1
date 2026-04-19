@@ -184,12 +184,7 @@ export const Cockpit: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {(criticalInventory.length > 0 ? criticalInventory : [
-                    { name: 'iPhone 15 Pro Max', sku: 'IP15PM-256-BLU', stock: 2, demand: 45, critical: true },
-                    { name: 'Samsung S24 Ultra', sku: 'S24U-512-TIT', stock: 14, demand: 28, critical: false },
-                    { name: 'Google Pixel 8 Pro', sku: 'PX8P-128-OBS', stock: 5, demand: 12, critical: true },
-                    { name: 'iPad Pro M2', sku: 'IPDM2-11-GRY', stock: 8, demand: 15, critical: false },
-                  ]).map((item) => (
+                  {(criticalInventory.length > 0 ? criticalInventory : []).map((item) => (
                     <tr key={item.sku} className="hover:bg-muted/10 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
@@ -236,12 +231,7 @@ export const Cockpit: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {(nodeDistribution.length > 0 ? nodeDistribution : [
-                    { node: 'Salmiya Branch #04', stock: 1240, transit: 150, value: 45200.000, status: 'Optimal' },
-                    { node: 'Hawally Hub #01', stock: 3850, transit: 420, value: 128400.000, status: 'Surplus' },
-                    { node: 'Main Warehouse', stock: 12400, transit: 0, value: 842900.000, status: 'Optimal' },
-                    { node: 'Airport Kiosk #09', stock: 180, transit: 45, value: 12400.000, status: 'Low' },
-                  ]).map((node) => (
+                  {(nodeDistribution.length > 0 ? nodeDistribution : []).map((node) => (
                     <tr key={node.node} className="hover:bg-muted/10 transition-colors group">
                       <td className="px-8 py-6 font-black uppercase text-xs tracking-tighter">{node.node}</td>
                       <td className="px-8 py-6 text-right font-mono font-black">{node.stock.toLocaleString()}</td>

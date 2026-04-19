@@ -25,11 +25,15 @@ export const supplierPortalController = {
 
   getInventoryAlerts: async (req: Request, res: Response) => {
     try {
-      // Logic to get low stock alerts for supplier
-      res.json([
-        { productId: 'mock-id-1', sku: 'SKU-001', currentStock: 5, threshold: 10 },
-        { productId: 'mock-id-2', sku: 'SKU-002', currentStock: 2, threshold: 5 }
-      ]);
+      const Product = (await import('../models/Product.js')).default;
+      const threshold = 10;
+      const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null }).limit(20);
+      res.json(products.map(p => ({
+        productId: p._id,
+        sku: p.sku,
+        currentStock: p.stock,
+        threshold: threshold
+      })));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

@@ -1,16 +1,31 @@
 import express from 'express';
 import Imei from '../models/Imei.js';
 import ImeiReservation from '../models/ImeiReservation.js';
+import { serialController } from '../controllers/serialController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 import { executeWithBreaker } from '../services/circuitBreakerService.js';
 
 const router = express.Router();
 
+router.use(authenticate);
+
+// GET / (List all serials/IMEIs) - ID 192 (Inventory Management)
+router.get('/', requirePermission(121), serialController.getAll);
+
+// PUT /:id (Update serial/IMEI) 
+router.put('/:id', requirePermission(122), serialController.update);
+
+// DELETE /:id (Soft delete serial/IMEI)
+router.delete('/:id', requirePermission(122), serialController.delete);
+
+// POST /validate (Validate formatted IMEI/Serial)
+router.post('/validate', requirePermission(122), serialController.validate);
+
 // GET /check/:imei (real-time validation for POS)
-router.get('/check/:imei', authenticate, async (req, res) => {
+router.get('/check/:imei', async (req, res) => {
   try {
     const { imei } = req.params;
-    const imeiDoc = await Imei.findOne({ imei });
+    const imeiDoc = await Imei.findOne({ identifier: imei, deletedAt: null });
     
     if (!imeiDoc) {
       return res.json({ exists: false, available: false, error: 'IMEI not found' });
@@ -19,21 +34,21 @@ router.get('/check/:imei', authenticate, async (req, res) => {
     if (imeiDoc.status !== 'in_stock') {
       return res.json({ exists: true, available: false, error: `IMEI status is ${imeiDoc.status}` });
     }
-
+    
     // Check if reserved
     const reservation = await ImeiReservation.findOne({ imei });
     if (reservation) {
-      return res.json({ exists: true, available: false, error: 'IMEI is reserved' });
+      return res.json({ exists: true, available: false, error: 'IMEI is reserved by another registry session' });
     }
     
     res.json({ exists: true, available: true, productId: imeiDoc.productId });
   } catch (error) {
-    res.status(500).json({ error: 'IMEI check failed' });
+    res.status(500).json({ error: 'IMEI analytical check failed' });
   }
 });
 
 // POST /reserve (ID 1B: IMEI reservation)
-router.post('/reserve', authenticate, async (req, res) => {
+router.post('/reserve', async (req, res) => {
   try {
     const { imei, productId, cartSessionId } = req.body;
     
@@ -44,7 +59,7 @@ router.post('/reserve', authenticate, async (req, res) => {
     }
     
     // Check if in stock
-    const imeiDoc = await Imei.findOne({ imei, productId, status: 'in_stock' });
+    const imeiDoc = await Imei.findOne({ identifier: imei, productId, status: 'in_stock', deletedAt: null });
     if (!imeiDoc) {
       return res.status(400).json({ error: 'IMEI not available in stock' });
     }
@@ -57,22 +72,22 @@ router.post('/reserve', authenticate, async (req, res) => {
     
     res.json(reservation);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to reserve IMEI' });
+    res.status(500).json({ error: 'Failed to reserve IMEI vector' });
   }
 });
 
 // POST /check (validate IMEI not sold, not blacklisted)
-router.post('/check', authenticate, requirePermission(5), async (req, res) => {
+router.post('/check', requirePermission(5), async (req, res) => {
   try {
     const { imei } = req.body;
-    const imeiDoc = await Imei.findOne({ imei });
+    const imeiDoc = await Imei.findOne({ identifier: imei, deletedAt: null });
     
     if (!imeiDoc) {
-      return res.status(404).json({ error: 'IMEI not found in system' });
+      return res.status(404).json({ error: 'IMEI identifier not found in registry' });
     }
     
     if (imeiDoc.status === 'sold') {
-      return res.status(400).json({ error: 'IMEI already sold' });
+      return res.status(400).json({ error: 'IMEI already marked as sold' });
     }
     
     // ID 103: IMEI Verification API (GSMA Blacklist)
@@ -97,57 +112,55 @@ router.post('/check', authenticate, requirePermission(5), async (req, res) => {
             const data = await response.json();
             isBlacklisted = data.status === 'blacklisted' || data.blacklist_status === 'Blacklisted';
           } else {
-            throw new Error('GSMA API returned error');
+            throw new Error('GSMA API returned logical error');
           }
         });
       } catch (e) {
-        console.error("IMEI Check API Error, falling back to local check");
-        isBlacklisted = imei.startsWith('999');
+        console.error("IMEI Check API Vector Error");
+        return res.status(503).json({ error: 'External verification service offline' });
       }
     } else {
-      // Fallback for demo/dev if no key (ID 103 Fallback)
-      console.warn('GSMA_API_KEY missing. Using mock blacklist logic.');
-      isBlacklisted = imei.startsWith('999'); // Mock blacklist for IMEIs starting with 999
+      console.warn('GSMA_API_KEY missing. Verification vector bypassed.');
     }
 
     if (isBlacklisted) {
-      return res.status(403).json({ error: 'IMEI is blacklisted by GSMA' });
+      return res.status(403).json({ error: 'IMEI blacklisted by GSMA authority' });
     }
     
     res.json({ success: true, productId: imeiDoc.productId });
   } catch (error) {
-    res.status(500).json({ error: 'IMEI check failed' });
+    res.status(500).json({ error: 'IMEI integrity check failed' });
   }
 });
 
 // POST /sell (mark as sold)
-router.post('/sell', authenticate, requirePermission(1), async (req, res) => {
+router.post('/sell', requirePermission(1), async (req, res) => {
   try {
     const { imei, customerId } = req.body;
     const imeiDoc = await Imei.findOneAndUpdate(
-      { imei, status: 'in_stock' },
+      { identifier: imei, status: 'in_stock', deletedAt: null },
       { status: 'sold', soldAt: new Date(), customerId },
       { new: true }
     );
     
     if (!imeiDoc) {
-      return res.status(400).json({ error: 'IMEI not available for sale' });
+      return res.status(400).json({ error: 'IMEI identifier not available for transaction' });
     }
     
     res.json(imeiDoc);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to mark IMEI as sold' });
+    res.status(500).json({ error: 'Failed to commit IMEI sale' });
   }
 });
 
 // GET /history/:imei (return all past sales) - requires permission 47
-router.get('/history/:imei', authenticate, requirePermission(47), async (req, res) => {
+router.get('/history/:imei', requirePermission(47), async (req, res) => {
   try {
     const { imei } = req.params;
-    const history = await Imei.find({ imei }).sort({ createdAt: -1 });
+    const history = await Imei.find({ identifier: imei }).sort({ createdAt: -1 });
     res.json(history);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch IMEI history' });
+    res.status(500).json({ error: 'Failed to retrieve telemetry history' });
   }
 });
 

@@ -53,20 +53,22 @@ export const AnalyticsDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const [salesData, setSalesData] = useState<any[]>([]);
+
   const fetchData = async () => {
     try {
       setIsRefreshing(true);
-      const [heatRes, foreRes, predRes] = await Promise.all([
+      const [heatRes, foreRes, predRes, salesRes] = await Promise.all([
         fetch('/api/analytics/heatmap', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
         fetch('/api/analytics/forecast', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/analytics/predictive', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
+        fetch('/api/analytics/predictive', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
+        fetch('/api/analytics/sales-velocity', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } })
       ]);
 
-      if (heatRes.ok && foreRes.ok && predRes.ok) {
-        setHeatmap(await heatRes.json());
-        setForecast(await foreRes.json());
-        setPredictive(await predRes.json());
-      }
+      if (heatRes.ok) setHeatmap(await heatRes.json());
+      if (foreRes.ok) setForecast(await foreRes.json());
+      if (predRes.ok) setPredictive(await predRes.json());
+      if (salesRes.ok) setSalesData(await salesRes.json());
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -232,15 +234,7 @@ export const AnalyticsDashboard: React.FC = () => {
             </h3>
             <div className="h-[450px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[
-                  { time: '09:00', sales: 12 },
-                  { time: '11:00', sales: 45 },
-                  { time: '13:00', sales: 30 },
-                  { time: '15:00', sales: 85 },
-                  { time: '17:00', sales: 60 },
-                  { time: '19:00', sales: 110 },
-                  { time: '21:00', sales: 40 }
-                ]}>
+                <LineChart data={salesData.length > 0 ? salesData : []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.03)" />
                   <XAxis 
                     dataKey="time" 

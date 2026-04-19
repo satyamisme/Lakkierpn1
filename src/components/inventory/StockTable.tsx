@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Hash, Tag, DollarSign, TrendingUp } from 'lucide-react';
+import { Package, Hash, Tag, DollarSign, TrendingUp, Trash2 } from 'lucide-react';
 import { StockStatusBadge } from './StockStatusBadge';
 
 interface InventoryItem {
@@ -14,13 +14,15 @@ interface InventoryItem {
 
 interface StockTableProps {
   items: InventoryItem[];
+  onEdit?: (item: InventoryItem) => void;
+  onDelete?: (id: string) => void;
 }
 
 /**
  * ID 31: Stock Table Molecule
  * High-density table showing: Item Name, SKU, Category, Current Stock, and Cost Price (ID 29).
  */
-export const StockTable: React.FC<StockTableProps> = ({ items }) => {
+export const StockTable: React.FC<StockTableProps> = ({ items, onEdit, onDelete }) => {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -32,12 +34,13 @@ export const StockTable: React.FC<StockTableProps> = ({ items }) => {
               <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Stock</th>
               <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cost Price (ID 29)</th>
               <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Selling Price</th>
+              <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-8 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
+                <td colSpan={6} className="px-8 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
                   No inventory items found.
                 </td>
               </tr>
@@ -76,6 +79,24 @@ export const StockTable: React.FC<StockTableProps> = ({ items }) => {
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2 text-sm font-black text-indigo-600 dark:text-indigo-400">
                       <TrendingUp className="w-4 h-4" /> {item.price.toFixed(3)} KD
+                    </div>
+                  </td>
+                  <td className="px-8 py-6 text-center">
+                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => onEdit?.(item)}
+                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        title="Edit Product"
+                      >
+                        <Tag size={18} />
+                      </button>
+                      <button 
+                        onClick={() => onDelete?.(item._id)}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete Product"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                   </td>
                 </tr>

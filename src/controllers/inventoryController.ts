@@ -150,7 +150,7 @@ export const inventoryController = {
         const inventory = await Inventory.find({ storeId: store._id });
         const totalStock = inventory.reduce((sum, i) => sum + i.quantity, 0);
         
-        // Calculate value (Mock: using a flat average cost if not available on product)
+        // Calculate value
         let totalValue = 0;
         for (const item of inventory) {
           const product = await Product.findById(item.productId);
@@ -428,7 +428,6 @@ export const inventoryController = {
       }
 
       // Group by supplier if possible, but for now just create one PO per supplier or a general one
-      // Mock: Use the first supplier found or a default one
       const supplier = await Supplier.findOne();
       if (!supplier) {
         return res.status(400).json({ error: 'No suppliers found to create PO' });

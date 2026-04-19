@@ -14,10 +14,10 @@ export const productController = {
       let total;
 
       if (page) {
-        products = await Product.find().skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
-        total = await Product.countDocuments();
+        products = await Product.find({ deletedAt: null }).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
+        total = await Product.countDocuments({ deletedAt: null });
       } else {
-        products = await Product.find().sort({ createdAt: -1 }).lean();
+        products = await Product.find({ deletedAt: null }).sort({ createdAt: -1 }).lean();
         total = products.length;
       }
 
@@ -44,9 +44,9 @@ export const productController = {
 
   getProductById: async (req: Request, res: Response) => {
     try {
-      const product = await Product.findById(req.params.id).lean();
+      const product = await Product.findOne({ _id: req.params.id, deletedAt: null }).lean();
       if (!product) return res.status(404).json({ error: 'Product not found' });
-      const variants = await Variant.find({ productId: product._id }).lean();
+      const variants = await Variant.find({ productId: product._id, deletedAt: null }).lean();
       res.json({ ...product, variants });
     } catch (error: any) {
       console.error("GetProductById error:", error);
@@ -100,7 +100,7 @@ export const productController = {
 
   getVariants: async (req: Request, res: Response) => {
     try {
-      const variants = await Variant.find({ productId: req.params.id });
+      const variants = await Variant.find({ productId: req.params.id, deletedAt: null });
       res.json(variants);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch variants' });
@@ -119,10 +119,31 @@ export const productController = {
 
   deleteVariant: async (req: Request, res: Response) => {
     try {
-      // Check if variant has sales (not implemented yet, but good practice)
-      await Variant.findByIdAndDelete(req.params.id);
-      res.json({ message: 'Variant deleted' });
+      const { id } = req.params;
+      
+      // Check if variant has associated serials/IMEIs that are sold or not in_stock
+      const linkedSerials = await SerialNumber.countDocuments({ 
+        variantId: id, 
+        status: { $ne: 'in_stock' } 
+      });
+      
+      if (linkedSerials > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete variant with sold or active units. Consider discontinuing instead.' 
+        });
+      }
+
+      await Variant.findByIdAndUpdate(id, { deletedAt: new Date(), status: 'discontinued' });
+      
+      // Also soft-delete any in-stock serials
+      await SerialNumber.updateMany(
+        { variantId: id, status: 'in_stock' },
+        { deletedAt: new Date() }
+      );
+
+      res.json({ message: 'Variant soft-deleted' });
     } catch (error) {
+      console.error("Delete variant error:", error);
       res.status(500).json({ error: 'Failed to delete variant' });
     }
   },
@@ -151,10 +172,19 @@ export const productController = {
 
   deleteProduct: async (req: Request, res: Response) => {
     try {
-      const product = await Product.findByIdAndDelete(req.params.id);
+      const { id } = req.params;
+      
+      // Cascade soft-delete to all variants
+      await Variant.updateMany(
+        { productId: id, deletedAt: null },
+        { deletedAt: new Date(), status: 'discontinued' }
+      );
+
+      const product = await Product.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
       if (!product) return res.status(404).json({ error: 'Product not found' });
-      res.json({ message: 'Product deleted successfully' });
+      res.json({ message: 'Product and associated variants deleted successfully' });
     } catch (error: any) {
+      console.error("Delete product error:", error);
       res.status(500).json({ error: 'Failed to delete product' });
     }
   },
@@ -189,7 +219,7 @@ export const productController = {
   getLowStock: async (req: Request, res: Response) => {
     try {
       const threshold = parseInt(req.query.threshold as string) || 5;
-      const products = await Product.find({ stock: { $lte: threshold } });
+      const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null });
       res.json(products);
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to fetch low stock products' });
@@ -200,9 +230,9 @@ export const productController = {
     try {
       const query = req.query.q as string;
       if (!query) {
-        const products = await Product.find().limit(20).lean();
+        const products = await Product.find({ deletedAt: null }).limit(20).lean();
         const productsWithVariants = await Promise.all(products.map(async (p) => {
-          const variants = await Variant.find({ productId: p._id }).lean();
+          const variants = await Variant.find({ productId: p._id, deletedAt: null }).lean();
           return { ...p, variants };
         }));
         return res.json(productsWithVariants);
@@ -210,6 +240,7 @@ export const productController = {
 
       // Search products
       const products = await Product.find({
+        deletedAt: null,
         $or: [
           { name: { $regex: query, $options: 'i' } },
           { sku: { $regex: query, $options: 'i' } }
@@ -218,6 +249,7 @@ export const productController = {
 
       // Search variants
       const variants = await Variant.find({
+        deletedAt: null,
         $or: [
           { sku: { $regex: query, $options: 'i' } },
           { barcode: { $regex: query, $options: 'i' } }

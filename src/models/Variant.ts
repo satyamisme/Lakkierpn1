@@ -12,6 +12,7 @@ export interface IVariant extends Document {
   images: string[];
   status: 'active' | 'discontinued';
   binLocation?: string;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ const VariantSchema: Schema = new Schema({
     default: 'active' 
   },
   binLocation: { type: String },
+  deletedAt: { type: Date },
 }, { timestamps: true });
 
 VariantSchema.index({ sku: 1 });

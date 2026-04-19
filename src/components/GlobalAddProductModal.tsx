@@ -8,28 +8,53 @@ interface GlobalAddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialData?: any; // New prop for editing
 }
 
-export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [step, setStep] = useState(1);
   const [createdProducts, setCreatedProducts] = useState<any[]>([]);
   const [newProduct, setNewProduct] = useState({
-    name: "",
-    sku: "",
-    category: "Smartphones",
-    brand: "",
-    modelNumber: "",
-    description: "",
-    price: 0,
-    cost: 0,
-    stock: 0,
-    image: "",
-    binLocation: "",
-    trackingMethod: 'imei' as 'none' | 'imei' | 'serial',
-    isConfigurable: false,
-    attributes: [] as { name: string, values: string[] }[],
-    variants: [] as any[]
+    name: initialData?.name || "",
+    sku: initialData?.sku || "",
+    category: initialData?.category || "Phones",
+    brand: initialData?.brand || "",
+    modelNumber: initialData?.modelNumber || "",
+    description: initialData?.description || "",
+    price: initialData?.price || 0,
+    cost: initialData?.cost || 0,
+    stock: initialData?.stock || 0,
+    image: initialData?.image || "",
+    binLocation: initialData?.binLocation || "",
+    trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+    isConfigurable: initialData?.isConfigurable || false,
+    attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
+    variants: initialData?.variants || [] as any[]
   });
+
+  // Reset state when initialData changes or modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setNewProduct({
+        name: initialData?.name || "",
+        sku: initialData?.sku || "",
+        category: initialData?.category || "Phones",
+        brand: initialData?.brand || "",
+        modelNumber: initialData?.modelNumber || "",
+        description: initialData?.description || "",
+        price: initialData?.price || 0,
+        cost: initialData?.cost || 0,
+        stock: initialData?.stock || 0,
+        image: initialData?.image || "",
+        binLocation: initialData?.binLocation || "",
+        trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+        isConfigurable: initialData?.isConfigurable || false,
+        attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
+        variants: initialData?.variants || [] as any[]
+      });
+      setStep(1);
+    }
+  }, [isOpen, initialData]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [skuStatus, setSkuStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
@@ -151,12 +176,18 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await axios.post('/api/products', newProduct);
-      if (response.status === 201) {
+      let response;
+      if (initialData?._id) {
+        response = await axios.put(`/api/products/${initialData._id}`, newProduct);
+      } else {
+        response = await axios.post('/api/products', newProduct);
+      }
+      
+      if (response.status === 201 || response.status === 200) {
         const data = response.data;
         setCreatedProducts(data.variants || [data]);
         setStep(4);
-        toast.success("Product and variants registered successfully.");
+        toast.success(initialData?._id ? "Product updated." : "Product and variants registered successfully.");
         if (onSuccess) onSuccess();
       }
     } catch (error: any) {

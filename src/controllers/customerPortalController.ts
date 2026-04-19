@@ -5,12 +5,10 @@ import { Request, Response } from 'express';
 export const customerPortalController = {
   getOrders: async (req: Request, res: Response) => {
     try {
-      const customerId = (req as any).user.id;
-      // Logic to get orders for the logged-in customer
-      res.json([
-        { id: 'order-1', date: new Date(), total: 150, status: 'delivered' },
-        { id: 'order-2', date: new Date(), total: 85, status: 'processing' }
-      ]);
+      const Sale = (await import('../models/Sale.js')).default;
+      const customerEmail = (req as any).user.email;
+      const orders = await Sale.find({ 'customer.email': customerEmail }).sort({ createdAt: -1 });
+      res.json(orders);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -18,11 +16,10 @@ export const customerPortalController = {
 
   getRepairStatus: async (req: Request, res: Response) => {
     try {
-      const customerId = (req as any).user.id;
-      // Logic to get repair status for the logged-in customer
-      res.json([
-        { id: 'repair-1', device: 'iPhone 13', status: 'ready_for_pickup', cost: 45 }
-      ]);
+      const Repair = (await import('../models/Repair.js')).default;
+      const customerEmail = (req as any).user.email;
+      const repairs = await Repair.find({ 'customer.email': customerEmail }).sort({ createdAt: -1 });
+      res.json(repairs);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -30,9 +27,10 @@ export const customerPortalController = {
 
   getLoyaltyPoints: async (req: Request, res: Response) => {
     try {
-      const customerId = (req as any).user.id;
-      // Logic to get loyalty points for the logged-in customer
-      res.json({ points: 1250, tier: 'gold' });
+      const Customer = (await import('../models/Customer.js')).default;
+      const customerEmail = (req as any).user.email;
+      const customer = await Customer.findOne({ email: customerEmail });
+      res.json({ points: customer?.loyaltyPoints || 0, tier: customer?.tier || 'bronze' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

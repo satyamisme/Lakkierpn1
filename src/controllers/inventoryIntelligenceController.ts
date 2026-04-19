@@ -17,15 +17,14 @@ export const inventoryIntelligenceController = {
     try {
       const { productId } = req.body;
       
-      // Logic to generate forecast using AI/ML would go here
+      // Logic to generate forecast using historical sales would go here
       const forecast = new InventoryForecast({
         productId,
-        predictedDemand: [
-          { date: new Date(Date.now() + 86400000), quantity: 10 },
-          { date: new Date(Date.now() + 172800000), quantity: 12 },
-          { date: new Date(Date.now() + 259200000), quantity: 8 }
-        ],
-        confidence: 0.85
+        predictedDemand: Array.from({ length: 7 }, (_, i) => ({
+          date: new Date(Date.now() + (i + 1) * 86400000),
+          quantity: Math.floor(Math.random() * 5) + 1 // Dynamic but still simplistic
+        })),
+        confidence: 0.7
       });
       
       await forecast.save();
@@ -37,13 +36,16 @@ export const inventoryIntelligenceController = {
 
   getStockOptimization: async (req: Request, res: Response) => {
     try {
-      // Logic to get stock optimization suggestions would go here
-      res.json({
-        suggestions: [
-          { productId: 'mock-id-1', action: 'restock', quantity: 50, reason: 'High predicted demand' },
-          { productId: 'mock-id-2', action: 'liquidate', quantity: 20, reason: 'Low turnover rate' }
-        ]
-      });
+      const Product = (await import('../models/Product.js')).default;
+      const lowStock = await Product.find({ stock: { $lte: 5 }, deletedAt: null }).limit(10);
+      const highStock = await Product.find({ stock: { $gte: 100 }, deletedAt: null }).limit(10);
+      
+      const suggestions = [
+        ...lowStock.map(p => ({ productId: p._id, action: 'restock', quantity: 20, reason: `Stock level ${p.stock} below safety threshold` })),
+        ...highStock.map(p => ({ productId: p._id, action: 'liquidate', quantity: 10, reason: `Excess inventory for ${p.sku}` }))
+      ];
+
+      res.json({ suggestions });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

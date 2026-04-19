@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISerialNumber extends Document {
   identifier: string;
+  type: 'imei' | 'serial';
   variantId?: mongoose.Types.ObjectId;
   productId: mongoose.Types.ObjectId;
   status: 'in_stock' | 'sold' | 'returned' | 'under_repair' | 'repair' | 'defective' | 'warranty_claimed';
@@ -19,6 +20,11 @@ export interface ISerialNumber extends Document {
 
 const SerialNumberSchema: Schema = new Schema({
   identifier: { type: String, required: true, unique: true },
+  type: { 
+    type: String, 
+    enum: ['imei', 'serial'], 
+    default: 'serial' 
+  },
   imei: { type: String }, // Alias for identifier for backward compatibility
   variantId: { type: Schema.Types.ObjectId, ref: 'Variant' },
   productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -37,6 +43,7 @@ const SerialNumberSchema: Schema = new Schema({
   soldAt: { type: Date },
   customerId: { type: String },
   purchaseOrderId: { type: String },
+  deletedAt: { type: Date },
 }, { timestamps: true });
 
 SerialNumberSchema.pre('save', function(this: any) {

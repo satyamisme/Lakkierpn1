@@ -32,7 +32,7 @@ export const omnichannelController = {
   syncShopifyOrders: async (req: Request, res: Response) => {
     try {
       if (!shopify) {
-        return res.json({ message: 'Synced 0 orders from Shopify (MOCK MODE)' });
+        return res.status(400).json({ error: 'Shopify integration not configured. Please add SHOPIFY_API_KEY and SHOPIFY_PASSWORD to environment variables.' });
       }
       const orders = await shopify.order.list({ limit: 50, status: 'open' });
       
@@ -63,7 +63,7 @@ export const omnichannelController = {
   syncWooCommerceOrders: async (req: Request, res: Response) => {
     try {
       if (!WooCommerce) {
-        return res.json({ message: 'Synced 0 orders from WooCommerce (MOCK MODE)' });
+        return res.status(400).json({ error: 'WooCommerce integration not configured. Please add WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_CONSUMER_SECRET to environment variables.' });
       }
       const response = await WooCommerce.get("orders", { per_page: 50, status: 'processing' });
       const orders = response.data;
@@ -99,7 +99,7 @@ export const omnichannelController = {
 
       if (source === 'shopify') {
         if (!shopify) {
-          return res.json({ message: 'Synced 0 products from Shopify (MOCK MODE)', count: 0 });
+          return res.status(400).json({ error: 'Shopify integration not configured.' });
         }
         const shopifyProducts = await shopify.product.list({ limit: 50 });
         products = shopifyProducts.map((p: any) => ({
@@ -111,7 +111,7 @@ export const omnichannelController = {
         }));
       } else {
         if (!WooCommerce) {
-          return res.json({ message: 'Synced 0 products from WooCommerce (MOCK MODE)', count: 0 });
+          return res.status(400).json({ error: 'WooCommerce integration not configured.' });
         }
         const response = await WooCommerce.get("products", { per_page: 50 });
         products = response.data.map((p: any) => ({

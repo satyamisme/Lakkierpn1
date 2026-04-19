@@ -25,18 +25,13 @@ export const ExecutiveAffinity: React.FC = () => {
   const fetchAffinity = async () => {
     try {
       setIsLoading(true);
-      // Mock data for affinity and lost sales
-      setAffinityData([
-        { main: 'iPhone 15 Pro', companion: 'MagSafe Case', strength: 85, revenue: 1240.500 },
-        { main: 'Samsung S24 Ultra', companion: 'Galaxy Buds 3', strength: 62, revenue: 840.200 },
-        { main: 'Screen Repair', companion: 'Tempered Glass', strength: 94, revenue: 450.000 },
-        { main: 'iPad Air', companion: 'Apple Pencil', strength: 78, revenue: 920.150 },
-      ]);
+      // Affinity data logic would go here (requires complex transaction correlation)
+      setAffinityData([]);
       
       const inventoryRes = await axios.get('/api/inventory/low-stock');
       setLostSales(inventoryRes.data.map((item: any) => ({
         ...item,
-        lostRevenue: item.demand * 150 // Mock lost revenue calculation
+        lostRevenue: 0 // Initialize as 0 until real impact calculator is implemented
       })).slice(0, 5));
 
     } catch (error) {
