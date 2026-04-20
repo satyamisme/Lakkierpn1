@@ -163,17 +163,6 @@ async function startServer() {
       
       console.log("Seeded/Updated Admin User (admin@lakkiphone.com / admin123) with full permissions [1-350]");
 
-    const productCount = await Product.countDocuments();
-    if (productCount === 0) {
-      const sampleProducts = [
-        { name: "iPhone 15 Pro Max 256GB Natural Titanium", sku: "IP15PM-256-NT", category: "Phones", price: 345.000, cost: 300.000, stock: 12, isImeiRequired: true },
-        { name: "Samsung Galaxy S24 Ultra 512GB Titanium Gray", sku: "S24U-512-TG", category: "Phones", price: 310.000, cost: 280.000, stock: 8, isImeiRequired: true },
-        { name: "AirPods Pro (2nd Gen) with MagSafe Case", sku: "APP2-MG", category: "Accessories", price: 65.000, cost: 50.000, stock: 45, isImeiRequired: false },
-        { name: "Samsung 25W Fast Charger (Type-C)", sku: "SAM-25W-C", category: "Accessories", price: 8.500, cost: 4.000, stock: 120, isImeiRequired: false },
-      ];
-      await Product.create(sampleProducts);
-      console.log("Seeded Sample Products");
-    }
   };
   await seedData();
 

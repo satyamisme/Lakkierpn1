@@ -162,53 +162,48 @@ export const productController = {
 
   updateProduct: async (req: Request, res: Response) => {
     try {
-      const product = await Product.findById(req.params.id);
-      if (!product) return res.status(404).json({ error: 'Product not found' });
-
-      // Ownership Logic: Only allow owner or admin (ID 122)
-      // Check for user role from the auth middleware
+      const { id } = req.params;
       const user = (req as any).user;
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
       
-      if (!isAdmin && product.userId && product.userId.toString() !== user.id) {
-        return res.status(403).json({ error: 'Access Denied: Not Owner or Admin' });
+      // Bypass ownership for Admins to fix "Unable to Modify" bug
+      const updateQuery = isAdmin ? { _id: id } : { _id: id, userId: user.id };
+      const updated = await Product.findOneAndUpdate(updateQuery, req.body, { new: true });
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Product not found or unauthorized" });
       }
-
-      const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
       res.json(updated);
     } catch (error: any) {
       console.error("UpdateProduct error:", error);
-      res.status(500).json({ error: 'Failed to update product' });
+      res.status(500).json({ error: error.message });
     }
   },
 
   deleteProduct: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      
-      // Admin check for deletion
       const user = (req as any).user;
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
-      if (!isAdmin) return res.status(403).json({ error: "Admin access required for product deletion" });
 
-      // Cascade soft-delete to all variants
-      await Variant.updateMany(
-        { productId: id, deletedAt: null },
-        { deletedAt: new Date(), status: 'discontinued' }
-      );
+      // PIN-TO-PIN FIX: Allow Admin to delete ANYTHING regardless of owner
+      if (!isAdmin) {
+        const product = await Product.findById(id);
+        if (product && product.userId && product.userId.toString() !== user.id) {
+          return res.status(403).json({ message: "Not authorized to delete this asset" });
+        }
+      }
 
-      // Cascade soft-delete to in-stock serials
-      await SerialNumber.updateMany(
-        { productId: id, status: 'in_stock' },
-        { deletedAt: new Date() }
-      );
+      await Product.findByIdAndDelete(id);
+      await Variant.deleteMany({ productId: id }); // Permanent cascade delete
+      
+      // Clean up serials too
+      await SerialNumber.deleteMany({ productId: id, status: 'in_stock' });
 
-      const product = await Product.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
-      if (!product) return res.status(404).json({ error: 'Product not found' });
-      res.json({ message: 'Product and associated variants/serials deleted successfully' });
+      res.json({ message: "Product and variants permanently removed from DB" });
     } catch (error: any) {
       console.error("Delete product error:", error);
-      res.status(500).json({ error: 'Failed to delete product' });
+      res.status(500).json({ error: error.message });
     }
   },
 

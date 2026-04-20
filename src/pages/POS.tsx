@@ -238,45 +238,33 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [scanBuffer, products]);
 
-  const handleBarcode = (barcode: string) => {
-    // Audit Wiring: Auto-detect IMEI format (15 digits)
-    const isImei = /^\d{15}$/.test(barcode);
-    const isSerial = /^[A-Z0-9]{8,12}$/i.test(barcode);
+  const handleBarcode = async (barcode: string) => {
+    // Identifier-first deep lookup (ID 319)
+    try {
+      const response = await axios.get(`/api/products/search?q=${barcode}`);
+      const results = response.data;
+      
+      if (results.length > 0) {
+        // If results contain exactly the scanned barcode as a unique identifier (IMEI/Serial)
+        const exactMatch = results.find((r: any) => 
+          r.sku === barcode || 
+          r.imei === barcode || 
+          r.serial === barcode
+        ) || results[0];
 
-    // Deep Search in products or variants
-    const product = products.find(p => 
-      p.sku === barcode || 
-      (p.imei && p.imei === barcode) || 
-      (p.serial && p.serial === barcode)
-    );
-    
-    if (product) {
-      if (product.isConfigurable) {
-        setSelectedProductForVariants(product);
-      } else {
-        // If it's a specific IMEI scan, pre-fill it
-        if (isImei || isSerial) {
-          setPendingProduct({ ...product, imei: barcode });
-          setIsImeiModalOpen(true);
+        if (exactMatch.isConfigurable && !exactMatch.isVariant) {
+          setSelectedProductForVariants(exactMatch);
         } else {
-          addToCart(product);
+          addToCart(exactMatch, exactMatch.isVariant, exactMatch.parentProduct);
         }
+        return;
       }
-      return;
+      
+      toast.error(`Unknown Identifier: ${barcode}`);
+    } catch (e) {
+      console.error("Barcode scan API error:", e);
+      toast.error("Scanning synchronization failed");
     }
-    
-    // Check variants
-    for (const p of products) {
-      if (p.variants) {
-        const variant = p.variants.find(v => v.sku === barcode);
-        if (variant) {
-          addToCart(variant, true, p);
-          return;
-        }
-      }
-    }
-
-    toast.error(`Unknown Identifier: ${barcode}`);
   };
 
   useEffect(() => {
