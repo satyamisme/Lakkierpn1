@@ -66,6 +66,67 @@ export const InventoryDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('sku') || "");
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [deletePin, setDeletePin] = useState("");
+  const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
+  const [bulkPriceData, setBulkPriceData] = useState({ percentage: 0, fixedAmount: 0, mode: 'percentage' as 'percentage' | 'fixed' });
+  const [currentTerminalPin, setCurrentTerminalPin] = useState("****");
+
+  useEffect(() => {
+    const fetchPin = async () => {
+      try {
+        const res = await axios.get('/api/security/terminal-pin');
+        setCurrentTerminalPin(res.data.pin);
+      } catch (err) {
+        console.error("Failed to fetch PIN");
+      }
+    };
+    if (isMaintenanceOpen) fetchPin();
+  }, [isMaintenanceOpen]);
+
+  const handleUpdatePin = async () => {
+    const newPin = prompt("ENTER NEW 4-DIGIT SECURITY PIN:");
+    if (!newPin || newPin.length < 4) {
+      toast.error("Invalid PIN format.");
+      return;
+    }
+    try {
+      await axios.post('/api/security/terminal-pin', { newPin });
+      toast.success("Terminal Security PIN updated.");
+      setCurrentTerminalPin(newPin);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Update failed.");
+    }
+  };
+
+  const filteredProducts = React.useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return allProducts.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.sku.toLowerCase().includes(query) ||
+      p.brand?.toLowerCase().includes(query) ||
+      p.modelNumber?.toLowerCase().includes(query)
+    );
+  }, [allProducts, searchQuery]);
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === filteredProducts.length && filteredProducts.length > 0) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map(p => p._id)));
+    }
+  };
+
+  const toggleSelectProduct = (productId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSelected = new Set(selectedProducts);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
+    } else {
+      newSelected.add(productId);
+    }
+    setSelectedProducts(newSelected);
+  };
 
   useEffect(() => {
     const handleOpenIntake = (e: any) => {
@@ -139,15 +200,18 @@ export const InventoryDashboard: React.FC = () => {
   };
 
   const repairDatabaseAction = async (fullPurge = false) => {
+    const pin = prompt(`ENTER 4-DIGIT SECURITY PIN TO AUTHORIZE ${fullPurge ? 'NUCLEAR PURGE' : 'REPAIR'}:`);
+    if (!pin) return;
+    
     setIsRepairing(true);
     try {
-      const res = await axios.post('/api/products/repair-database', { fullPurge });
+      const res = await axios.post('/api/products/repair-database', { fullPurge, pin });
       toast.success(res.data.message || `Repair Complete: ${JSON.stringify(res.data.summary)}`);
       await fetchData();
       setIsMaintenanceOpen(false);
       window.location.reload();
     } catch (err: any) {
-      toast.error("Repair failed: " + (err.response?.data?.error || err.message));
+      toast.error(err.response?.data?.error || "Repair failed.");
     } finally {
       setIsRepairing(false);
     }
@@ -157,20 +221,59 @@ export const InventoryDashboard: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!itemToDelete) return;
+    if (!deletePin || deletePin.length < 4) {
+      toast.error("Security PIN required for destruction.");
+      return;
+    }
     try {
       if (itemToDelete.type === 'product') {
-        await axios.delete(`/api/products/${itemToDelete.id}`);
-        toast.success("Product and all variants purged.");
+        await axios.delete(`/api/products/${itemToDelete.id}`, { data: { pin: deletePin } });
+        toast.success("Product moved to Recycle Bin.");
       } else {
-        await axios.delete(`/api/products/variants/${itemToDelete.id}`);
-        toast.success("Variant purged.");
+        await axios.delete(`/api/products/variants/${itemToDelete.id}`, { data: { pin: deletePin } });
+        toast.success("Variant moved to Recycle Bin.");
       }
       setItemToDelete(null);
+      setDeletePin("");
       await fetchData();
-      window.location.reload();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Purge failed.");
-      setItemToDelete(null);
+      toast.error(error.response?.data?.message || "Action blocked by security module.");
+      setDeletePin("");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProducts.size === 0) return;
+    const pin = prompt("ENTER 4-DIGIT SECURITY PIN TO AUTHORIZE BATCH PURGE:");
+    if (!pin) return;
+
+    try {
+      const response = await axios.post('/api/products/bulk-delete', { 
+        ids: Array.from(selectedProducts),
+        pin 
+      });
+      toast.success(response.data.message);
+      setSelectedProducts(new Set());
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Batch purge failed.");
+    }
+  };
+
+  const handleBulkReprice = async () => {
+    try {
+      await axios.post('/api/products/bulk-reprice', {
+        ids: Array.from(selectedProducts),
+        ...(bulkPriceData.mode === 'percentage' 
+            ? { percentage: bulkPriceData.percentage } 
+            : { fixedAmount: bulkPriceData.fixedAmount })
+      });
+      toast.success("Asset Matrix Re-priced.");
+      setIsBulkPriceModalOpen(false);
+      setSelectedProducts(new Set());
+      fetchData();
+    } catch (err: any) {
+      toast.error("Bulk re-pricing failed.");
     }
   };
 
@@ -183,12 +286,6 @@ export const InventoryDashboard: React.FC = () => {
     }
     setExpandedProducts(newExpanded);
   };
-
-  const filteredProducts = allProducts.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.variants && p.variants.some((v: any) => v.sku.toLowerCase().includes(searchQuery.toLowerCase())))
-  );
 
   return (
     <div className="space-y-16 pb-20">
@@ -369,21 +466,65 @@ export const InventoryDashboard: React.FC = () => {
                 </h2>
                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Real-time cross-node inventory synchronization</p>
               </div>
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search Matrix..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
-                />
+              <div className="relative w-full md:w-96 flex items-center gap-4">
+                <AnimatePresence>
+                  {selectedProducts.size > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="absolute right-full mr-6 flex items-center gap-4"
+                    >
+                      <span className="text-[10px] font-black uppercase text-primary whitespace-nowrap">{selectedProducts.size} Selected</span>
+                      <button 
+                        onClick={() => {
+                          const items = allProducts.filter(p => selectedProducts.has(p._id));
+                          setIntakeInitialItems(items);
+                          setIsIntakeModalOpen(true);
+                        }}
+                        className="px-6 py-3 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <Layers size={14} /> Bulk Intake
+                      </button>
+                      <button 
+                        onClick={() => setIsBulkPriceModalOpen(true)}
+                        className="px-6 py-3 bg-surface border border-border rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap hover:border-primary transition-all"
+                      >
+                        <Tag size={14} /> Batch Re-price
+                      </button>
+                      <button 
+                        onClick={handleBulkDelete}
+                        className="px-6 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <Trash size={14} /> Bulk Purge
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div className="relative flex-1">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
+                  <input 
+                    type="text" 
+                    placeholder="Search Matrix..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
+                  />
+                </div>
               </div>
               </div>
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-surface-container-lowest border-b border-border">
+                    <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedProducts.size > 0 && selectedProducts.size === filteredProducts.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 accent-primary rounded cursor-pointer"
+                      />
+                    </th>
                     <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Product Identity</th>
                     <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">SKU / Model</th>
                     <th className="px-10 py-8 text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-40">Category</th>
@@ -409,9 +550,18 @@ export const InventoryDashboard: React.FC = () => {
                     filteredProducts.map((p) => (
                       <React.Fragment key={p._id}>
                         <tr 
-                          className={`hover:bg-surface transition-colors group cursor-pointer ${expandedProducts.has(p._id) ? 'bg-surface' : ''}`}
+                          className={`hover:bg-surface transition-colors group cursor-pointer ${expandedProducts.has(p._id) || selectedProducts.has(p._id) ? 'bg-surface' : ''}`}
                           onClick={() => p.variants?.length > 0 && toggleProduct(p._id)}
                         >
+                          <td className="px-10 py-8">
+                            <input 
+                              type="checkbox"
+                              checked={selectedProducts.has(p._id)}
+                              onClick={(e) => toggleSelectProduct(p._id, e)}
+                              onChange={() => {}} // Controlled by onClick
+                              className="w-4 h-4 accent-primary rounded cursor-pointer"
+                            />
+                          </td>
                           <td className="px-10 py-8">
                             <div className="flex items-center gap-6">
                               {p.variants?.length > 0 ? (
@@ -609,6 +759,27 @@ export const InventoryDashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
+                   <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Security Configuration</h3>
+                   <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[11px] font-black text-white uppercase tracking-widest">Terminal Security PIN</p>
+                          <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest mt-0.5">Required for all destructive operations</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-xl font-black text-white/40 tracking-[0.3em] font-mono">{currentTerminalPin}</span>
+                          <button 
+                            onClick={handleUpdatePin}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                          >
+                            Update
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-4">
                    <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Diagnostic Operations</h3>
                    
                    <div className="grid grid-cols-1 gap-3">
@@ -687,9 +858,23 @@ export const InventoryDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-sm text-white/60 leading-relaxed">
-                You are about to permanently remove this {itemToDelete.type} and all associated data from the master database. This action is terminal and cannot be reversed.
-              </p>
+              <div className="space-y-6">
+                <p className="text-sm text-white/60 leading-relaxed">
+                  You are about to permanently move this {itemToDelete.type} to the Recycle Bin. It will be retained for 90 days before final destruction.
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 ml-2">Authorize Action (Enter PIN)</label>
+                  <input 
+                    type="password"
+                    maxLength={4}
+                    placeholder="****"
+                    value={deletePin}
+                    onChange={(e) => setDeletePin(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-red-500/50 transition-all"
+                  />
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <button 
@@ -722,6 +907,87 @@ export const InventoryDashboard: React.FC = () => {
         <Plus size={32} />
         <span className="absolute right-full mr-6 px-4 py-2 bg-foreground text-background text-[10px] font-black uppercase tracking-[0.3em] rounded-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap shadow-2xl">Register Asset (ID 122)</span>
       </motion.button>
+
+      {/* Bulk Reprice Modal */}
+      <AnimatePresence>
+        {isBulkPriceModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="max-w-md w-full bg-[#111] border border-white/10 rounded-[2.5rem] p-10 space-y-8"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
+                  <Tag size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black uppercase tracking-tighter">Batch Re-price</h3>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-1">{selectedProducts.size} Assets Selected</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex bg-white/5 p-2 rounded-2xl">
+                  <button 
+                    onClick={() => setBulkPriceData({ ...bulkPriceData, mode: 'percentage' })}
+                    className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${bulkPriceData.mode === 'percentage' ? 'bg-white text-black' : 'text-white/40'}`}
+                  >
+                    Percentage (%)
+                  </button>
+                  <button 
+                    onClick={() => setBulkPriceData({ ...bulkPriceData, mode: 'fixed' })}
+                    className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${bulkPriceData.mode === 'fixed' ? 'bg-white text-black' : 'text-white/40'}`}
+                  >
+                    Fixed Price (Dinar)
+                  </button>
+                </div>
+
+                {bulkPriceData.mode === 'percentage' ? (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/20 ml-2">Adjustment Percentage</label>
+                    <input 
+                      type="number"
+                      placeholder="e.g. 10 or -5"
+                      value={bulkPriceData.percentage}
+                      onChange={(e) => setBulkPriceData({ ...bulkPriceData, percentage: parseFloat(e.target.value) })}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-black text-white outline-none focus:border-blue-500 transition-all"
+                    />
+                    <p className="text-[8px] font-bold text-center text-white/20 uppercase tracking-widest">Positive for markup, negative for discount</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/20 ml-2">New Fixed Price</label>
+                    <input 
+                      type="number"
+                      placeholder="0.000"
+                      value={bulkPriceData.fixedAmount}
+                      onChange={(e) => setBulkPriceData({ ...bulkPriceData, fixedAmount: parseFloat(e.target.value) })}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-black text-white outline-none focus:border-blue-500 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setIsBulkPriceModalOpen(false)}
+                  className="py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBulkReprice}
+                  className="py-4 bg-blue-500 text-black hover:bg-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20"
+                >
+                  Apply Global Shift
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

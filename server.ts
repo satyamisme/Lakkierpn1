@@ -7,6 +7,7 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import securityRoutes from "./src/routes/securityRoutes.js";
 import auditRoutes from "./src/routes/auditRoutes.js";
 import quoteRoutes from "./src/routes/quoteRoutes.js";
 import bulkRoutes from "./src/routes/bulkRoutes.js";
@@ -54,6 +55,7 @@ import { ipWhitelistMiddleware } from "./src/middleware/securityMiddleware.js";
 import { auditLogger } from "./src/middleware/auditMiddleware.js";
 import { initBackupCron } from "./src/services/backupService.js";
 import StoreProfile from "./src/models/StoreProfile.js";
+import SecurityConfig from "./src/models/SecurityConfig.js";
 import User from "./src/models/User.js";
 import Product from "./src/models/Product.js";
 import Store from "./src/models/Store.js";
@@ -163,6 +165,13 @@ async function startServer() {
       
       console.log("Seeded/Updated Admin User (admin@lakkiphone.com / admin123) with full permissions [1-350]");
 
+      // Seed Default PIN (ID 408)
+      const pinCount = await SecurityConfig.countDocuments({ configKey: 'terminal_purge_pin' });
+      if (pinCount === 0) {
+        await SecurityConfig.create({ configKey: 'terminal_purge_pin', configValue: '1212' });
+        console.log("Seeded Default Terminal PIN: 1212");
+      }
+
   };
   await seedData();
 
@@ -182,6 +191,7 @@ async function startServer() {
 
   // API Routes
   app.use("/api/auth", authRoutes);
+  app.use("/api/security", securityRoutes);
   app.use("/api/audit", auditRoutes);
   app.use("/api/quotes", quoteRoutes);
   app.use("/api/bulk", bulkRoutes);

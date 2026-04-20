@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import Product from '../models/Product.js';
 import Variant from '../models/Variant.js';
 import SerialNumber, { Imei } from '../models/Imei.js';
+import SecurityConfig from '../models/SecurityConfig.js';
+
+async function getTerminalPin() {
+  const config = await SecurityConfig.findOne({ configKey: 'terminal_purge_pin' });
+  return config ? config.configValue : '1212';
+}
 
 export const productController = {
   getAllProducts: async (req: Request, res: Response) => {
@@ -24,7 +30,7 @@ export const productController = {
       }
 
       const productsWithVariants = await Promise.all(products.map(async (p: any) => {
-        const variants = await Variant.find({ productId: p._id }).lean();
+        const variants = await Variant.find({ productId: p._id, deletedAt: null }).lean();
         return { ...p, variants };
       }));
 
@@ -191,31 +197,62 @@ export const productController = {
   deleteProduct: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { pin } = req.body;
       const user = (req as any).user;
-      const userId = user.id || user._id; // Handle both ID formats
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
 
-      // 🛡️ ADMIN OVERRIDE: If admin, delete regardless of ownership
-      if (isAdmin) {
-        await Product.findByIdAndDelete(id);
-        await Variant.deleteMany({ productId: id });
-        await SerialNumber.deleteMany({ productId: id });
-        return res.json({ success: true, message: "Admin Purge Successful" });
+      // 🛡️ SECURITY: PIN verification for destructive actions
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) {
+        return res.status(403).json({ success: false, message: "INVALID SECURITY PIN" });
       }
 
-      // 👤 OWNER CHECK: For non-admins
-      const product = await Product.findById(id);
-      if (!product || (product.userId && product.userId.toString() !== userId?.toString())) {
-        return res.status(403).json({ success: false, message: "Unauthorized or Product Not Found" });
-      }
-
-      await Product.findByIdAndDelete(id);
-      await Variant.deleteMany({ productId: id });
-      await SerialNumber.deleteMany({ productId: id });
-      res.json({ success: true, message: "Owner Delete Successful" });
+      // Recycle Bin Logic: 90-day retention
+      const deleteDate = new Date();
+      await Product.findByIdAndUpdate(id, { deletedAt: deleteDate });
+      await Variant.updateMany({ productId: id }, { deletedAt: deleteDate });
+      
+      res.json({ success: true, message: "Asset moved to Recycle Bin (90-day retention)" });
     } catch (error: any) {
       console.error("Delete product error:", error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  bulkDelete: async (req: Request, res: Response) => {
+    try {
+      const { ids, pin } = req.body;
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
+      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
+
+      const deleteDate = new Date();
+      await Product.updateMany({ _id: { $in: ids } }, { deletedAt: deleteDate });
+      await Variant.updateMany({ productId: { $in: ids } }, { deletedAt: deleteDate });
+
+      res.json({ success: true, message: `Bulk Recycle Bin Entry: ${ids.length} assets processed` });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  bulkUpdatePrice: async (req: Request, res: Response) => {
+    try {
+      const { ids, percentage, fixedAmount } = req.body;
+      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
+
+      if (percentage) {
+        const factor = 1 + (percentage / 100);
+        await Product.updateMany({ _id: { $in: ids } }, [{ $set: { price: { $multiply: ["$price", factor] } } }]);
+        await Variant.updateMany({ productId: { $in: ids } }, [{ $set: { price: { $multiply: ["$price", factor] } } }]);
+      } else if (fixedAmount !== undefined) {
+        await Product.updateMany({ _id: { $in: ids } }, { $set: { price: fixedAmount } });
+        await Variant.updateMany({ productId: { $in: ids } }, { $set: { price: fixedAmount } });
+      }
+
+      res.json({ success: true, message: "Asset Matrix Re-priced successfully" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   },
 
@@ -287,18 +324,22 @@ export const productController = {
         })));
       }
 
+      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+
       // Search products
       const products = await Product.find({
-        deletedAt: null,
+        ...softDeleteQuery,
         $or: [
           { name: { $regex: query, $options: 'i' } },
-          { sku: { $regex: query, $options: 'i' } }
+          { sku: { $regex: query, $options: 'i' } },
+          { brand: { $regex: query, $options: 'i' } },
+          { modelNumber: { $regex: query, $options: 'i' } }
         ]
       }).limit(20).lean();
 
       // Search variants
       const variants = await Variant.find({
-        deletedAt: null,
+        ...softDeleteQuery,
         $or: [
           { sku: { $regex: query, $options: 'i' } },
           { barcode: { $regex: query, $options: 'i' } }
@@ -369,9 +410,14 @@ export const productController = {
   repairDatabase: async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      const { fullPurge } = req.body;
+      const { fullPurge, pin } = req.body;
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
       if (!isAdmin) return res.status(403).json({ error: "Only admins can perform DB repair" });
+
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) {
+        return res.status(403).json({ error: "INVALID SECURITY PIN" });
+      }
 
       const userId = user.id || user._id;
 
@@ -382,10 +428,23 @@ export const productController = {
         return res.json({ success: true, message: "DATABASE ATOMIC PURGE COMPLETE - ALL ITEMS REMOVED" });
       }
 
-      // 1. Permanently remove all items marked with deletedAt
-      const productDeletions = await Product.deleteMany({ deletedAt: { $ne: null } });
-      const variantDeletions = await Variant.deleteMany({ deletedAt: { $ne: null } });
-      const serialDeletions = await SerialNumber.deleteMany({ deletedAt: { $ne: null } });
+      // 1. Permanently remove all items marked with deletedAt AND older than 90 days (Recycle Bin Policy)
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const productDeletions = await Product.deleteMany({ 
+        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
+      });
+      const variantDeletions = await Variant.deleteMany({ 
+        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
+      });
+      const serialDeletions = await SerialNumber.deleteMany({ 
+        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
+      });
+
+      // 2. Clear items older than 90 days from the "soft-deleted" status if they are not already null
+      // Actually deleteMany above handles the hard removal. 
+      // If items are in the bin (deletedAt != null but > 90 days ago), they remain there.
 
       // 2. Cleanup orphaned variants and redundant soft-deletes
       const variants = await Variant.find().lean();

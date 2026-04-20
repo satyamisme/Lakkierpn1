@@ -35,6 +35,10 @@ router.get('/variants/:variantId/serials', requirePermission(121), productContro
 // POST / (create product) - requires permission 122
 router.post('/', requirePermission(122), productController.createProduct);
 
+// Bulk Operations
+router.post('/bulk-delete', requirePermission(122), productController.bulkDelete);
+router.post('/bulk-reprice', requirePermission(122), productController.bulkUpdatePrice);
+
 // PUT /:id (update product) - requires permission 122
 router.put('/:id', requirePermission(122), productController.updateProduct);
 
