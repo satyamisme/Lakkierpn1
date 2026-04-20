@@ -10,14 +10,16 @@ export const productController = {
       const limit = parseInt(req.query.limit as string) || 50;
       const skip = page ? (page - 1) * limit : 0;
 
+      const query = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+
       let products;
       let total;
 
       if (page) {
-        products = await Product.find({ deletedAt: null }).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
-        total = await Product.countDocuments({ deletedAt: null });
+        products = await Product.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
+        total = await Product.countDocuments(query);
       } else {
-        products = await Product.find({ deletedAt: null }).sort({ createdAt: -1 }).lean();
+        products = await Product.find(query).sort({ createdAt: -1 }).lean();
         total = products.length;
       }
 
@@ -44,9 +46,11 @@ export const productController = {
 
   getProductById: async (req: Request, res: Response) => {
     try {
-      const product = await Product.findOne({ _id: req.params.id, deletedAt: null }).lean();
+      const query = { _id: req.params.id, $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+      const product = await Product.findOne(query).lean();
       if (!product) return res.status(404).json({ error: 'Product not found' });
-      const variants = await Variant.find({ productId: product._id, deletedAt: null }).lean();
+      const variantsQuery = { productId: product._id, $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+      const variants = await Variant.find(variantsQuery).lean();
       res.json({ ...product, variants });
     } catch (error: any) {
       console.error("GetProductById error:", error);
@@ -120,31 +124,35 @@ export const productController = {
   deleteVariant: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      
-      // Check if variant has associated serials/IMEIs that are sold or not in_stock
-      const linkedSerials = await SerialNumber.countDocuments({ 
-        variantId: id, 
-        status: { $ne: 'in_stock' } 
-      });
-      
-      if (linkedSerials > 0) {
-        return res.status(400).json({ 
-          error: 'Cannot delete variant with sold or active units. Consider discontinuing instead.' 
-        });
+      const user = (req as any).user;
+      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+
+      // 🛡️ ADMIN OVERRIDE
+      if (isAdmin) {
+        await Variant.findByIdAndDelete(id);
+        await SerialNumber.deleteMany({ variantId: id });
+        return res.json({ success: true, message: "Variant Purged by Admin" });
       }
 
-      await Variant.findByIdAndUpdate(id, { deletedAt: new Date(), status: 'discontinued' });
-      
-      // Also soft-delete any in-stock serials
-      await SerialNumber.updateMany(
-        { variantId: id, status: 'in_stock' },
-        { deletedAt: new Date() }
-      );
+      // Check if variant exists and check ownership if not admin
+      const variant = await Variant.findById(id);
+      if (!variant) return res.status(404).json({ success: false, message: "Variant not found" });
 
-      res.json({ message: 'Variant soft-deleted' });
-    } catch (error) {
+      const product = await Product.findById(variant.productId);
+      const userId = user.id || user._id;
+
+      if (!product || (product.userId && product.userId.toString() !== userId?.toString())) {
+        return res.status(403).json({ success: false, message: "Unauthorized delete" });
+      }
+
+      // Perform HARD DELETE
+      await Variant.findByIdAndDelete(id);
+      await SerialNumber.deleteMany({ variantId: id });
+
+      res.json({ success: true, message: "Variant permanently removed" });
+    } catch (error: any) {
       console.error("Delete variant error:", error);
-      res.status(500).json({ error: 'Failed to delete variant' });
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
@@ -184,26 +192,30 @@ export const productController = {
     try {
       const { id } = req.params;
       const user = (req as any).user;
+      const userId = user.id || user._id; // Handle both ID formats
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
 
-      // PIN-TO-PIN FIX: Allow Admin to delete ANYTHING regardless of owner
-      if (!isAdmin) {
-        const product = await Product.findById(id);
-        if (product && product.userId && product.userId.toString() !== user.id) {
-          return res.status(403).json({ message: "Not authorized to delete this asset" });
-        }
+      // 🛡️ ADMIN OVERRIDE: If admin, delete regardless of ownership
+      if (isAdmin) {
+        await Product.findByIdAndDelete(id);
+        await Variant.deleteMany({ productId: id });
+        await SerialNumber.deleteMany({ productId: id });
+        return res.json({ success: true, message: "Admin Purge Successful" });
+      }
+
+      // 👤 OWNER CHECK: For non-admins
+      const product = await Product.findById(id);
+      if (!product || (product.userId && product.userId.toString() !== userId?.toString())) {
+        return res.status(403).json({ success: false, message: "Unauthorized or Product Not Found" });
       }
 
       await Product.findByIdAndDelete(id);
-      await Variant.deleteMany({ productId: id }); // Permanent cascade delete
-      
-      // Clean up serials too
-      await SerialNumber.deleteMany({ productId: id, status: 'in_stock' });
-
-      res.json({ message: "Product and variants permanently removed from DB" });
+      await Variant.deleteMany({ productId: id });
+      await SerialNumber.deleteMany({ productId: id });
+      res.json({ success: true, message: "Owner Delete Successful" });
     } catch (error: any) {
       console.error("Delete product error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
@@ -351,6 +363,60 @@ export const productController = {
       res.json({ available: !existingProduct && !existingVariant });
     } catch (error) {
       res.status(500).json({ error: 'Validation failed' });
+    }
+  },
+
+  repairDatabase: async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      const { fullPurge } = req.body;
+      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+      if (!isAdmin) return res.status(403).json({ error: "Only admins can perform DB repair" });
+
+      const userId = user.id || user._id;
+
+      if (fullPurge === true) {
+        await Product.deleteMany({});
+        await Variant.deleteMany({});
+        await SerialNumber.deleteMany({});
+        return res.json({ success: true, message: "DATABASE ATOMIC PURGE COMPLETE - ALL ITEMS REMOVED" });
+      }
+
+      // 1. Permanently remove all items marked with deletedAt
+      const productDeletions = await Product.deleteMany({ deletedAt: { $ne: null } });
+      const variantDeletions = await Variant.deleteMany({ deletedAt: { $ne: null } });
+      const serialDeletions = await SerialNumber.deleteMany({ deletedAt: { $ne: null } });
+
+      // 2. Cleanup orphaned variants and redundant soft-deletes
+      const variants = await Variant.find().lean();
+      let orphanedVariantsCount = 0;
+      for (const v of variants) {
+        const p = await Product.findById(v.productId);
+        if (!p) {
+          await Variant.findByIdAndDelete(v._id);
+          orphanedVariantsCount++;
+        }
+      }
+
+      // 3. Fix missing userId on products (assign to current admin for tracking)
+      const missingUserProducts = await Product.updateMany(
+        { userId: { $exists: false } },
+        { $set: { userId: userId } }
+      );
+
+      res.json({
+        success: true,
+        summary: {
+          purgedProducts: productDeletions.deletedCount,
+          purgedVariants: variantDeletions.deletedCount,
+          purgedSerials: serialDeletions.deletedCount,
+          orphanedVariantsRemoved: orphanedVariantsCount,
+          productsOwnershipFixed: missingUserProducts.modifiedCount
+        }
+      });
+    } catch (error: any) {
+      console.error("Repair DB error:", error);
+      res.status(500).json({ error: error.message });
     }
   }
 };

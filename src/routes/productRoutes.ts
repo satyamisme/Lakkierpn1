@@ -41,6 +41,9 @@ router.put('/:id', requirePermission(122), productController.updateProduct);
 // DELETE /:id (delete product) - requires permission 122
 router.delete('/:id', requirePermission(122), productController.deleteProduct);
 
+// Maintenance
+router.post('/repair-database', requirePermission(0), productController.repairDatabase);
+
 // PATCH /:id/stock (update stock) - requires permission 132
 router.patch('/:id/stock', requirePermission(132), productController.updateStock);
 

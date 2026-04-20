@@ -114,7 +114,7 @@ export const authController = {
       }).save();
       
       const token = jwt.sign(
-        { id: user._id, permissions: user.permissions },
+        { id: user._id, role: user.role, permissions: user.permissions },
         process.env.JWT_SECRET || "secret",
         { expiresIn: "1d" }
       );
@@ -183,7 +183,7 @@ export const authController = {
       }).save();
       
       const jwtToken = jwt.sign(
-        { id: user._id, permissions: user.permissions },
+        { id: user._id, role: user.role, permissions: user.permissions },
         process.env.JWT_SECRET || "secret",
         { expiresIn: "1d" }
       );

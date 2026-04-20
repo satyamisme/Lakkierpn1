@@ -18,7 +18,11 @@ import {
   ChevronRight,
   Edit2,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert,
+  RefreshCcw,
+  Database,
+  Trash
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import { toast } from "sonner";
@@ -42,6 +46,23 @@ export const InventoryDashboard: React.FC = () => {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isIntakeModalOpen, setIsIntakeModalOpen] = useState(false);
   const [intakeInitialItems, setIntakeInitialItems] = useState<any[]>([]);
+  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [showNuclearConfirm, setShowNuclearConfirm] = useState(false);
+
+  const checkHealth = async () => {
+    try {
+      const res = await axios.get('/api/health');
+      setSystemHealth(res.data);
+    } catch (err) {
+      setSystemHealth({ status: 'error' });
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+  }, []);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('sku') || "");
   const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -109,25 +130,47 @@ export const InventoryDashboard: React.FC = () => {
     }
   };
 
-  const deleteProduct = async (id: string) => {
-    if (!window.confirm("Soft-delete this product?")) return;
+  const deleteProduct = (id: string) => {
+    setItemToDelete({ id, type: 'product' });
+  };
+
+  const deleteVariant = (id: string) => {
+    setItemToDelete({ id, type: 'variant' });
+  };
+
+  const repairDatabaseAction = async (fullPurge = false) => {
+    setIsRepairing(true);
     try {
-      await axios.delete(`/api/products/${id}`);
-      toast.success("Product deleted.");
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Delete failed.");
+      const res = await axios.post('/api/products/repair-database', { fullPurge });
+      toast.success(res.data.message || `Repair Complete: ${JSON.stringify(res.data.summary)}`);
+      await fetchData();
+      setIsMaintenanceOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error("Repair failed: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsRepairing(false);
     }
   };
 
-  const deleteVariant = async (id: string) => {
-    if (!window.confirm("Soft-delete this variant?")) return;
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, type: 'product' | 'variant' } | null>(null);
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
     try {
-      await axios.delete(`/api/products/variants/${id}`);
-      toast.success("Variant deleted.");
-      fetchData();
+      if (itemToDelete.type === 'product') {
+        await axios.delete(`/api/products/${itemToDelete.id}`);
+        toast.success("Product and all variants purged.");
+      } else {
+        await axios.delete(`/api/products/variants/${itemToDelete.id}`);
+        toast.success("Variant purged.");
+      }
+      setItemToDelete(null);
+      await fetchData();
+      window.location.reload();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Delete failed.");
+      toast.error(error.response?.data?.error || "Purge failed.");
+      setItemToDelete(null);
     }
   };
 
@@ -155,7 +198,13 @@ export const InventoryDashboard: React.FC = () => {
           <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-6 opacity-60">Multi-store stock matrix & supply chain (ID 121)</p>
         </div>
         <Gate id={122}>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap gap-4 justify-end">
+            <button 
+              onClick={() => setIsMaintenanceOpen(true)}
+              className="px-6 py-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all flex items-center gap-2"
+            >
+              <ShieldAlert size={14} /> System Maintenance
+            </button>
             <button 
               onClick={() => setIsIntakeModalOpen(true)}
               className="px-10 py-5 bg-surface-container border border-border rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-surface-container-high transition-all flex items-center gap-3 shadow-sm"
@@ -517,6 +566,149 @@ export const InventoryDashboard: React.FC = () => {
         onSuccess={fetchData}
         initialItems={intakeInitialItems}
       />
+
+      {/* Obsidian Maintenance Portal */}
+      <AnimatePresence>
+        {isMaintenanceOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="max-w-xl w-full bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(255,0,0,0.1)]"
+            >
+              <div className="p-10 border-b border-white/5 bg-red-500/5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-red-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-red-500/20">
+                    <ShieldAlert className="w-6 h-6 text-black" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black tracking-tighter text-white uppercase italic">Maintenance Portal</h2>
+                    <p className="text-[9px] font-bold text-red-500/60 uppercase tracking-[0.2em] mt-1">Obsidian Core System v2.6</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsMaintenanceOpen(false)} className="p-3 hover:bg-white/5 rounded-2xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-10 space-y-8">
+                {/* Health Check Matrix */}
+                <div className="bg-white/5 border border-white/5 p-6 rounded-3xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Database Engine</span>
+                    <div className="flex items-center gap-2">
+                       <div className={`w-2 h-2 rounded-full ${systemHealth?.env?.mongodb ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+                       <span className="text-[10px] font-mono text-white/60">{systemHealth?.env?.mongodb ? 'SYNCHRONIZED' : 'OFFLINE'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">API Endpoint</span>
+                    <span className="text-[10px] font-mono text-white/60">/api/v1/terminal</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                   <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Diagnostic Operations</h3>
+                   
+                   <div className="grid grid-cols-1 gap-3">
+                     <button 
+                       disabled={isRepairing}
+                       onClick={() => repairDatabaseAction(false)}
+                       className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-left group"
+                     >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                             <Database size={18} />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-black text-white uppercase tracking-widest">Standard Asset Repair</p>
+                            <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest mt-0.5">Cleans soft-deleted items & fixes metadata</p>
+                          </div>
+                        </div>
+                        <RefreshCcw className={`w-4 h-4 text-white/20 group-hover:text-blue-500 transition-colors ${isRepairing ? 'animate-spin' : ''}`} />
+                     </button>
+
+                     <button 
+                       disabled={isRepairing}
+                       onClick={() => setShowNuclearConfirm(true)}
+                       className="w-full flex items-center justify-between p-4 bg-red-500/5 border border-red-500/10 rounded-2xl hover:bg-red-500/10 transition-all text-left group"
+                     >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center text-red-500">
+                             <Trash size={18} />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-black text-white uppercase tracking-widest">Nuclear Atomic Purge</p>
+                            <p className="text-[9px] text-red-500/40 font-bold uppercase tracking-widest mt-0.5">Wipes entire inventory catalog</p>
+                          </div>
+                        </div>
+                        <ShieldAlert className="w-4 h-4 text-red-500/20 group-hover:text-red-500 transition-colors" />
+                     </button>
+
+                     {showNuclearConfirm && (
+                       <div className="mt-4 p-6 bg-red-500 rounded-3xl space-y-4">
+                          <p className="text-black font-black text-[11px] uppercase tracking-tighter">Are you absolutely sure? This will wipe the ENTIRE database permanently.</p>
+                          <div className="flex gap-2">
+                             <button onClick={() => setShowNuclearConfirm(false)} className="px-4 py-2 bg-black/20 text-black text-[10px] font-black uppercase rounded-lg">Abort</button>
+                             <button onClick={() => { setShowNuclearConfirm(false); repairDatabaseAction(true); }} className="px-4 py-2 bg-black text-white text-[10px] font-black uppercase rounded-lg">Proceed with Purge</button>
+                          </div>
+                       </div>
+                     )}
+                   </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-white/5 border-t border-white/5">
+                <p className="text-[8px] font-black text-center text-white/10 uppercase tracking-[0.4em]">CAUTION: PURGE OPERATIONS ARE IRREVERSIBLE AND TERMINAL</p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Terminal Confirmation Modal */}
+      <AnimatePresence>
+        {itemToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-10 space-y-8 shadow-2xl"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
+                  <Trash size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tighter uppercase">Terminal Purge</h3>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-1">Resource Destruction Protocol</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-white/60 leading-relaxed">
+                You are about to permanently remove this {itemToDelete.type} and all associated data from the master database. This action is terminal and cannot be reversed.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setItemToDelete(null)}
+                  className="py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Abort Action
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="py-4 bg-red-500 text-black hover:bg-red-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20"
+                >
+                  Execute Purge
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Quick Action (ID 122) */}
       <motion.button

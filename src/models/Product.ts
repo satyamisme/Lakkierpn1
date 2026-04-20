@@ -51,6 +51,7 @@ const ProductSchema: Schema = new Schema({
   isSerialRequired: { type: Boolean, default: false },
   imeiHistory: { type: [String], default: [] },
   isConfigurable: { type: Boolean, default: false },
+  userId: { type: Schema.Types.ObjectId, ref: 'User' },
   isBundle: { type: Boolean, default: false },
   bundledProducts: [{
     productId: { type: Schema.Types.ObjectId, ref: 'Product' },
