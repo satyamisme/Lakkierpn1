@@ -149,22 +149,20 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (searchTerm && searchTerm.length > 2) {
-        // Identifier-first fast-track: check if search term is an IMEI or Serial
-        const isImei = /^\d{15}$/.test(searchTerm);
-        const matchedProduct = products.find(p => p.imei === searchTerm || p.sku === searchTerm);
-        
-        if (isImei && matchedProduct) {
-          addToCart(matchedProduct);
-          setSearchTerm("");
-          toast.success(`Fast-track ID Match: ${matchedProduct.name} resolved`);
-          return;
-        }
-
         setIsSearching(true);
         try {
-          // Audit Wiring: Identifier-first deep lookup
-          const response = await axios.get(`/api/search?q=${searchTerm}`);
-          setSearchResults(response.data);
+          // Identifier-first deep lookup (ID 319)
+          const response = await axios.get(`/api/products/search?q=${searchTerm}`);
+          const results = response.data;
+          setSearchResults(results);
+
+          // Fast-track: if search term is a unique identifier and we have exactly one match
+          if (results.length === 1 && results[0].imei === searchTerm) {
+            addToCart(results[0], results[0].isVariant, results[0].parentProduct);
+            setSearchTerm("");
+            setSearchResults([]);
+            toast.success(`Identifier Matrix Match: ${results[0].name} resolved`);
+          }
         } catch (error) {
           console.error("Search failed:", error);
         } finally {

@@ -162,10 +162,22 @@ export const productController = {
 
   updateProduct: async (req: Request, res: Response) => {
     try {
-      const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      const product = await Product.findById(req.params.id);
       if (!product) return res.status(404).json({ error: 'Product not found' });
-      res.json(product);
+
+      // Ownership Logic: Only allow owner or admin (ID 122)
+      // Check for user role from the auth middleware
+      const user = (req as any).user;
+      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+      
+      if (!isAdmin && product.userId && product.userId.toString() !== user.id) {
+        return res.status(403).json({ error: 'Access Denied: Not Owner or Admin' });
+      }
+
+      const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      res.json(updated);
     } catch (error: any) {
+      console.error("UpdateProduct error:", error);
       res.status(500).json({ error: 'Failed to update product' });
     }
   },
@@ -174,15 +186,26 @@ export const productController = {
     try {
       const { id } = req.params;
       
+      // Admin check for deletion
+      const user = (req as any).user;
+      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+      if (!isAdmin) return res.status(403).json({ error: "Admin access required for product deletion" });
+
       // Cascade soft-delete to all variants
       await Variant.updateMany(
         { productId: id, deletedAt: null },
         { deletedAt: new Date(), status: 'discontinued' }
       );
 
+      // Cascade soft-delete to in-stock serials
+      await SerialNumber.updateMany(
+        { productId: id, status: 'in_stock' },
+        { deletedAt: new Date() }
+      );
+
       const product = await Product.findByIdAndUpdate(id, { deletedAt: new Date() }, { new: true });
       if (!product) return res.status(404).json({ error: 'Product not found' });
-      res.json({ message: 'Product and associated variants deleted successfully' });
+      res.json({ message: 'Product and associated variants/serials deleted successfully' });
     } catch (error: any) {
       console.error("Delete product error:", error);
       res.status(500).json({ error: 'Failed to delete product' });
@@ -236,6 +259,25 @@ export const productController = {
           return { ...p, variants };
         }));
         return res.json(productsWithVariants);
+      }
+
+      // Identifier-First Search: Check SerialNumber/Imei (ID 319)
+      const assetMatches = await SerialNumber.find({
+        identifier: query,
+        status: 'in_stock'
+      }).populate('productId').populate('variantId').lean();
+
+      if (assetMatches.length > 0) {
+        return res.json(assetMatches.map(a => ({
+          ...((a.variantId as any) || {}),
+          _id: (a.variantId as any)?._id || a.productId,
+          name: (a.productId as any).name,
+          brand: (a.productId as any).brand,
+          isVariant: !!a.variantId,
+          parentProduct: a.productId,
+          imei: a.identifier,
+          stock: 1 // for direct match
+        })));
       }
 
       // Search products

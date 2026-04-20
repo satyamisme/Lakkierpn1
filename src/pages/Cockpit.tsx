@@ -258,9 +258,9 @@ export const Cockpit: React.FC = () => {
             <h3 className="text-2xl font-serif italic mb-8">SLA Risk Watchtower</h3>
             <div className="space-y-6">
               {[
-                { label: 'Repair Ticket Breach', value: slaRisks.repairRisks.toString(), status: slaRisks.repairRisks > 5 ? 'critical' : 'normal', desc: 'Tickets > 48h without QC' },
-                { label: 'B2B Order Breach', value: slaRisks.poRisks.toString(), status: slaRisks.poRisks > 0 ? 'warning' : 'normal', desc: 'PO pending > 5 days' },
-                { label: 'RMA Validation', value: '14', status: 'normal', desc: 'Supplier returns pending' },
+                { label: 'Repair Ticket Breach', value: (slaRisks.repairRisks || 0).toString(), status: slaRisks.repairRisks > 5 ? 'critical' : 'normal', desc: 'Tickets > 48h without QC' },
+                { label: 'B2B Order Breach', value: (slaRisks.poRisks || 0).toString(), status: slaRisks.poRisks > 0 ? 'warning' : 'normal', desc: 'PO pending > 5 days' },
+                { label: 'Critical Transfers', value: (slaRisks.criticalTransfers || 0).toString(), status: 'normal', desc: 'Node-to-node pending shifts' },
               ].map((risk) => (
                 <div key={risk.label} className="p-6 bg-muted/20 rounded-[2rem] border border-border group hover:border-red-500/30 transition-all">
                   <div className="flex items-center justify-between mb-3">

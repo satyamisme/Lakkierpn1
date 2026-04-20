@@ -123,7 +123,7 @@ export const InventoryDashboard: React.FC = () => {
   const deleteVariant = async (id: string) => {
     if (!window.confirm("Soft-delete this variant?")) return;
     try {
-      await axios.delete(`/api/variants/${id}`);
+      await axios.delete(`/api/products/variants/${id}`);
       toast.success("Variant deleted.");
       fetchData();
     } catch (error: any) {
