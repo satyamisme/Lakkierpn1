@@ -37,6 +37,8 @@ router.post('/', requirePermission(122), productController.createProduct);
 
 // Bulk Operations
 router.post('/bulk-delete', requirePermission(122), productController.bulkDelete);
+router.post('/bulk-restore', requirePermission(122), productController.bulkRestore);
+router.post('/bulk-purge-permanent', requirePermission(122), productController.bulkPurgePermanent);
 router.post('/bulk-reprice', requirePermission(122), productController.bulkUpdatePrice);
 
 // PUT /:id (update product) - requires permission 122
@@ -47,6 +49,8 @@ router.delete('/:id', requirePermission(122), productController.deleteProduct);
 
 // Maintenance
 router.post('/repair-database', requirePermission(0), productController.repairDatabase);
+router.post('/:id/restore', requirePermission(122), productController.restoreProduct);
+router.post('/:id/purge', requirePermission(122), productController.purgeProductPermanent);
 
 // PATCH /:id/stock (update stock) - requires permission 132
 router.patch('/:id/stock', requirePermission(132), productController.updateStock);

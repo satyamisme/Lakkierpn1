@@ -15,8 +15,11 @@ export const productController = {
       const page = req.query.page ? parseInt(req.query.page as string) : null;
       const limit = parseInt(req.query.limit as string) || 50;
       const skip = page ? (page - 1) * limit : 0;
+      const showDeleted = req.query.showDeleted === 'true';
 
-      const query = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+      const query: any = showDeleted 
+        ? { deletedAt: { $ne: null } }
+        : { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
 
       let products;
       let total;
@@ -30,7 +33,10 @@ export const productController = {
       }
 
       const productsWithVariants = await Promise.all(products.map(async (p: any) => {
-        const variants = await Variant.find({ productId: p._id, deletedAt: null }).lean();
+        const variantQuery = showDeleted 
+          ? { productId: p._id, deletedAt: { $ne: null } }
+          : { productId: p._id, $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+        const variants = await Variant.find(variantQuery).lean();
         return { ...p, variants };
       }));
 
@@ -130,32 +136,19 @@ export const productController = {
   deleteVariant: async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const user = (req as any).user;
-      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
-
-      // 🛡️ ADMIN OVERRIDE
-      if (isAdmin) {
-        await Variant.findByIdAndDelete(id);
-        await SerialNumber.deleteMany({ variantId: id });
-        return res.json({ success: true, message: "Variant Purged by Admin" });
+      const { pin } = req.body;
+      
+      // 🛡️ SECURITY: PIN verification for destructive actions
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) {
+        return res.status(403).json({ success: false, error: "INVALID SECURITY PIN" });
       }
 
-      // Check if variant exists and check ownership if not admin
-      const variant = await Variant.findById(id);
-      if (!variant) return res.status(404).json({ success: false, message: "Variant not found" });
+      const deleteDate = new Date();
+      await Variant.findByIdAndUpdate(id, { $set: { deletedAt: deleteDate } });
+      await SerialNumber.updateMany({ variantId: id }, { $set: { deletedAt: deleteDate } });
 
-      const product = await Product.findById(variant.productId);
-      const userId = user.id || user._id;
-
-      if (!product || (product.userId && product.userId.toString() !== userId?.toString())) {
-        return res.status(403).json({ success: false, message: "Unauthorized delete" });
-      }
-
-      // Perform HARD DELETE
-      await Variant.findByIdAndDelete(id);
-      await SerialNumber.deleteMany({ variantId: id });
-
-      res.json({ success: true, message: "Variant permanently removed" });
+      res.json({ success: true, message: "Variant moved to Recycle Bin" });
     } catch (error: any) {
       console.error("Delete variant error:", error);
       res.status(500).json({ success: false, error: error.message });
@@ -198,24 +191,59 @@ export const productController = {
     try {
       const { id } = req.params;
       const { pin } = req.body;
-      const user = (req as any).user;
-      const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
 
       // 🛡️ SECURITY: PIN verification for destructive actions
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) {
-        return res.status(403).json({ success: false, message: "INVALID SECURITY PIN" });
+        return res.status(403).json({ success: false, error: "INVALID SECURITY PIN" });
       }
 
       // Recycle Bin Logic: 90-day retention
       const deleteDate = new Date();
-      await Product.findByIdAndUpdate(id, { deletedAt: deleteDate });
-      await Variant.updateMany({ productId: id }, { deletedAt: deleteDate });
+      await Product.findByIdAndUpdate(id, { $set: { deletedAt: deleteDate } });
+      await Variant.updateMany({ productId: id }, { $set: { deletedAt: deleteDate } });
+      await SerialNumber.updateMany({ productId: id }, { $set: { deletedAt: deleteDate } });
       
-      res.json({ success: true, message: "Asset moved to Recycle Bin (90-day retention)" });
+      res.json({ success: true, message: "Asset moved to Recycle Bin" });
     } catch (error: any) {
       console.error("Delete product error:", error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  restoreProduct: async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { pin } = req.body;
+      
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
+
+      await Product.findByIdAndUpdate(id, { $set: { deletedAt: null } });
+      await Variant.updateMany({ productId: id }, { $set: { deletedAt: null } });
+      await SerialNumber.updateMany({ productId: id }, { $set: { deletedAt: null } });
+
+      res.json({ success: true, message: "Asset restored from Recycle Bin" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  purgeProductPermanent: async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { pin } = req.body;
+
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
+
+      await Product.findByIdAndDelete(id);
+      await Variant.deleteMany({ productId: id });
+      await SerialNumber.deleteMany({ productId: id });
+
+      res.json({ success: true, message: "Asset permanently purged from system" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   },
 
@@ -227,10 +255,47 @@ export const productController = {
       if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
 
       const deleteDate = new Date();
-      await Product.updateMany({ _id: { $in: ids } }, { deletedAt: deleteDate });
-      await Variant.updateMany({ productId: { $in: ids } }, { deletedAt: deleteDate });
+      await Product.updateMany({ _id: { $in: ids } }, { $set: { deletedAt: deleteDate } });
+      await Variant.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: deleteDate } });
+
+      // Logic ID 232: Also soft-delete serials/IMEIs associated with these products
+      await SerialNumber.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: deleteDate } });
 
       res.json({ success: true, message: `Bulk Recycle Bin Entry: ${ids.length} assets processed` });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  bulkRestore: async (req: Request, res: Response) => {
+    try {
+      const { ids, pin } = req.body;
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
+      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
+
+      await Product.updateMany({ _id: { $in: ids } }, { $set: { deletedAt: null } });
+      await Variant.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: null } });
+      await SerialNumber.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: null } });
+
+      res.json({ success: true, message: `Bulk Restoration: ${ids.length} assets recovered` });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+
+  bulkPurgePermanent: async (req: Request, res: Response) => {
+    try {
+      const { ids, pin } = req.body;
+      const ADMIN_PIN = await getTerminalPin();
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
+      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
+
+      await Product.deleteMany({ _id: { $in: ids } });
+      await Variant.deleteMany({ productId: { $in: ids } });
+      await SerialNumber.deleteMany({ productId: { $in: ids } });
+
+      res.json({ success: true, message: `Bulk Terminal Purge: ${ids.length} assets wiped from matrix` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -286,7 +351,8 @@ export const productController = {
   getLowStock: async (req: Request, res: Response) => {
     try {
       const threshold = parseInt(req.query.threshold as string) || 5;
-      const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null });
+      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+      const products = await Product.find({ ...softDeleteQuery, stock: { $lte: threshold } });
       res.json(products);
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to fetch low stock products' });
@@ -296,10 +362,12 @@ export const productController = {
   searchProducts: async (req: Request, res: Response) => {
     try {
       const query = req.query.q as string;
+      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+
       if (!query) {
-        const products = await Product.find({ deletedAt: null }).limit(20).lean();
+        const products = await Product.find(softDeleteQuery).limit(20).lean();
         const productsWithVariants = await Promise.all(products.map(async (p) => {
-          const variants = await Variant.find({ productId: p._id, deletedAt: null }).lean();
+          const variants = await Variant.find({ productId: p._id, ...softDeleteQuery }).lean();
           return { ...p, variants };
         }));
         return res.json(productsWithVariants);
@@ -323,8 +391,6 @@ export const productController = {
           stock: 1 // for direct match
         })));
       }
-
-      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
 
       // Search products
       const products = await Product.find({

@@ -68,6 +68,7 @@ export const InventoryDashboard: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [deletePin, setDeletePin] = useState("");
+  const [showTrash, setShowTrash] = useState(false);
   const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
   const [bulkPriceData, setBulkPriceData] = useState({ percentage: 0, fixedAmount: 0, mode: 'percentage' as 'percentage' | 'fixed' });
   const [currentTerminalPin, setCurrentTerminalPin] = useState("****");
@@ -144,7 +145,11 @@ export const InventoryDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [showTrash]);
+
+  const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+  const [bulkPin, setBulkPin] = useState("");
+  const [bulkActionType, setBulkActionType] = useState<'recycle' | 'purge' | 'restore'>('recycle');
 
   const fetchData = async () => {
     try {
@@ -152,7 +157,7 @@ export const InventoryDashboard: React.FC = () => {
       const [lowStockRes, transfersRes, allProductsRes] = await Promise.all([
         axios.get('/api/products/low-stock'),
         axios.get('/api/inventory/transfers'),
-        axios.get('/api/products')
+        axios.get(`/api/products?showDeleted=${showTrash}`)
       ]);
       
       if (lowStockRes.status === 200) {
@@ -227,8 +232,17 @@ export const InventoryDashboard: React.FC = () => {
     }
     try {
       if (itemToDelete.type === 'product') {
-        await axios.delete(`/api/products/${itemToDelete.id}`, { data: { pin: deletePin } });
-        toast.success("Product moved to Recycle Bin.");
+        const url = showTrash 
+          ? `/api/products/${itemToDelete.id}/purge`
+          : `/api/products/${itemToDelete.id}`;
+        
+        if (showTrash) {
+          await axios.post(url, { pin: deletePin });
+          toast.success("Product permanently purged.");
+        } else {
+          await axios.delete(url, { data: { pin: deletePin } });
+          toast.success("Product moved to Recycle Bin.");
+        }
       } else {
         await axios.delete(`/api/products/variants/${itemToDelete.id}`, { data: { pin: deletePin } });
         toast.success("Variant moved to Recycle Bin.");
@@ -237,27 +251,69 @@ export const InventoryDashboard: React.FC = () => {
       setDeletePin("");
       await fetchData();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Action blocked by security module.");
+      toast.error(error.response?.data?.error || "Action blocked by security module.");
       setDeletePin("");
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedProducts.size === 0) return;
-    const pin = prompt("ENTER 4-DIGIT SECURITY PIN TO AUTHORIZE BATCH PURGE:");
+  const handleRestore = async (id: string) => {
+    const pin = prompt("ENTER 4-DIGIT SECURITY PIN TO RESTORE ASSET:");
     if (!pin) return;
 
     try {
-      const response = await axios.post('/api/products/bulk-delete', { 
+      await axios.post(`/api/products/${id}/restore`, { pin });
+      toast.success("Asset restored successfully.");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Restore failed.");
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedProducts.size === 0) return;
+    setBulkActionType(showTrash ? 'purge' : 'recycle');
+    setIsBulkConfirmOpen(true);
+  };
+
+  const executeBulkAction = async () => {
+    try {
+      let url = '';
+      let successMsg = '';
+      
+      switch(bulkActionType) {
+        case 'purge':
+          url = '/api/products/bulk-purge-permanent';
+          successMsg = 'Assets permanently purged from matrix';
+          break;
+        case 'recycle':
+          url = '/api/products/bulk-delete';
+          successMsg = 'Assets moved to Recycle Bin';
+          break;
+        case 'restore':
+          url = '/api/products/bulk-restore';
+          successMsg = 'Assets recovered from Recycle Bin';
+          break;
+      }
+
+      await axios.post(url, {
         ids: Array.from(selectedProducts),
-        pin 
+        pin: bulkPin
       });
-      toast.success(response.data.message);
+
+      toast.success(successMsg);
+      setIsBulkConfirmOpen(false);
+      setBulkPin("");
       setSelectedProducts(new Set());
       fetchData();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Batch purge failed.");
+      toast.error(err.response?.data?.error || "Batch operation failed.");
     }
+  };
+
+  const handleBulkRestore = () => {
+    if (selectedProducts.size === 0) return;
+    setBulkActionType('restore');
+    setIsBulkConfirmOpen(true);
   };
 
   const handleBulkReprice = async () => {
@@ -285,6 +341,11 @@ export const InventoryDashboard: React.FC = () => {
       newExpanded.add(productId);
     }
     setExpandedProducts(newExpanded);
+  };
+
+  const toggleTrashMode = () => {
+    setSelectedProducts(new Set());
+    setShowTrash(!showTrash);
   };
 
   return (
@@ -458,61 +519,95 @@ export const InventoryDashboard: React.FC = () => {
         </div>
 
         <div className="bg-surface-container-lowest border border-border rounded-[4rem] shadow-sm overflow-hidden">
-            <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div>
-                <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
-                  <Package size={32} className="text-primary" />
-                  Global Stock Matrix
-                </h2>
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Real-time cross-node inventory synchronization</p>
+            <div className="p-10 border-b border-border bg-surface-container-lowest/50 flex flex-col gap-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div>
+                  <h2 className="text-4xl font-serif italic tracking-tight flex items-center gap-4">
+                    <Package size={32} className="text-primary" />
+                    Global Stock Matrix
+                  </h2>
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-3 opacity-60">Real-time cross-node inventory synchronization</p>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={toggleTrashMode}
+                    className={`px-6 py-4 rounded-2xl border transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${showTrash ? 'bg-red-500 text-white border-red-500' : 'bg-surface border-border text-muted-foreground hover:border-red-500'}`}
+                  >
+                    {showTrash ? <Trash2 size={16} /> : <Trash size={16} />}
+                    {showTrash ? 'Exit Recycle Bin' : 'Recycle Bin'}
+                  </button>
+                  <div className="relative w-full md:w-96">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Search Matrix..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="relative w-full md:w-96 flex items-center gap-4">
-                <AnimatePresence>
-                  {selectedProducts.size > 0 && (
-                    <motion.div 
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="absolute right-full mr-6 flex items-center gap-4"
-                    >
-                      <span className="text-[10px] font-black uppercase text-primary whitespace-nowrap">{selectedProducts.size} Selected</span>
+
+              <AnimatePresence>
+                {selectedProducts.size > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="flex flex-wrap items-center gap-4 p-6 bg-primary/5 border border-primary/20 rounded-[2rem] shadow-inner"
+                  >
+                    <div className="flex items-center gap-3 pr-4 border-r border-primary/20 mr-4">
+                      <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-[10px] font-black">
+                        {selectedProducts.size}
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-primary tracking-widest">Assets Selected</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
                       <button 
                         onClick={() => {
                           const items = allProducts.filter(p => selectedProducts.has(p._id));
                           setIntakeInitialItems(items);
                           setIsIntakeModalOpen(true);
                         }}
-                        className="px-6 py-3 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 whitespace-nowrap"
+                        className="px-6 py-3 bg-primary text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2 whitespace-nowrap hover:scale-105 transition-all"
                       >
                         <Layers size={14} /> Bulk Intake
                       </button>
                       <button 
                         onClick={() => setIsBulkPriceModalOpen(true)}
-                        className="px-6 py-3 bg-surface border border-border rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap hover:border-primary transition-all"
+                        className="px-6 py-3 bg-white border border-border rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap hover:border-primary transition-all"
                       >
                         <Tag size={14} /> Batch Re-price
                       </button>
                       <button 
                         onClick={handleBulkDelete}
-                        className="px-6 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"
+                        className="px-6 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap hover:bg-red-500 hover:text-white transition-all shadow-sm"
                       >
-                        <Trash size={14} /> Bulk Purge
+                        <Trash size={14} /> {showTrash ? 'Terminal Purge' : 'Bulk Purge'}
                       </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className="relative flex-1">
-                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
-                  <input 
-                    type="text" 
-                    placeholder="Search Matrix..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-surface border border-border pl-16 pr-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-inner placeholder:opacity-30"
-                  />
-                </div>
-              </div>
-              </div>
+                      {showTrash && (
+                        <button 
+                          onClick={handleBulkRestore}
+                          className="px-6 py-3 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap hover:bg-green-500 hover:text-white transition-all shadow-sm"
+                        >
+                          <RefreshCcw size={14} /> Bulk Restore
+                        </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => setSelectedProducts(new Set())}
+                        className="px-6 py-3 text-muted-foreground text-[9px] font-black uppercase tracking-widest hover:text-primary transition-all"
+                      >
+                        Cancel Selection
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -588,39 +683,66 @@ export const InventoryDashboard: React.FC = () => {
                             <span className={`text-lg font-black font-mono ${p.stock < 5 ? 'text-red-500' : 'text-foreground'}`}>{p.stock}</span>
                           </td>
                           <td className="px-10 py-8 text-sm font-black font-mono text-right text-primary">{(p.cost * p.stock).toFixed(3)}</td>
-                          <td className="px-10 py-8 text-right">
+                           <td className="px-10 py-8 text-right">
                             <div className="flex items-center justify-end gap-3">
-                              {!p.isConfigurable && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setIntakeInitialItems([p]);
-                                    setIsIntakeModalOpen(true);
-                                  }}
-                                  className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
-                                >
-                                  Add Stock
-                                </button>
+                              {showTrash ? (
+                                <>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestore(p._id);
+                                    }}
+                                    className="p-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500 hover:bg-green-500 hover:text-white transition-all tooltip"
+                                    title="Restore Asset"
+                                  >
+                                    <RefreshCcw size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteProduct(p._id);
+                                    }}
+                                    className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all tooltip"
+                                    title="Purge Permanently"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  {!p.isConfigurable && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIntakeInitialItems([p]);
+                                        setIsIntakeModalOpen(true);
+                                      }}
+                                      className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+                                    >
+                                      Add Stock
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingProduct(p);
+                                      setIsAddModalOpen(true);
+                                    }}
+                                    className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-primary transition-all"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteProduct(p._id);
+                                    }}
+                                    className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-red-500 transition-all"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </>
                               )}
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingProduct(p);
-                                  setIsAddModalOpen(true);
-                                }}
-                                className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-primary transition-all"
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteProduct(p._id);
-                                }}
-                                className="p-2 bg-white/5 border border-border rounded-lg text-muted-foreground hover:text-red-500 transition-all"
-                              >
-                                <Trash2 size={14} />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -838,7 +960,64 @@ export const InventoryDashboard: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Terminal Confirmation Modal */}
+      <AnimatePresence>
+        {isBulkConfirmOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-10 space-y-8 shadow-2xl"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
+                  <AlertTriangle size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tighter uppercase">{bulkActionType === 'purge' ? 'Terminal Purge' : 'Batch Recycling'}</h3>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-1">Authorized Resource Destruction</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <p className="text-sm text-white/60 leading-relaxed">
+                  You are authorizing the {bulkActionType === 'purge' ? 'Permanent Purge' : 'Recycling'} of <span className="text-white font-bold">{selectedProducts.size}</span> matrix assets. This action is terminal and logged.
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/20 ml-2">Security PIN Required</label>
+                  <input 
+                    type="password"
+                    maxLength={4}
+                    placeholder="****"
+                    autoFocus
+                    value={bulkPin}
+                    onChange={(e) => setBulkPin(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-red-500/50 transition-all font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setIsBulkConfirmOpen(false)}
+                  className="py-4 bg-white/5 hover:bg-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  Abort
+                </button>
+                <button 
+                  onClick={executeBulkAction}
+                  disabled={bulkPin.length < 4}
+                  className="py-4 bg-red-500 text-black hover:bg-red-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-500/20"
+                >
+                  Execute Batch
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {itemToDelete && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">

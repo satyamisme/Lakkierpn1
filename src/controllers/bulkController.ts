@@ -6,24 +6,32 @@ import PDFDocument from 'pdfkit';
 export const bulkController = {
   createJob: async (req: Request, res: Response) => {
     try {
-      const { type, totalItems, items } = req.body;
+      const { type, totalItems, items, data } = req.body;
+      const jobItems = items || data || [];
       const job = new BulkJob({
         type,
-        totalItems,
+        totalItems: totalItems || jobItems.length,
         createdBy: (req as any).user.id,
         status: 'processing'
       });
       await job.save();
       
       // Synchronous processing (ID 18)
-      if (type === 'price_update' && items) {
-        for (const item of items) {
-          await Product.findByIdAndUpdate(item.productId, { price: item.price });
+      if (type === 'price_update' && jobItems) {
+        for (const item of jobItems) {
+          const id = item.productId || item._id;
+          const price = item.price || item.newPrice;
+          if (id && price !== undefined) {
+             await Product.findByIdAndUpdate(id, { price });
+          }
           job.processedItems++;
         }
-      } else if (type === 'stock_adjustment' && items) {
-        for (const item of items) {
-          await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.adjustment } });
+      } else if (type === 'stock_adjustment' && jobItems) {
+        for (const item of jobItems) {
+          const id = item.productId || item._id;
+          if (id && item.adjustment !== undefined) {
+             await Product.findByIdAndUpdate(id, { $inc: { stock: item.adjustment } });
+          }
           job.processedItems++;
         }
       }

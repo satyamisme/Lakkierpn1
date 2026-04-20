@@ -44,9 +44,16 @@ export const BulkOperations: React.FC = () => {
   const handleRunSync = async () => {
     setIsProcessing(true);
     try {
-      // Use bulkService for price update
-      await bulkService.bulkPriceUpdate([]);
-      toast.success("Global price sync initiated");
+      // 🛡️ SECURITY: Fetch all active products first to perform global sync
+      const res = await axios.get('/api/products');
+      const products = res.data.products || res.data;
+      const data = products.map((p: any) => ({
+        productId: p._id,
+        newPrice: p.price // Just a placeholder sync, or we could apply logic
+      }));
+      
+      await bulkService.bulkPriceUpdate(data);
+      toast.success("Global price sync initiated for " + data.length + " assets");
       fetchJobs();
     } catch (error) {
       toast.error("Failed to initiate sync");
