@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Hash, Layers, Cpu, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import api from '../../api/client';
+import { ColorSelector } from '../atoms/ColorSelector';
 
 interface AttributeChipProps {
   label: string;
@@ -101,8 +102,11 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
             const condCode = 'N'; 
             const simCode = sim.includes('Dual') ? 'D' : (sim.includes('eSIM') ? 'E' : 'P');
             
+            // Logic: 2-Letter Color Code (First + Last letter) to prevent BL/BL collisions
+            const colorCode = c ? (c[0] + (c.length > 1 ? c.slice(-1) : c[0])).toUpperCase() : 'XX';
+            
             const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
-            const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${simCode}${condCode}-${mmYY}`;
+            const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${colorCode}-${simCode}${condCode}-${mmYY}`;
 
             newVariants.push({
               id: `v-${sCode}-${rCode}-${c}-${idx++}`, // Stable unique ID for React keys
@@ -199,16 +203,28 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500" />
             <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Color Esthetics</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {colorOptions.map(opt => (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {selectedColors.map(opt => (
               <AttributeChip 
                 key={opt} 
                 label={opt} 
-                isSelected={selectedColors.includes(opt)}
+                isSelected={true}
                 onClick={() => toggleAttribute(selectedColors, setSelectedColors, opt)}
               />
             ))}
           </div>
+          <ColorSelector 
+            value="" 
+            options={colorOptions.filter(c => !selectedColors.includes(c))}
+            onChange={(val) => {
+              if (val && !selectedColors.includes(val)) {
+                setSelectedColors([...selectedColors, val]);
+                if (!colorOptions.includes(val)) {
+                  setColorOptions([...colorOptions, val]);
+                }
+              }
+            }} 
+          />
         </div>
       </div>
 
