@@ -3,6 +3,8 @@ import Variant from '../models/Variant.js';
 import SerialNumber from '../models/Imei.js';
 import mongoose from 'mongoose';
 
+import { skuGenerator } from './skuGenerator.js';
+
 export class ProductService {
   static async createProduct(data: any) {
     const { variants, isConfigurable, attributes, ...baseData } = data;
@@ -10,8 +12,12 @@ export class ProductService {
     session.startTransaction();
 
     try {
+      // Logic ID 122: Fix SKU validation by generating one if missing
+      const productSku = baseData.sku || await skuGenerator.generateSku(baseData, {});
+      
       const product = new Product({
         ...baseData,
+        sku: productSku,
         isConfigurable: !!isConfigurable,
         attributes: attributes || []
       });
@@ -20,8 +26,11 @@ export class ProductService {
       const createdVariants = [];
       if (variants && Array.isArray(variants) && variants.length > 0) {
         for (const variantData of variants) {
+          // Auto-generate variant SKU if missing
+          const vSku = variantData.sku || await skuGenerator.generateSku(baseData, variantData.attributes);
           const variant = new Variant({
             ...variantData,
+            sku: vSku,
             productId: product._id
           });
           await variant.save({ session });
@@ -49,6 +58,29 @@ export class ProductService {
     } finally {
       session.endSession();
     }
+  }
+
+  /**
+   * WAC Injection: Atomically update landed cost following intake
+   * Formula: ((Current Qty * Current Cost) + (New Qty * New Cost)) / (Current Qty + New Qty)
+   */
+  static async updateLandedCost(productId: string, newQty: number, newCost: number, session: any) {
+    const product = await Product.findById(productId).session(session);
+    if (!product) return;
+
+    const currentQty = product.stock || 0;
+    const currentCost = product.costPrice || 0;
+    
+    // Guard against division by zero and negative stocks
+    const totalQty = currentQty + newQty;
+    const updatedWAC = totalQty > 0 
+      ? ((currentQty * currentCost) + (newQty * newCost)) / totalQty
+      : newCost;
+
+    await Product.findByIdAndUpdate(productId, { 
+      $set: { costPrice: Number(updatedWAC.toFixed(3)) },
+      $inc: { stock: newQty } 
+    }, { session });
   }
 
   static async searchAssets(query: string) {

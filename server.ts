@@ -30,6 +30,7 @@ import shiftRoutes from "./src/routes/shiftRoutes.js";
 import giftCardRoutes from "./src/routes/giftCardRoutes.js";
 import layawayRoutes from "./src/routes/layawayRoutes.js";
 import marketingRoutes from "./src/routes/marketingRoutes.js";
+import attributeRoutes from "./src/routes/attributeRoutes.js";
 import customerGroupRoutes from "./src/routes/customerGroupRoutes.js";
 import warehouseRoutes from "./src/routes/warehouseRoutes.js";
 import supplierPortalRoutes from "./src/routes/supplierPortalRoutes.js";
@@ -213,6 +214,7 @@ async function startServer() {
   app.use("/api/gift-cards", giftCardRoutes);
   app.use("/api/layaway", layawayRoutes);
   app.use("/api/marketing", marketingRoutes);
+  app.use("/api/attributes", attributeRoutes);
   app.use("/api/customer-groups", customerGroupRoutes);
   app.use("/api/warehouse", warehouseRoutes);
   app.use("/api/supplier-portal", supplierPortalRoutes);

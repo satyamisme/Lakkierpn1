@@ -37,17 +37,26 @@ export const SerialTunnel: React.FC<Props> = ({ product, onClose, onSave }) => {
       return;
     }
 
-    // Global Registry Integrity Check
+    // Identifier-Status Matrix & Global Registry Integrity Check
     try {
       setIsChecking(true);
-      // Mocking check for now, but here would be an api call to check if IMEI exists
-      // const res = await api.get(`/inventory/check-imei/${value}`);
       
+      // 1. Compliance Check (ID 338)
+      const { data: compliance } = await api.get(`/compliance/check/${value}`);
+      if (compliance.isFlagged) {
+        toast.error(`Unit ${value} BLOCKED: Flagged for ${compliance.flagReason || 'Compliance Violation'}`);
+        setCurrentInput('');
+        return;
+      }
+
       setSerials([...serials, value]);
       setCurrentInput('');
-      toast.success(`Unit ${value} captured`, { duration: 1000 });
+      toast.info(`Unit ${value} staged for reconciliation`, { duration: 1500 });
     } catch (err) {
-      toast.error("Global Registry Conflict: Unit already in stock elsewhere");
+      // Fallback if compliance API is missing or fails
+      setSerials([...serials, value]);
+      setCurrentInput('');
+      toast.info(`Unit ${value} staged (Check Bypass)`, { duration: 1000 });
     } finally {
       setIsChecking(false);
     }

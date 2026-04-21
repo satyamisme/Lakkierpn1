@@ -15,6 +15,8 @@ interface GlobalAddProductModalProps {
   initialData?: any; // New prop for editing
 }
 
+import { SmartSelector } from './atoms/SmartSelector';
+
 export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [step, setStep] = useState(1);
   const [createdProducts, setCreatedProducts] = useState<any[]>([]);
@@ -414,16 +416,12 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Brand</label>
-                            <input 
-                              required
-                              placeholder="Apple"
-                              value={newProduct.brand}
-                              onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
-                            />
-                          </div>
+                          <SmartSelector 
+                            field="brand"
+                            label="Brand"
+                            value={newProduct.brand}
+                            onChange={(val) => setNewProduct({...newProduct, brand: val})}
+                          />
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Category</label>
                             <div className="relative">

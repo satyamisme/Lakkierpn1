@@ -6,6 +6,7 @@ export interface IImeiHistory extends Document {
   referenceId: mongoose.Types.ObjectId; // PO ID, Sale ID, Repair ID, or Transfer ID
   timestamp: Date;
   userId: mongoose.Types.ObjectId;
+  metadata?: any;
 }
 
 const ImeiHistorySchema: Schema = new Schema({
@@ -13,7 +14,8 @@ const ImeiHistorySchema: Schema = new Schema({
   eventType: { type: String, enum: ['purchased', 'sold', 'repaired', 'transferred', 'returned'], required: true },
   referenceId: { type: Schema.Types.ObjectId, required: true },
   timestamp: { type: Date, default: Date.now },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  metadata: { type: Schema.Types.Mixed }
 });
 
 // Compound index for performance

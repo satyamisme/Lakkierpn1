@@ -6,6 +6,8 @@ import Inventory from '../models/Inventory.js';
 import BatchIntake from '../models/BatchIntake.js';
 import ImeiHistory from '../models/ImeiHistory.js';
 
+import { ProductService } from './ProductService.js';
+
 export class InventoryService {
   /**
    * Process a unified stock intake (Receiving Matrix)
@@ -36,8 +38,8 @@ export class InventoryService {
       await intake.save({ session });
 
       for (const item of items) {
-        // 2. Global Stock Update
-        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } }).session(session);
+        // 2. Global Stock & WAC Sync (WAC Injection)
+        await ProductService.updateLandedCost(item.productId, item.quantity, item.costPrice, session);
         
         if (item.variantId) {
           await Variant.findByIdAndUpdate(item.variantId, { 
@@ -93,7 +95,8 @@ export class InventoryService {
               imei: doc.identifier,
               eventType: 'purchased',
               referenceId: intake._id,
-              userId: userId
+              userId: userId,
+              metadata: { cost: item.costPrice }
             }).save({ session });
           }
         }

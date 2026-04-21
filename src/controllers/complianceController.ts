@@ -69,5 +69,23 @@ export const complianceController = {
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  },
+
+  checkImei: async (req: Request, res: Response) => {
+    try {
+      const { imei } = req.params;
+      // Search for any flags in ComplianceLog
+      const flag = await ComplianceLog.findOne({ 
+        'data.imei': imei, 
+        type: { $in: ['blacklist', 'rma', 'fraud'] } 
+      });
+      
+      res.json({ 
+        isFlagged: !!flag,
+        flagReason: flag ? flag.type : null
+      });
+    } catch (error: any) {
+      res.status(500).json({ isFlagged: false });
+    }
   }
 };
