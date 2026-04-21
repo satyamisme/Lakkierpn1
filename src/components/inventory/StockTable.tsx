@@ -1,6 +1,6 @@
 import React from 'react';
 import { Package, Hash, Tag, DollarSign, TrendingUp, Trash2 } from 'lucide-react';
-import { StockStatusBadge } from './StockStatusBadge';
+import { StockStatusBadge } from '../atoms/StockStatusBadge';
 
 interface InventoryItem {
   _id: string;

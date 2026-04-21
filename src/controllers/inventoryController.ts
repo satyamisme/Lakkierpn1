@@ -14,7 +14,18 @@ import PurchaseOrder from '../models/PurchaseOrder.js';
 import BinLocation from '../models/BinLocation.js';
 import Supplier from '../models/Supplier.js';
 
+import { InventoryService } from '../services/InventoryService.js';
+
 export const inventoryController = {
+  unifiedIntake: async (req: Request, res: Response) => {
+    try {
+      const result = await InventoryService.processUnifiedIntake(req.body, (req as any).user.id);
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
   batchIntake: async (req: Request, res: Response) => {
     const session = await mongoose.startSession();
     session.startTransaction();

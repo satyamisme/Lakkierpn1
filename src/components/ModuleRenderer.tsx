@@ -21,6 +21,7 @@ const POS = lazy(() => import('../pages/POS').then(m => ({ default: m.POS })));
 const RepairIntake = lazy(() => import('../pages/RepairIntake').then(m => ({ default: m.RepairIntake })));
 const TechnicianDashboard = lazy(() => import('../pages/TechnicianDashboard').then(m => ({ default: m.TechnicianDashboard })));
 const InventoryDashboard = lazy(() => import('../pages/InventoryDashboard').then(m => ({ default: m.InventoryDashboard })));
+const ReceivingMatrix = lazy(() => import('../pages/ReceivingMatrix').then(m => ({ default: m.ReceivingMatrix })));
 const Roles = lazy(() => import('../pages/Roles').then(m => ({ default: m.Roles })));
 const POApproval = lazy(() => import('../pages/POApproval').then(m => ({ default: m.POApproval })));
 const BinLocations = lazy(() => import('../pages/BinLocations').then(m => ({ default: m.BinLocations })));
@@ -222,7 +223,8 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
             if (page.path === 'exec/affinity') return <Route key={page.id} path={page.path} element={<ExecutiveAffinity />} />;
             if (page.path === 'exec/routing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="routing" />} />;
             if (page.path === 'exec/coalescing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="coalescing" />} />;
-            if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer' || page.path === 'inventory/intake') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
+            if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
+            if (page.path === 'inventory/intake') return <Route key={page.id} path={page.path} element={<ReceivingMatrix />} />;
             if (page.path === 'inventory/serial-matrix' || page.path === 'inventory/imei-reg') return <Route key={page.id} path={page.path} element={<SerialManagement />} />;
             if (page.path === 'repairs/assignment' || page.path === 'repairs/tech-stats') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
             

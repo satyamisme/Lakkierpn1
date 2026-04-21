@@ -25,6 +25,9 @@ router.get('/node-distribution', authenticate, requirePermission(192), inventory
 // POST /adjust (ID 132)
 router.post('/adjust', authenticate, requirePermission(132), inventoryController.adjustStock);
 
+// POST /unified-intake (Matrix Intake Logic)
+router.post('/unified-intake', authenticate, requirePermission(122), inventoryController.unifiedIntake);
+
 // POST /batch-intake (ID 129)
 router.post('/batch-intake', authenticate, requirePermission(122), inventoryController.batchIntake);
 

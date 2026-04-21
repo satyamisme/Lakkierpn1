@@ -19,7 +19,7 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { Gate } from '../components/PermissionGuard';
-import { ClockInButton } from '../components/hr/ClockInButton';
+import { ClockInButton } from '../components/atoms/ClockInButton';
 
 interface PayrollItem {
   userId: string;

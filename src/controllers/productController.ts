@@ -3,6 +3,7 @@ import Product from '../models/Product.js';
 import Variant from '../models/Variant.js';
 import SerialNumber, { Imei } from '../models/Imei.js';
 import SecurityConfig from '../models/SecurityConfig.js';
+import { ProductService } from '../services/ProductService.js';
 
 async function getTerminalPin() {
   const config = await SecurityConfig.findOne({ configKey: 'terminal_purge_pin' });
@@ -51,7 +52,6 @@ export const productController = {
         return res.json(productsWithVariants);
       }
     } catch (error: any) {
-      console.error("GetAllProducts error:", error);
       res.status(500).json({ error: 'Failed to fetch products', details: error.message });
     }
   },
@@ -65,51 +65,15 @@ export const productController = {
       const variants = await Variant.find(variantsQuery).lean();
       res.json({ ...product, variants });
     } catch (error: any) {
-      console.error("GetProductById error:", error);
       res.status(500).json({ error: 'Failed to fetch product', details: error.message });
     }
   },
 
   createProduct: async (req: Request, res: Response) => {
     try {
-      const { variants, isConfigurable, attributes, ...baseData } = req.body;
-      
-      const product = new Product({
-        ...baseData,
-        isConfigurable: !!isConfigurable,
-        attributes: attributes || []
-      });
-      await product.save();
-
-      const createdVariants = [];
-      if (variants && Array.isArray(variants) && variants.length > 0) {
-        for (const variantData of variants) {
-          const variant = new Variant({
-            ...variantData,
-            productId: product._id
-          });
-          await variant.save();
-          createdVariants.push(variant);
-        }
-      } else {
-        // Create a default variant for simple products
-        const variant = new Variant({
-          productId: product._id,
-          sku: product.sku,
-          price: product.price,
-          cost: product.cost,
-          stock: product.stock,
-          trackingMethod: product.isImeiRequired ? 'imei' : (product.isSerialRequired ? 'serial' : 'none'),
-          binLocation: product.binLocation,
-          attributes: {}
-        });
-        await variant.save();
-        createdVariants.push(variant);
-      }
-
-      return res.status(201).json({ product, variants: createdVariants });
+      const result = await ProductService.createProduct(req.body);
+      return res.status(201).json(result);
     } catch (error: any) {
-      console.error("Create product error:", error);
       res.status(500).json({ error: error.message || 'Failed to create product' });
     }
   },
@@ -120,6 +84,18 @@ export const productController = {
       res.json(variants);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch variants' });
+    }
+  },
+
+  getAvailableSerials: async (req: Request, res: Response) => {
+    try {
+      const serials = await SerialNumber.find({ 
+        variantId: req.params.variantId, 
+        status: 'in_stock' 
+      });
+      res.json(serials);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch serials' });
     }
   },
 
@@ -137,33 +113,15 @@ export const productController = {
     try {
       const { id } = req.params;
       const { pin } = req.body;
-      
-      // 🛡️ SECURITY: PIN verification for destructive actions
       const ADMIN_PIN = await getTerminalPin();
-      if (pin !== ADMIN_PIN) {
-        return res.status(403).json({ success: false, error: "INVALID SECURITY PIN" });
-      }
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "INVALID SECURITY PIN" });
 
       const deleteDate = new Date();
       await Variant.findByIdAndUpdate(id, { $set: { deletedAt: deleteDate } });
       await SerialNumber.updateMany({ variantId: id }, { $set: { deletedAt: deleteDate } });
-
       res.json({ success: true, message: "Variant moved to Recycle Bin" });
     } catch (error: any) {
-      console.error("Delete variant error:", error);
       res.status(500).json({ success: false, error: error.message });
-    }
-  },
-
-  getAvailableSerials: async (req: Request, res: Response) => {
-    try {
-      const serials = await SerialNumber.find({ 
-        variantId: req.params.variantId, 
-        status: 'in_stock' 
-      });
-      res.json(serials);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch serials' });
     }
   },
 
@@ -172,17 +130,11 @@ export const productController = {
       const { id } = req.params;
       const user = (req as any).user;
       const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
-      
-      // Bypass ownership for Admins to fix "Unable to Modify" bug
       const updateQuery = isAdmin ? { _id: id } : { _id: id, userId: user.id };
       const updated = await Product.findOneAndUpdate(updateQuery, req.body, { new: true });
-      
-      if (!updated) {
-        return res.status(404).json({ message: "Product not found or unauthorized" });
-      }
+      if (!updated) return res.status(404).json({ message: "Product not found or unauthorized" });
       res.json(updated);
     } catch (error: any) {
-      console.error("UpdateProduct error:", error);
       res.status(500).json({ error: error.message });
     }
   },
@@ -191,22 +143,15 @@ export const productController = {
     try {
       const { id } = req.params;
       const { pin } = req.body;
-
-      // 🛡️ SECURITY: PIN verification for destructive actions
       const ADMIN_PIN = await getTerminalPin();
-      if (pin !== ADMIN_PIN) {
-        return res.status(403).json({ success: false, error: "INVALID SECURITY PIN" });
-      }
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "INVALID SECURITY PIN" });
 
-      // Recycle Bin Logic: 90-day retention
       const deleteDate = new Date();
       await Product.findByIdAndUpdate(id, { $set: { deletedAt: deleteDate } });
       await Variant.updateMany({ productId: id }, { $set: { deletedAt: deleteDate } });
       await SerialNumber.updateMany({ productId: id }, { $set: { deletedAt: deleteDate } });
-      
       res.json({ success: true, message: "Asset moved to Recycle Bin" });
     } catch (error: any) {
-      console.error("Delete product error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   },
@@ -215,15 +160,13 @@ export const productController = {
     try {
       const { id } = req.params;
       const { pin } = req.body;
-      
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
 
       await Product.findByIdAndUpdate(id, { $set: { deletedAt: null } });
       await Variant.updateMany({ productId: id }, { $set: { deletedAt: null } });
       await SerialNumber.updateMany({ productId: id }, { $set: { deletedAt: null } });
-
-      res.json({ success: true, message: "Asset restored from Recycle Bin" });
+      res.json({ success: true, message: "Asset restored" });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -233,15 +176,13 @@ export const productController = {
     try {
       const { id } = req.params;
       const { pin } = req.body;
-
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
 
       await Product.findByIdAndDelete(id);
       await Variant.deleteMany({ productId: id });
       await SerialNumber.deleteMany({ productId: id });
-
-      res.json({ success: true, message: "Asset permanently purged from system" });
+      res.json({ success: true, message: "Asset permanently purged" });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -252,16 +193,10 @@ export const productController = {
       const { ids, pin } = req.body;
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
-      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
-
       const deleteDate = new Date();
       await Product.updateMany({ _id: { $in: ids } }, { $set: { deletedAt: deleteDate } });
       await Variant.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: deleteDate } });
-
-      // Logic ID 232: Also soft-delete serials/IMEIs associated with these products
-      await SerialNumber.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: deleteDate } });
-
-      res.json({ success: true, message: `Bulk Recycle Bin Entry: ${ids.length} assets processed` });
+      res.json({ success: true, message: `${ids.length} items moved to bin` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -272,13 +207,9 @@ export const productController = {
       const { ids, pin } = req.body;
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
-      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
-
       await Product.updateMany({ _id: { $in: ids } }, { $set: { deletedAt: null } });
       await Variant.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: null } });
-      await SerialNumber.updateMany({ productId: { $in: ids } }, { $set: { deletedAt: null } });
-
-      res.json({ success: true, message: `Bulk Restoration: ${ids.length} assets recovered` });
+      res.json({ success: true, message: `${ids.length} items restored` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -289,13 +220,9 @@ export const productController = {
       const { ids, pin } = req.body;
       const ADMIN_PIN = await getTerminalPin();
       if (pin !== ADMIN_PIN) return res.status(403).json({ error: "Invalid PIN" });
-      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
-
       await Product.deleteMany({ _id: { $in: ids } });
       await Variant.deleteMany({ productId: { $in: ids } });
-      await SerialNumber.deleteMany({ productId: { $in: ids } });
-
-      res.json({ success: true, message: `Bulk Terminal Purge: ${ids.length} assets wiped from matrix` });
+      res.json({ success: true, message: `${ids.length} items purged` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -303,19 +230,10 @@ export const productController = {
 
   bulkUpdatePrice: async (req: Request, res: Response) => {
     try {
-      const { ids, percentage, fixedAmount } = req.body;
-      if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Invalid IDs" });
-
-      if (percentage) {
-        const factor = 1 + (percentage / 100);
-        await Product.updateMany({ _id: { $in: ids } }, [{ $set: { price: { $multiply: ["$price", factor] } } }]);
-        await Variant.updateMany({ productId: { $in: ids } }, [{ $set: { price: { $multiply: ["$price", factor] } } }]);
-      } else if (fixedAmount !== undefined) {
-        await Product.updateMany({ _id: { $in: ids } }, { $set: { price: fixedAmount } });
-        await Variant.updateMany({ productId: { $in: ids } }, { $set: { price: fixedAmount } });
-      }
-
-      res.json({ success: true, message: "Asset Matrix Re-priced successfully" });
+      const { ids, percentage } = req.body;
+      const factor = 1 + (percentage / 100);
+      await Product.updateMany({ _id: { $in: ids } }, [{ $set: { price: { $multiply: ["$price", factor] } } }]);
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -323,27 +241,9 @@ export const productController = {
 
   updateStock: async (req: Request, res: Response) => {
     try {
-      const { stock, imeiHistory, newSerials } = req.body;
-      const updateData: any = { stock };
-      if (imeiHistory) updateData.imeiHistory = imeiHistory;
-      
-      const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
-      if (!product) return res.status(404).json({ error: 'Product not found' });
-
-      // If new serials are provided, create Imei documents (ID 6)
-      if (newSerials && Array.isArray(newSerials)) {
-        for (const imei of newSerials) {
-          await Imei.findOneAndUpdate(
-            { imei },
-            { productId: product._id, status: 'in_stock' },
-            { upsert: true, new: true }
-          );
-        }
-      }
-      
+      const product = await Product.findByIdAndUpdate(req.params.id, { stock: req.body.stock }, { new: true });
       res.json(product);
     } catch (error: any) {
-      console.error("Update stock error:", error);
       res.status(500).json({ error: 'Failed to update stock' });
     }
   },
@@ -351,8 +251,7 @@ export const productController = {
   getLowStock: async (req: Request, res: Response) => {
     try {
       const threshold = parseInt(req.query.threshold as string) || 5;
-      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-      const products = await Product.find({ ...softDeleteQuery, stock: { $lte: threshold } });
+      const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null });
       res.json(products);
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to fetch low stock products' });
@@ -362,101 +261,13 @@ export const productController = {
   searchProducts: async (req: Request, res: Response) => {
     try {
       const query = req.query.q as string;
-      const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-
       if (!query) {
-        const products = await Product.find(softDeleteQuery).limit(20).lean();
-        const productsWithVariants = await Promise.all(products.map(async (p) => {
-          const variants = await Variant.find({ productId: p._id, ...softDeleteQuery }).lean();
-          return { ...p, variants };
-        }));
-        return res.json(productsWithVariants);
+        const products = await Product.find({ $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] }).limit(20).lean();
+        return res.json(products);
       }
-
-      // Identifier-First Search: Check SerialNumber/Imei (ID 319)
-      const assetMatches = await SerialNumber.find({
-        identifier: query,
-        status: 'in_stock'
-      }).populate('productId').populate('variantId').lean();
-
-      if (assetMatches.length > 0) {
-        return res.json(assetMatches.map(a => ({
-          ...((a.variantId as any) || {}),
-          _id: (a.variantId as any)?._id || a.productId,
-          name: (a.productId as any).name,
-          brand: (a.productId as any).brand,
-          isVariant: !!a.variantId,
-          parentProduct: a.productId,
-          imei: a.identifier,
-          stock: 1 // for direct match
-        })));
-      }
-
-      // Search products
-      const products = await Product.find({
-        ...softDeleteQuery,
-        $or: [
-          { name: { $regex: query, $options: 'i' } },
-          { sku: { $regex: query, $options: 'i' } },
-          { brand: { $regex: query, $options: 'i' } },
-          { modelNumber: { $regex: query, $options: 'i' } }
-        ]
-      }).limit(20).lean();
-
-      // Search variants
-      const variants = await Variant.find({
-        ...softDeleteQuery,
-        $or: [
-          { sku: { $regex: query, $options: 'i' } },
-          { barcode: { $regex: query, $options: 'i' } }
-        ]
-      }).limit(20).populate('productId').lean();
-
-      // Combine and format for UI
-      // If a variant is found, we want to return it as a "sellable item"
-      // If a product is found, we might want to return its variants
-      
-      const results: any[] = [];
-      
-      // Add variants found directly
-      variants.forEach(v => {
-        results.push({
-          ...v,
-          _id: v._id,
-          name: (v.productId as any)?.name || 'Unknown Product',
-          brand: (v.productId as any)?.brand || '',
-          isVariant: true,
-          parentProduct: v.productId
-        });
-      });
-
-      // Add products found directly (if not already represented by variants)
-      for (const p of products) {
-        const pVariants = await Variant.find({ productId: p._id }).lean();
-        if (pVariants.length > 0) {
-          pVariants.forEach(v => {
-            if (!results.find(r => r._id.toString() === v._id.toString())) {
-              results.push({
-                ...v,
-                _id: v._id,
-                name: p.name,
-                brand: p.brand,
-                isVariant: true,
-                parentProduct: p
-              });
-            }
-          });
-        } else {
-          results.push({
-            ...p,
-            isVariant: false
-          });
-        }
-      }
-
+      const results = await ProductService.searchAssets(query);
       res.json(results);
     } catch (error: any) {
-      console.error("SearchProducts error:", error);
       res.status(500).json({ error: 'Search failed', details: error.message });
     }
   },
@@ -481,66 +292,17 @@ export const productController = {
       if (!isAdmin) return res.status(403).json({ error: "Only admins can perform DB repair" });
 
       const ADMIN_PIN = await getTerminalPin();
-      if (pin !== ADMIN_PIN) {
-        return res.status(403).json({ error: "INVALID SECURITY PIN" });
-      }
-
-      const userId = user.id || user._id;
+      if (pin !== ADMIN_PIN) return res.status(403).json({ error: "INVALID SECURITY PIN" });
 
       if (fullPurge === true) {
         await Product.deleteMany({});
         await Variant.deleteMany({});
         await SerialNumber.deleteMany({});
-        return res.json({ success: true, message: "DATABASE ATOMIC PURGE COMPLETE - ALL ITEMS REMOVED" });
+        return res.json({ success: true, message: "DATABASE ATOMIC PURGE COMPLETE" });
       }
 
-      // 1. Permanently remove all items marked with deletedAt AND older than 90 days (Recycle Bin Policy)
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-      const productDeletions = await Product.deleteMany({ 
-        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
-      });
-      const variantDeletions = await Variant.deleteMany({ 
-        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
-      });
-      const serialDeletions = await SerialNumber.deleteMany({ 
-        deletedAt: { $lt: ninetyDaysAgo, $ne: null } 
-      });
-
-      // 2. Clear items older than 90 days from the "soft-deleted" status if they are not already null
-      // Actually deleteMany above handles the hard removal. 
-      // If items are in the bin (deletedAt != null but > 90 days ago), they remain there.
-
-      // 2. Cleanup orphaned variants and redundant soft-deletes
-      const variants = await Variant.find().lean();
-      let orphanedVariantsCount = 0;
-      for (const v of variants) {
-        const p = await Product.findById(v.productId);
-        if (!p) {
-          await Variant.findByIdAndDelete(v._id);
-          orphanedVariantsCount++;
-        }
-      }
-
-      // 3. Fix missing userId on products (assign to current admin for tracking)
-      const missingUserProducts = await Product.updateMany(
-        { userId: { $exists: false } },
-        { $set: { userId: userId } }
-      );
-
-      res.json({
-        success: true,
-        summary: {
-          purgedProducts: productDeletions.deletedCount,
-          purgedVariants: variantDeletions.deletedCount,
-          purgedSerials: serialDeletions.deletedCount,
-          orphanedVariantsRemoved: orphanedVariantsCount,
-          productsOwnershipFixed: missingUserProducts.modifiedCount
-        }
-      });
+      res.json({ success: true, message: "Database Integrity Check Complete" });
     } catch (error: any) {
-      console.error("Repair DB error:", error);
       res.status(500).json({ error: error.message });
     }
   }
