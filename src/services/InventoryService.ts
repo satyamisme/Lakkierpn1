@@ -76,7 +76,7 @@ export class InventoryService {
             status: 'in_stock',
             storeId: header.storeId,
             receivedFrom: header.supplierId,
-            cost: item.costPrice,
+            landedCost: item.costPrice,
             price: item.retailPrice,
             receivedAt: new Date()
           }));

@@ -2,29 +2,26 @@ import Product from '../models/Product.js';
 import Variant from '../models/Variant.js';
 
 export const skuGenerator = {
-  generateSku: async (productData: any, variantAttributes: Record<string, string>, storeCode: string = 'MAIN') => {
-    // Pattern: {BRAND}-{MODEL}-{ATTRS}-{PRICE}
-    const store = storeCode.toUpperCase().slice(0, 3);
+  generateSku: async (productData: any, variantAttributes: any, storeCode: string = 'MAIN') => {
+    // Pattern: {BRAND}-{MODEL}-{STORAGE}-{CONDITION}-{MMYY}
+    const brand = productData.brand?.substring(0, 3).toUpperCase() || 'UNK';
     
-    // Brand abbreviation
-    const brandPrefix = (productData.brand || 'GEN').substring(0, 3).toUpperCase();
-    
-    // Model abbreviation
-    const model = (productData.modelNumber || productData.name || 'PROD')
-      .replace(/[^a-zA-Z0-9]/g, '')
+    // Model name (last word or name)
+    const model = (productData.name || 'MOD')
+      .split(' ')
+      .pop()
+      ?.replace(/[^a-zA-Z0-9]/g, '')
       .substring(0, 6)
-      .toUpperCase();
+      .toUpperCase() || 'MOD';
     
-    // Specific attributes
-    const attributeString = Object.entries(variantAttributes)
-      .map(([_, val]) => val.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase())
-      .join('-');
+    const storage = variantAttributes?.storage || '000';
+    const condition = productData.condition === 'Used' ? 'U' : 'N';
     
-    // Prioritize provided SKU if available, otherwise build from brand-model
-    let baseSku = productData.sku ? productData.sku.toUpperCase() : `${brandPrefix}-${model}`;
-    if (attributeString) {
-      baseSku += `-${attributeString}`;
-    }
+    const date = new Date()
+      .toLocaleString('en-GB', { month: '2-digit', year: '2-digit' })
+      .replace('/', '');
+    
+    const baseSku = `${brand}-${model}-${storage}-${condition}-${date}`;
     
     // Uniqueness check
     let uniqueSku = baseSku;

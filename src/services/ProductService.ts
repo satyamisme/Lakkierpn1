@@ -13,7 +13,7 @@ export class ProductService {
 
     try {
       // Logic ID 122: Fix SKU validation by generating one if missing
-      const productSku = baseData.sku || await skuGenerator.generateSku(baseData, {});
+      const productSku = baseData.sku || await skuGenerator.generateSku(baseData, variants?.[0]?.attributes || {});
       
       const product = new Product({
         ...baseData,
