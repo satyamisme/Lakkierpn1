@@ -14,7 +14,7 @@ export const SmartSelector: React.FC<SmartSelectorProps> = ({ field, value, onCh
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const res = await api.get(`/attributes/suggest?field=${field}`);
+        const res = await api.get(`/attributes/suggestions?field=${field}`);
         setOptions(res.data);
       } catch (err) {
         console.error(`Failed to fetch suggestions for ${field}:`, err);

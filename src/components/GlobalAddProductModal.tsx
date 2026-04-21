@@ -422,24 +422,12 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                             value={newProduct.brand}
                             onChange={(val) => setNewProduct({...newProduct, brand: val})}
                           />
-                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Category</label>
-                            <div className="relative">
-                              <select 
-                                value={newProduct.category}
-                                onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                              >
-                                <option value="Phones" className="bg-[#0A0A0A]">📱 Smartphones</option>
-                                <option value="Tablets" className="bg-[#0A0A0A]">平板 Tablets</option>
-                                <option value="Accessories" className="bg-[#0A0A0A]">🎧 Accessories</option>
-                                <option value="Parts" className="bg-[#0A0A0A]">⚙️ Spare Parts</option>
-                                <option value="Audio" className="bg-[#0A0A0A]">🔊 Audio Devices</option>
-                                <option value="Wearables" className="bg-[#0A0A0A]">⌚ Wearables</option>
-                              </select>
-                              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
-                            </div>
-                          </div>
+                          <SmartSelector 
+                            field="category"
+                            label="Category"
+                            value={newProduct.category}
+                            onChange={(val) => setNewProduct({...newProduct, category: val})}
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-1.5">

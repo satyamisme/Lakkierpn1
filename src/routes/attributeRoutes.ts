@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// GET /api/attributes/suggest?field=brand
-router.get('/suggest', authenticate, attributeController.getSuggestions);
+// GET /api/attributes/suggestions?field=brand
+router.get('/suggestions', authenticate, attributeController.getAttributeSuggestions);
 
 export default router;
