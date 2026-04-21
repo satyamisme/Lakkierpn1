@@ -17,6 +17,7 @@ import {
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocation, Link } from 'react-router-dom';
 
 interface TopBarProps {
   activeModule: string;
@@ -33,20 +34,26 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+  const pathnames = location.pathname.split('/').filter((x) => x);
 
   return (
     <header className="h-14 px-6 flex items-center justify-between bg-[#0A0A0A]/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-40">
       {/* Left: Module Context & Breadcrumbs */}
       <div className="flex items-center gap-6">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">System Stage</span>
-            <ChevronRight className="w-2 h-2 text-white/10" />
-            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-500/60">Active</span>
-          </div>
+          <nav className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-white/20">
+            <Link to="/" className="hover:text-blue-500 transition-colors">Terminal</Link>
+            {pathnames.map((name, index) => (
+              <React.Fragment key={name}>
+                <ChevronRight className="w-2 h-2 text-white/10" />
+                <span className={index === pathnames.length - 1 ? "text-blue-500/60" : ""}>{name.replace('-', ' ')}</span>
+              </React.Fragment>
+            ))}
+          </nav>
           <div className="flex items-center gap-3 mt-0.5">
             <h2 className="text-sm font-black tracking-tighter uppercase text-white/90">
-              {activeModule.replace('-', ' ')}
+              {activeModule.split('/').pop()?.replace('-', ' ')}
             </h2>
             <div className="flex gap-0.5">
               <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />

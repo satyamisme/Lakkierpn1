@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { PermissionProvider } from './components/PermissionGuard';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -13,14 +13,15 @@ import { Login } from './components/Login';
 import { TwoFactorVerify } from './pages/TwoFactorVerify';
 import { Loader2 } from 'lucide-react';
 import { syncPendingSales } from './services/offlineQueue';
+import { Toaster, toast } from 'sonner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
       </div>
     );
   }
@@ -32,41 +33,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-const AppContent = () => {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-12 h-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/2fa-verify" element={<TwoFactorVerify />} />
-      <Route path="/ping" element={<div>Public route works</div>} />
-      <Route 
-        path="/*" 
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        } 
-      />
-    </Routes>
-  );
-};
-
 export default function App() {
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOnline = () => {
+      toast.success("Connection Restored: Syncing pending transactions...");
       syncPendingSales();
     };
+    const handleOffline = () => {
+      toast.error("Offline Mode: Data will be queued until sync.");
+    };
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   return (
@@ -74,7 +55,20 @@ export default function App() {
       <AuthProvider>
         <ThemeProvider>
           <PermissionProvider>
-            <AppContent />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/2fa-verify" element={<TwoFactorVerify />} />
+              <Route path="/ping" element={<div>Public route works</div>} />
+              <Route 
+                path="/*" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                } 
+              />
+            </Routes>
+            <Toaster position="top-right" richColors theme="dark" />
           </PermissionProvider>
         </ThemeProvider>
       </AuthProvider>

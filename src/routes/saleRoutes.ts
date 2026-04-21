@@ -26,7 +26,7 @@ router.get('/', authenticate, async (req, res) => {
       .populate('customerId', 'name phone')
       .populate('userId', 'name')
       .sort({ createdAt: -1 })
-      .limit(Number(limit));
+      .limit(Number(limit) || 200);
       
     res.json(sales);
   } catch (error) {

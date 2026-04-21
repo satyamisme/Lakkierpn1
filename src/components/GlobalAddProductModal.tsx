@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, X, Plus, Package, Tag, Layers, Smartphone, CheckCircle2, AlertCircle, Zap, Trash2, ArrowRight } from 'lucide-react';
+import { 
+  Loader2, X, Plus, Package, Tag, Layers, Smartphone, 
+  CheckCircle2, AlertCircle, Zap, Trash2, ArrowRight, 
+  Scan, ChevronDown, Database 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -29,7 +33,9 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
     isConfigurable: initialData?.isConfigurable || false,
     attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
-    variants: initialData?.variants || [] as any[]
+    variants: initialData?.variants || [] as any[],
+    targetStoreId: "",
+    incomingStock: [] as { variantId: string, units: any[] }[]
   });
 
   // Reset state when initialData changes or modal opens
@@ -50,13 +56,34 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
         trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
         isConfigurable: initialData?.isConfigurable || false,
         attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
-        variants: initialData?.variants || [] as any[]
+        variants: initialData?.variants || [] as any[],
+        targetStoreId: "",
+        incomingStock: [] as { variantId: string, units: any[] }[]
       });
       setStep(1);
     }
   }, [isOpen, initialData]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [skuStatus, setSkuStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  useEffect(() => {
+    if (!newProduct.sku || newProduct.sku.length < 3) {
+      setSkuStatus('idle');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSkuStatus('checking');
+      try {
+        const res = await axios.get(`/api/products/validate-sku?sku=${newProduct.sku}`);
+        setSkuStatus(res.data.available ? 'available' : 'taken');
+      } catch (err) {
+        setSkuStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [newProduct.sku]);
 
   const BRANDS = ["Apple", "Samsung", "Huawei", "Xiaomi", "Google", "Oppo", "Vivo"];
 
@@ -79,10 +106,24 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     setNewProduct({ ...newProduct, attributes: newAttrs });
   };
 
-  const updateAttributeValues = (index: number, valuesString: string) => {
+  const updateAttributeValues = (index: number, val: string) => {
     const newAttrs = [...newProduct.attributes];
-    newAttrs[index].values = valuesString.split(',').map(v => v.trim()).filter(v => v !== "");
+    const values = val.split(',').map(v => v.trim()).filter(v => v !== "");
+    newAttrs[index].values = values;
     setNewProduct({ ...newProduct, attributes: newAttrs });
+  };
+
+  const [activeAttributeInput, setActiveAttributeInput] = useState<number | null>(null);
+  const [attributeTempValue, setAttributeTempValue] = useState("");
+
+  const handleAddValue = (index: number) => {
+    if (!attributeTempValue.trim()) return;
+    const newAttrs = [...newProduct.attributes];
+    if (!newAttrs[index].values.includes(attributeTempValue.trim())) {
+      newAttrs[index].values.push(attributeTempValue.trim());
+      setNewProduct({ ...newProduct, attributes: newAttrs });
+    }
+    setAttributeTempValue("");
   };
 
   const [showBulkPrice, setShowBulkPrice] = useState(false);
@@ -103,25 +144,32 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
   };
 
   const generateMatrix = async () => {
-    if (newProduct.attributes.length === 0) {
-      toast.error("Please add at least one attribute.");
-      return;
-    }
+    let combinations: any[] = [];
+    
+    if (newProduct.isConfigurable) {
+      if (newProduct.attributes.length === 0 || newProduct.attributes.every(a => a.values.length === 0)) {
+        toast.error("Please add at least one attribute with values.");
+        return;
+      }
 
-    // Cartesian product of attribute values
-    const combinations = newProduct.attributes.reduce((acc, attr) => {
-      const results: any[] = [];
-      attr.values.forEach(val => {
-        if (acc.length === 0) {
-          results.push({ [attr.name]: val });
-        } else {
-          acc.forEach(prev => {
-            results.push({ ...prev, [attr.name]: val });
-          });
-        }
-      });
-      return results;
-    }, [] as any[]);
+      // Cartesian product of attribute values
+      combinations = newProduct.attributes.reduce((acc, attr) => {
+        if (attr.values.length === 0) return acc;
+        const results: any[] = [];
+        attr.values.forEach(val => {
+          if (acc.length === 0) {
+            results.push({ [attr.name]: val });
+          } else {
+            acc.forEach(prev => {
+              results.push({ ...prev, [attr.name]: val });
+            });
+          }
+        });
+        return results;
+      }, [] as any[]);
+    } else {
+      combinations = [{}];
+    }
 
     const newVariants = await Promise.all(combinations.map(async (combo, index) => {
       // Call SKU generation API
@@ -137,7 +185,8 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
           sku: res.data.sku,
           price: newProduct.price,
           cost: newProduct.cost,
-          stock: 0,
+          quantity: 0,
+          incomingUnits: [] as any[],
           trackingMethod: newProduct.trackingMethod,
           binLocation: newProduct.binLocation
         };
@@ -145,11 +194,12 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
         return {
           id: Math.random().toString(36).substr(2, 9),
           attributes: combo,
-          sku: `SKU-${index}`,
+          sku: newProduct.sku || `SKU-${index}`,
           price: newProduct.price,
           cost: newProduct.cost,
-          stock: 0,
-          trackingMethod: 'none'
+          quantity: 0,
+          incomingUnits: [] as any[],
+          trackingMethod: newProduct.trackingMethod
         };
       }
     }));
@@ -158,10 +208,48 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     setStep(3);
   };
 
+  const [stores, setStores] = useState<any[]>([]);
+  React.useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const res = await axios.get('/api/stores');
+        setStores(res.data);
+        if (res.data.length > 0 && !newProduct.targetStoreId) {
+          setNewProduct(prev => ({ ...prev, targetStoreId: res.data[0]._id }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch stores", error);
+      }
+    };
+    if (step === 3) fetchStores();
+  }, [step]);
+
   const updateVariant = (id: string, field: string, value: any) => {
     setNewProduct({
       ...newProduct,
       variants: newProduct.variants.map(v => v.id === id ? { ...v, [field]: value } : v)
+    });
+  };
+
+  const handleBulkImeiAdd = (id: string, text: string) => {
+    const identifiers = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+    if (identifiers.length === 0) return;
+
+    setNewProduct({
+      ...newProduct,
+      variants: newProduct.variants.map(v => {
+        if (v.id === id) {
+          return {
+            ...v,
+            quantity: identifiers.length,
+            incomingUnits: identifiers.map(id => ({
+              identifier: id,
+              id: Math.random().toString(36).substr(2, 9)
+            }))
+          };
+        }
+        return v;
+      })
     });
   };
 
@@ -170,31 +258,6 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
       ...newProduct,
       variants: newProduct.variants.filter(v => v.id !== id)
     });
-  };
-
-  const handleAddProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      let response;
-      if (initialData?._id) {
-        response = await axios.put(`/api/products/${initialData._id}`, newProduct);
-      } else {
-        response = await axios.post('/api/products', newProduct);
-      }
-      
-      if (response.status === 201 || response.status === 200) {
-        const data = response.data;
-        setCreatedProducts(data.variants || [data]);
-        setStep(4);
-        toast.success(initialData?._id ? "Product updated." : "Product and variants registered successfully.");
-        if (onSuccess) onSuccess();
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to save product.");
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const resetAndClose = () => {
@@ -213,12 +276,68 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
       trackingMethod: 'imei' as 'none' | 'imei' | 'serial',
       isConfigurable: false,
       attributes: [] as { name: string, values: string[] }[],
-      variants: [] as any[]
+      variants: [] as any[],
+      targetStoreId: "",
+      incomingStock: [] as { variantId: string, units: any[] }[]
     });
     setStep(1);
     setCreatedProducts([]);
     onClose();
   };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      let response;
+      if (initialData?._id) {
+        response = await axios.put(`/api/products/${initialData._id}`, newProduct);
+      } else {
+        response = await axios.post('/api/products', newProduct);
+      }
+      
+      const savedProduct = response.data;
+      const variantsToProcess = savedProduct.variants || [savedProduct];
+      
+      // AUTO-INTAKE LOGIC
+      const intakeItems = newProduct.variants
+        .filter(v => v.quantity > 0 || (v.incomingUnits && v.incomingUnits.length > 0))
+        .map(v => {
+          // Find the actually saved variant ID matching the current local variant SKU/Attributes
+          const matchedVariant = variantsToProcess.find((sv: any) => sv.sku === v.sku);
+          return {
+            productId: matchedVariant?._id || savedProduct._id,
+            quantity: v.quantity || v.incomingUnits?.length || 0,
+            units: v.incomingUnits?.map((iu: any) => ({
+                identifier: iu.identifier,
+                cost: v.cost,
+                price: v.price
+            })) || []
+          };
+        });
+
+      if (intakeItems.length > 0) {
+        await axios.post('/api/inventory/batch-intake', {
+            targetStoreId: newProduct.targetStoreId,
+            month: new Date().toLocaleString('default', { month: 'long' }),
+            year: new Date().getFullYear().toString(),
+            supplierId: "Initial Registration Intake",
+            items: intakeItems
+        });
+        toast.success("Initial inventory intake processed.");
+      }
+
+      setCreatedProducts(variantsToProcess);
+      setStep(4);
+      toast.success(initialData?._id ? "Product updated." : "Product registered and matrix deployed.");
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Failed to save product.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   return (
     <AnimatePresence>
@@ -298,6 +417,7 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Brand</label>
                             <input 
+                              required
                               placeholder="Apple"
                               value={newProduct.brand}
                               onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})}
@@ -306,16 +426,73 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Category</label>
-                            <select 
-                              value={newProduct.category}
-                              onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-                              className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                            >
-                              <option className="bg-[#0A0A0A]">Smartphones</option>
-                              <option className="bg-[#0A0A0A]">Accessories</option>
-                              <option className="bg-[#0A0A0A]">Parts</option>
-                            </select>
+                            <div className="relative">
+                              <select 
+                                value={newProduct.category}
+                                onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                              >
+                                <option value="Phones" className="bg-[#0A0A0A]">📱 Smartphones</option>
+                                <option value="Tablets" className="bg-[#0A0A0A]">平板 Tablets</option>
+                                <option value="Accessories" className="bg-[#0A0A0A]">🎧 Accessories</option>
+                                <option value="Parts" className="bg-[#0A0A0A]">⚙️ Spare Parts</option>
+                                <option value="Audio" className="bg-[#0A0A0A]">🔊 Audio Devices</option>
+                                <option value="Wearables" className="bg-[#0A0A0A]">⌚ Wearables</option>
+                              </select>
+                              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" size={16} />
+                            </div>
                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Base SKU / Parent ID</label>
+                              <div className="relative">
+                                <input 
+                                  required
+                                  placeholder="IPH-15-PRO"
+                                  value={newProduct.sku}
+                                  onChange={(e) => setNewProduct({...newProduct, sku: e.target.value.toUpperCase()})}
+                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-primary outline-none focus:border-blue-500 transition-all font-mono"
+                                />
+                                {skuStatus === 'checking' && <Loader2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-white/20" />}
+                                {skuStatus === 'available' && <CheckCircle2 size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />}
+                                {skuStatus === 'taken' && <X size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500" />}
+                              </div>
+                           </div>
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Model Number</label>
+                              <input 
+                                placeholder="A3102"
+                                value={newProduct.modelNumber}
+                                onChange={(e) => setNewProduct({...newProduct, modelNumber: e.target.value.toUpperCase()})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-mono"
+                              />
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Default Base Price (KD)</label>
+                              <input 
+                                type="number"
+                                required
+                                placeholder="0.000"
+                                value={newProduct.price}
+                                onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-mono"
+                              />
+                           </div>
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Default Base Cost (KD)</label>
+                              <input 
+                                type="number"
+                                required
+                                placeholder="0.000"
+                                value={newProduct.cost}
+                                onChange={(e) => setNewProduct({...newProduct, cost: parseFloat(e.target.value)})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-mono"
+                              />
+                           </div>
                         </div>
                       </div>
                       <div className="space-y-4">
@@ -392,13 +569,13 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                         if (newProduct.isConfigurable) {
                           setStep(2);
                         } else {
-                          setStep(3);
+                          generateMatrix();
                         }
                       }}
                       disabled={!newProduct.name || !newProduct.brand}
-                      className="w-full py-4 bg-white text-black rounded-xl font-black text-[9px] uppercase tracking-[0.3em] shadow-2xl shadow-white/10 flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                      className="w-full py-5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                     >
-                      {newProduct.isConfigurable ? "Define Attributes" : "Review Product"} <Zap size={16} />
+                      {newProduct.isConfigurable ? "Define System Attributes" : "Finalize Registration"} <ArrowRight size={18} />
                     </button>
                   </motion.div>
                 )}
@@ -407,93 +584,127 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                   <motion.div 
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <div className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] space-y-8">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Layers className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest">Attributes (Variations)</h3>
-                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Define axes of variation</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">Define Variations</h3>
+                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] mt-1">AXES OF SYSTEM DIVERSITY</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={addAttribute}
+                        className="px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                      >
+                        <Plus size={16} /> New Attribute
+                      </button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {newProduct.attributes.map((attr, idx) => (
+                        <div key={idx} className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] relative group border-t-4 border-t-primary/20">
+                          <button 
+                            type="button"
+                            onClick={() => removeAttribute(idx)}
+                            className="absolute top-6 right-6 p-2 text-white/10 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Axis Identifier</label>
+                              <input 
+                                placeholder="e.g. Storage"
+                                value={attr.name}
+                                onChange={(e) => updateAttributeName(idx, e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-primary transition-all shadow-inner"
+                              />
+                            </div>
+                            
+                            <div className="md:col-span-2 space-y-4">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Permitted Values</label>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {attr.values.map((val, vIdx) => (
+                                  <motion.span 
+                                    layout
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    key={vIdx} 
+                                    className="px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2"
+                                  >
+                                    {val}
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        const newValues = attr.values.filter((_, i) => i !== vIdx);
+                                        const newAttrs = [...newProduct.attributes];
+                                        newAttrs[idx].values = newValues;
+                                        setNewProduct({...newProduct, attributes: newAttrs});
+                                      }}
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </motion.span>
+                                ))}
+                                <div className="relative flex-1 min-w-[150px]">
+                                  <input 
+                                    placeholder="Add value & hit Enter..."
+                                    value={activeAttributeInput === idx ? attributeTempValue : ""}
+                                    onFocus={() => {
+                                      setActiveAttributeInput(idx);
+                                      setAttributeTempValue("");
+                                    }}
+                                    onChange={(e) => setAttributeTempValue(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddValue(idx);
+                                      }
+                                    }}
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] font-bold text-white outline-none focus:border-primary transition-all shadow-inner"
+                                  />
+                                  {attributeTempValue && activeAttributeInput === idx && (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleAddValue(idx)}
+                                      className="absolute right-4 top-1/2 -translate-y-1/2 text-primary"
+                                    >
+                                      <CheckCircle2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <button 
-                          type="button"
-                          onClick={addAttribute}
-                          className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2"
-                        >
-                          <Plus size={16} /> Add Attribute
-                        </button>
-                      </div>
+                      ))}
 
-                      <div className="space-y-6">
-                        {newProduct.attributes.map((attr, idx) => (
-                          <div key={idx} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 relative group">
-                            <button 
-                              type="button"
-                              onClick={() => removeAttribute(idx)}
-                              className="absolute top-4 right-4 p-2 text-white/10 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                            <div className="grid grid-cols-3 gap-6">
-                              <div className="space-y-1.5">
-                                <label className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">Attribute Name</label>
-                                <input 
-                                  placeholder="e.g. Color"
-                                  value={attr.name}
-                                  onChange={(e) => updateAttributeName(idx, e.target.value)}
-                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
-                                />
-                              </div>
-                              <div className="col-span-2 space-y-1.5">
-                                <label className="text-[9px] font-black text-white/20 uppercase tracking-widest ml-2">Values (Comma separated)</label>
-                                <input 
-                                  placeholder="e.g. Red, Blue, Black"
-                                  value={attr.values.join(', ')}
-                                  onChange={(e) => updateAttributeValues(idx, e.target.value)}
-                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {attr.values.map((val, vIdx) => (
-                                <span key={vIdx} className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[9px] font-black text-blue-500 uppercase tracking-widest">
-                                  {val}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                      {newProduct.attributes.length === 0 && (
+                        <div className="py-24 border-4 border-dashed border-white/5 rounded-[3.5rem] text-center bg-white/[0.02]">
+                          <Layers className="w-20 h-20 text-white/5 mx-auto mb-6" />
+                          <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em]">Defining Product Architecture</p>
+                          <p className="text-[9px] text-white/10 font-bold mt-4 uppercase tracking-[0.2em]">Add attributes like Color, Size or Storage to generate matrix</p>
+                        </div>
+                      )}
+                    </div>
 
-                        {newProduct.attributes.length === 0 && (
-                          <div className="py-20 border border-dashed border-white/10 rounded-[2.5rem] text-center">
-                            <Layers className="w-12 h-12 text-white/5 mx-auto mb-4" />
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">No attributes defined yet</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-4">
-                        <button 
-                          type="button"
-                          onClick={() => setStep(1)}
-                          className="flex-1 py-4 border border-white/10 rounded-xl font-black text-[9px] uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 transition-all"
-                        >
-                          Back
-                        </button>
-                        <button
-                          type="button"
-                          onClick={generateMatrix}
-                          disabled={newProduct.attributes.length === 0}
-                          className="flex-[2] py-4 bg-blue-500 text-white rounded-xl font-black text-[9px] uppercase tracking-[0.3em] shadow-xl shadow-blue-500/10 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                        >
-                          Generate Variants <Zap className="w-4 h-4 fill-white" />
-                        </button>
-                      </div>
+                    <div className="flex gap-4">
+                      <button 
+                        type="button"
+                        onClick={() => setStep(1)}
+                        className="px-10 py-5 border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 transition-all"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={generateMatrix}
+                        disabled={newProduct.attributes.filter(a => a.values.length > 0).length === 0}
+                        className="flex-1 py-5 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50"
+                      >
+                        Compute Variant Matrix <ArrowRight size={18} />
+                      </button>
                     </div>
                   </motion.div>
                 )}
@@ -502,139 +713,270 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                   <motion.div 
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Variant Matrix ({newProduct.variants.length} variants)</h3>
-                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Review and adjust individual configurations</p>
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                      <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center border border-primary/30">
+                          <Package className="w-10 h-10 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Variant Matrix</h3>
+                          <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] mt-2">
+                             {newProduct.variants.length} Configurations Calculated
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-3 relative">
-                        {showBulkPrice && (
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            className="absolute right-0 bottom-full mb-4 p-4 bg-surface-container border border-border rounded-2xl shadow-2xl z-[100] flex items-center gap-3 w-64"
+                      
+                      <div className="flex flex-col items-end gap-4">
+                        <div className="flex gap-4">
+                          <button 
+                            type="button"
+                            onClick={() => setShowBulkPrice(!showBulkPrice)}
+                            className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all flex items-center gap-2"
                           >
-                            <input 
-                              type="number"
-                              placeholder="Price..."
-                              value={bulkPrice}
-                              onChange={(e) => setBulkPrice(e.target.value)}
-                              className="flex-1 bg-surface border border-border rounded-xl p-2 text-xs font-bold text-white outline-none focus:border-blue-500"
-                            />
-                            <button 
-                              onClick={applyBulkPrice}
-                              className="px-4 py-2 bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                            <Tag size={16} /> Bulk Adjustment
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setStep(newProduct.isConfigurable ? 2 : 1)}
+                            className="px-6 py-3 bg-primary/10 border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all flex items-center gap-2"
+                          >
+                            <Layers size={16} /> Edit Attributes
+                          </button>
+                        </div>
+                        <AnimatePresence>
+                          {showBulkPrice && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="w-full flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl"
                             >
-                              Apply
-                            </button>
-                            <button 
-                              onClick={() => setShowBulkPrice(false)}
-                              className="p-2 text-white/20 hover:text-white"
-                            >
-                              <X size={14} />
-                            </button>
-                          </motion.div>
-                        )}
-                        <button 
-                          type="button"
-                          onClick={() => setShowBulkPrice(!showBulkPrice)}
-                          className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
-                        >
-                          Set All Prices
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => setStep(2)}
-                          className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-blue-500 hover:bg-blue-500 hover:text-white transition-all"
-                        >
-                          Edit Attributes
-                        </button>
+                              <input 
+                                type="number"
+                                placeholder="Universal Price..."
+                                value={bulkPrice}
+                                onChange={(e) => setBulkPrice(e.target.value)}
+                                className="flex-1 bg-transparent border-none outline-none text-xs font-bold text-white font-mono"
+                              />
+                              <button 
+                                type="button"
+                                onClick={applyBulkPrice}
+                                className="px-4 py-2 bg-primary text-white rounded-lg text-[9px] font-black uppercase tracking-widest"
+                              >
+                                Apply
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-white/5 border-b border-white/10">
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">Configuration</th>
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">SKU</th>
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">Price</th>
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">Cost</th>
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20">Tracking</th>
-                            <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-white/20 text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {newProduct.variants.map((v) => (
-                            <tr key={v.id} className="hover:bg-white/[0.02] transition-colors group">
-                              <td className="px-6 py-4">
-                                <span className="text-[10px] font-black text-white uppercase">
-                                  {Object.values(v.attributes).join(' / ')}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="text-[9px] font-mono text-white/40 font-bold">{v.sku}</span>
-                              </td>
-                              <td className="px-6 py-4">
-                                <input 
-                                  type="number"
-                                  value={v.price}
-                                  onChange={(e) => updateVariant(v.id, 'price', parseFloat(e.target.value))}
-                                  className="w-20 bg-white/5 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-white outline-none focus:border-blue-500 font-mono"
-                                />
-                              </td>
-                              <td className="px-6 py-4">
-                                <input 
-                                  type="number"
-                                  value={v.cost}
-                                  onChange={(e) => updateVariant(v.id, 'cost', parseFloat(e.target.value))}
-                                  className="w-20 bg-white/5 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-white outline-none focus:border-blue-500 font-mono"
-                                />
-                              </td>
-                              <td className="px-6 py-4">
-                                <select
-                                  value={v.trackingMethod}
-                                  onChange={(e) => updateVariant(v.id, 'trackingMethod', e.target.value)}
-                                  className="bg-white/5 border border-white/10 rounded-lg p-2 text-[8px] font-black text-white outline-none focus:border-blue-500 uppercase tracking-widest"
-                                >
-                                  <option value="none" className="bg-[#0A0A0A]">None</option>
-                                  <option value="serial" className="bg-[#0A0A0A]">Serial</option>
-                                  <option value="imei" className="bg-[#0A0A0A]">IMEI</option>
-                                </select>
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <button 
-                                  type="button"
-                                  onClick={() => removeVariant(v.id)}
-                                  className="p-2 text-white/10 hover:text-red-500 transition-colors"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
+                    <div className="space-y-4">
+                        <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Target Receiving Node</label>
+                        <select 
+                          value={newProduct.targetStoreId}
+                          onChange={(e) => setNewProduct({...newProduct, targetStoreId: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] p-5 text-xs font-bold text-white outline-none focus:border-primary transition-all appearance-none cursor-pointer"
+                        >
+                          {stores.map(s => (
+                            <option key={s._id} value={s._id} className="bg-[#0A0A0A]">{s.name}</option>
                           ))}
-                        </tbody>
-                      </table>
+                        </select>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl">
+                      <div className="max-h-[40vh] overflow-y-auto no-scrollbar">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="sticky top-0 z-10 bg-[#0A0A0A]">
+                            <tr className="border-b border-white/10">
+                              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-widest text-white/20">Identity</th>
+                              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-widest text-white/20">SKU Matrix</th>
+                              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-widest text-white/20">Financials</th>
+                              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-widest text-white/20">Stock Intake</th>
+                              <th className="px-8 py-6 text-[9px] font-black uppercase tracking-widest text-white/20 text-right">Delete</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {newProduct.variants.map((v) => (
+                              <React.Fragment key={v.id}>
+                                <tr className="hover:bg-white/[0.02] transition-all group">
+                                  <td className="px-8 py-8">
+                                    <div className="flex flex-wrap gap-2">
+                                      {Object.entries(v.attributes).map(([k, val]: any) => (
+                                        <span key={k} className="px-3 py-1 bg-white/5 rounded-lg text-[9px] font-black text-white uppercase tracking-widest">
+                                          {val}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-8">
+                                    <div className="relative">
+                                      <input 
+                                        value={v.sku}
+                                        onChange={(e) => updateVariant(v.id, 'sku', e.target.value.toUpperCase())}
+                                        className="bg-transparent border-b border-white/10 text-[10px] font-mono text-primary font-bold outline-none focus:border-primary transition-all w-40"
+                                      />
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-8">
+                                    <div className="flex items-center gap-4">
+                                      <div className="space-y-1">
+                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Price</p>
+                                        <input 
+                                          type="number"
+                                          value={v.price}
+                                          onChange={(e) => updateVariant(v.id, 'price', parseFloat(e.target.value))}
+                                          className="w-20 bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-primary font-mono shadow-inner"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">Cost</p>
+                                        <input 
+                                          type="number"
+                                          value={v.cost}
+                                          onChange={(e) => updateVariant(v.id, 'cost', parseFloat(e.target.value))}
+                                          className="w-20 bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-primary font-mono shadow-inner"
+                                        />
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-8">
+                                    <div className="flex items-center gap-6">
+                                      <div className="px-6 py-4 bg-primary/5 rounded-[1.5rem] border border-primary/20">
+                                        <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest text-center">Qty</p>
+                                        <p className="text-xl font-black font-mono text-primary text-center leading-none mt-1">{v.quantity || 0}</p>
+                                      </div>
+                                      {newProduct.trackingMethod !== 'none' && (
+                                        <div className="text-left">
+                                          <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Unit ID Required</p>
+                                          <div className="flex items-center gap-3">
+                                            <div className={`w-2 h-2 rounded-full ${v.incomingUnits?.length === v.quantity && v.quantity > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                                            <span className="text-[10px] font-black text-white uppercase tracking-widest opacity-60">
+                                              {v.incomingUnits?.length || 0} / {v.quantity || 0}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-8 py-8 text-right">
+                                    <button 
+                                      type="button"
+                                      onClick={() => removeVariant(v.id)}
+                                      className="p-3 text-white/10 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </td>
+                                </tr>
+                                {newProduct.trackingMethod !== 'none' && (
+                                  <tr className="bg-white/5">
+                                    <td colSpan={5} className="px-8 py-8">
+                                      <div className="flex flex-col md:flex-row gap-8">
+                                        <div className="flex-1 space-y-4">
+                                          <div className="flex items-center gap-3">
+                                            <Scan size={16} className="text-primary" />
+                                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Intake Scanning Desk ({newProduct.trackingMethod.toUpperCase()})</h4>
+                                          </div>
+                                          <div className="relative group/scan">
+                                            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-2xl blur opacity-25 group-hover/scan:opacity-50 transition duration-1000" />
+                                            <textarea 
+                                              placeholder={`SCAN OR PASTE ${newProduct.trackingMethod.toUpperCase()}s FOR THIS VARIANT...`}
+                                              onBlur={(e) => handleBulkImeiAdd(v.id, e.target.value)}
+                                              className="relative w-full bg-[#050505] border border-white/10 rounded-2xl p-6 text-[11px] font-mono font-bold text-white outline-none focus:border-primary transition-all min-h-[100px] shadow-inner no-scrollbar"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="w-px bg-white/10" />
+                                        <div className="flex-1">
+                                          <h4 className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-6">Received Asset Cards</h4>
+                                          <div className="grid grid-cols-2 gap-3 max-h-32 overflow-y-auto pr-4 no-scrollbar">
+                                            {v.incomingUnits?.map((unit: any, idx: number) => (
+                                              <div key={unit.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between group/unit">
+                                                <div className="flex items-center gap-3">
+                                                  <span className="text-[9px] font-black text-primary opacity-40 italic">#{idx+1}</span>
+                                                  <span className="text-[10px] font-mono font-bold text-white uppercase tracking-tight">{unit.identifier}</span>
+                                                </div>
+                                                <button 
+                                                  onClick={() => {
+                                                    const newUnits = v.incomingUnits.filter((u: any) => u.id !== unit.id);
+                                                    updateVariant(v.id, 'incomingUnits', newUnits);
+                                                    updateVariant(v.id, 'quantity', newUnits.length);
+                                                  }}
+                                                  className="p-1 px-2 text-red-500/40 hover:text-red-500 transition-all opacity-0 group-hover/unit:opacity-100"
+                                                >
+                                                  <X size={12} />
+                                                </button>
+                                              </div>
+                                            ))}
+                                            {(!v.incomingUnits || v.incomingUnits.length === 0) && (
+                                              <div className="col-span-2 py-8 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center gap-2">
+                                                <Package className="w-6 h-6 text-white/10" />
+                                                <p className="text-[9px] font-black text-white/10 uppercase tracking-widest text-center">Zero Units Staged</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {/* Matrix Summary Footer */}
+                      <div className="p-10 bg-white/5 border-t border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-12">
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Total Variations</p>
+                            <p className="text-xl font-black text-white font-mono">{newProduct.variants.length}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Total System Units</p>
+                            <p className="text-xl font-black text-primary font-mono">
+                              {newProduct.variants.reduce((acc, v) => acc + (v.quantity || 0), 0)}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Est. Matrix Value</p>
+                            <p className="text-xl font-black text-green-500 font-mono">
+                              KD {newProduct.variants.reduce((acc, v) => acc + ((v.price || 0) * (v.quantity || 0)), 0).toFixed(3)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Destination Node</p>
+                          <div className="flex items-center gap-3 text-white">
+                            <Database size={16} className="text-primary" />
+                            <span className="text-sm font-black uppercase tracking-tighter">
+                              {stores.find(s => s._id === newProduct.targetStoreId)?.name || 'Central Matrix'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex gap-4 pt-4">
                       <button 
                         type="button"
-                        onClick={() => setStep(2)}
-                        className="flex-1 py-4 border border-white/10 rounded-xl font-black text-[9px] uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 transition-all"
+                        onClick={() => setStep(newProduct.isConfigurable ? 2 : 1)}
+                        className="px-10 py-5 border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 transition-all"
                       >
                         Back
                       </button>
                       <button 
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex-[2] py-4 bg-white text-black rounded-xl font-black text-[9px] uppercase tracking-[0.3em] shadow-2xl shadow-white/10 flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="flex-1 py-5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                       >
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                           <>
-                            <CheckCircle2 size={16} /> Finalize Catalog
+                            <CheckCircle2 size={20} /> Deploy Matrix to Core
                           </>
                         )}
                       </button>

@@ -54,7 +54,7 @@ const SaleSchema: Schema = new Schema({
   saleNumber: { type: String, unique: true },
   sessionId: { type: String },
   notes: { type: String },
-  storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+  storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: false },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },
 }, { timestamps: true });

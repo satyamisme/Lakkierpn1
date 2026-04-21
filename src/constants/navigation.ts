@@ -165,7 +165,7 @@ export const ATOMIC_NAVIGATION: NavCategory[] = [
       { id: 'p70', label: 'VAT Export', featureIds: ['194'], description: 'Government-ready CSV', path: 'gov/vat' },
       { id: 'p71', label: 'Payroll Engine', featureIds: ['197'], description: 'Base + commission – penalties', path: 'gov/payroll' },
       { id: 'p72', label: 'Staff Score', featureIds: ['198'], description: 'Combined sales/repair metrics', path: 'gov/staff-score' },
-      { id: 'p73', label: 'Store Profile', featureIds: ['199'], description: 'Logos, addresses, branch links', path: 'gov/profile' },
+      { id: 'p73', label: 'Store Management', featureIds: ['199'], description: 'Manage logos, addresses, and branch links', path: 'gov/profile' },
       { id: 'p74', label: 'Health Monitor', featureIds: ['200'], description: 'Latency, uptime', path: 'gov/health' },
       { id: 'p75', label: 'Auto-Backups', featureIds: ['201', '341'], description: 'Hot/warm/cold backup UI', path: 'gov/backups' },
       { id: 'p76', label: 'PITR Restore', featureIds: ['317'], description: 'Time-travel recovery', path: 'gov/restore' },

@@ -20,7 +20,8 @@ export const skuGenerator = {
       .map(([_, val]) => val.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase())
       .join('-');
     
-    let baseSku = `${brandPrefix}-${model}`;
+    // Prioritize provided SKU if available, otherwise build from brand-model
+    let baseSku = productData.sku ? productData.sku.toUpperCase() : `${brandPrefix}-${model}`;
     if (attributeString) {
       baseSku += `-${attributeString}`;
     }

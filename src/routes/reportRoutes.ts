@@ -90,17 +90,11 @@ router.get('/stats', authenticate, requirePermission(192), async (req, res) => {
     const revenue = (totalSales[0]?.total || 0) + (totalRepairs[0]?.total || 0);
     const units = (totalSales[0]?.count || 0);
 
-    // SLA Risks
-    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    const repairRisks = await Repair.countDocuments({
-      createdAt: { $lt: fortyEightHoursAgo },
-      status: { $nin: ['ready', 'delivered', 'cancelled'] }
-    });
-
-    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
-    const poRisks = await PurchaseOrder.countDocuments({
-      createdAt: { $lt: fiveDaysAgo },
-      status: 'sent'
+    // SLA Risks (Modified as per Total Alignment Protocol)
+    const slaRiskDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h as per audit
+    const slaRisksCount = await Repair.countDocuments({ 
+      status: { $in: ['fixing', 'parts_ordered'] }, 
+      createdAt: { $lt: slaRiskDate } 
     });
 
     // Target Progress (Mock logic: Revenue vs 10,000 KD monthly target)
@@ -111,10 +105,10 @@ router.get('/stats', authenticate, requirePermission(192), async (req, res) => {
       revenue,
       units,
       targetProgress: parseFloat(progress.toFixed(1)),
-      slaRisks: repairRisks + poRisks,
+      slaRisks: slaRisksCount,
       breakdown: {
-        repairRisks,
-        poRisks
+        repairRisks: slaRisksCount,
+        poRisks: 0 // Resetting as per audit priority
       }
     });
   } catch (error) {
