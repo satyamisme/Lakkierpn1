@@ -67,8 +67,6 @@ export class InventoryService {
 
         // 4. Register Identifiers (IMEIs)
         if (item.serials && Array.isArray(item.serials)) {
-          console.log(`Registering ${item.serials.length} serials for product ${item.productId}`);
-          
           const serialDocs = item.serials.map((s: string) => ({
             identifier: s,
             productId: item.productId,
@@ -81,8 +79,7 @@ export class InventoryService {
             receivedAt: new Date()
           }));
 
-          // Avoid duplicates by using findOneAndUpdate for each or bulkWrite
-          // For simplicity and audit requirements, we'll ensure uniqueness
+          // Identifier-Status Matrix Registry
           for (const doc of serialDocs) {
             await SerialNumber.findOneAndUpdate(
               { identifier: doc.identifier },
@@ -90,13 +87,13 @@ export class InventoryService {
               { upsert: true, session }
             );
 
-            // 5. Audit History
+            // Logic ID 45: Create PURCHASED event entry for Lifecycle Timeline
             await new ImeiHistory({
               imei: doc.identifier,
-              eventType: 'purchased',
+              eventType: 'PURCHASED',
               referenceId: intake._id,
               userId: userId,
-              metadata: { cost: item.costPrice }
+              metadata: { cost: item.costPrice, storeId: header.storeId }
             }).save({ session });
           }
         }

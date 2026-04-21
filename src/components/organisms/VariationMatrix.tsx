@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Hash, Layers, Cpu } from 'lucide-react';
+import { Plus, Trash2, Hash, Layers, Cpu, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import api from '../../api/client';
 
@@ -37,23 +37,33 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
   const [selectedStorage, setSelectedStorage] = useState<string[]>([]);
   const [selectedRam, setSelectedRam] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedSim, setSelectedSim] = useState<string[]>([]);
   
   const [storageOptions, setStorageOptions] = useState<string[]>([]);
   const [ramOptions, setRamOptions] = useState<string[]>([]);
   const [colorOptions, setColorOptions] = useState<string[]>([]);
+  const [simOptions, setSimOptions] = useState<string[]>([]);
   
   const [variants, setVariants] = useState<any[]>([]);
 
   useEffect(() => {
     // Fetch suggestions from Attribute Engine
     const fetchAttr = async () => {
-      const storage = await api.get('/attributes/suggestions?field=storage');
-      const ram = await api.get('/attributes/suggestions?field=ram');
-      const colors = await api.get('/attributes/suggestions?field=color');
-      
-      setStorageOptions(storage.data);
-      setRamOptions(ram.data);
-      setColorOptions(colors.data);
+      try {
+        const [storage, ram, colors, sims] = await Promise.all([
+          api.get('/attributes/suggestions?field=storage'),
+          api.get('/attributes/suggestions?field=ram'),
+          api.get('/attributes/suggestions?field=color'),
+          api.get('/attributes/suggestions?field=simType')
+        ]);
+        
+        setStorageOptions(storage.data);
+        setRamOptions(ram.data);
+        setColorOptions(colors.data);
+        setSimOptions(sims.data);
+      } catch (err) {
+        console.error("Failed to fetch variation options:", err);
+      }
     };
     fetchAttr();
   }, []);
@@ -66,34 +76,41 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
     const storages = selectedStorage.length > 0 ? selectedStorage : [''];
     const rams = selectedRam.length > 0 ? selectedRam : [''];
     const colors = selectedColors.length > 0 ? selectedColors : [''];
+    const sims = selectedSim.length > 0 ? selectedSim : [''];
 
     storages.forEach(s => {
       rams.forEach(r => {
         colors.forEach(c => {
-          if (!s && !r && !c) return;
-          
-          const attributes: any = {};
-          if (s) attributes.storage = s;
-          if (r) attributes.ram = r;
-          if (c) attributes.color = c;
+          sims.forEach(sim => {
+            if (!s && !r && !c && !sim) return;
+            
+            const attributes: any = {};
+            if (s) attributes.storage = s;
+            if (r) attributes.ram = r;
+            if (c) attributes.color = c;
+            if (sim) attributes.simType = sim;
 
-          // Prediction Logic: Generate temporary SKU for UI feedback
-          const bPrefix = (baseProduct.brand || 'UNK').substring(0, 3).toUpperCase();
-          const mPrefix = (baseProduct.name || 'MOD').substring(0, 3).toUpperCase();
-          const sCode = s.replace('GB', '') || '000';
-          const rCode = r.replace('GB', '') || '00';
-          const colorCode = c.substring(0, 2).toUpperCase() || 'XX';
-          
-          const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
-          const tempSku = `${bPrefix}-${mPrefix}-${sCode}-${rCode}-${colorCode}-${mmYY}`;
+            // Prediction Logic: Generate temporary SKU for UI feedback
+            const brandCode = (baseProduct.brand || 'GEN').substring(0, 3).toUpperCase();
+            const modelCode = (baseProduct.name || 'PROD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+            const sCode = s.replace(/[^0-9TB]/g, '') || '000';
+            const rCode = r.replace(/[^0-9]/g, '') || '00';
+            
+            // Default codes for preview
+            const condCode = 'N'; 
+            const simCode = sim.includes('eSIM') ? 'E' : (sim.includes('Dual') ? 'D' : 'P');
+            
+            const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
+            const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${simCode}${condCode}-${mmYY}`;
 
-          newVariants.push({
-            attributes,
-            sku: tempSku,
-            price: baseProduct.price || 0,
-            cost: baseProduct.cost || 0,
-            stock: 0,
-            trackingMethod: 'imei'
+            newVariants.push({
+              attributes,
+              sku: tempSku,
+              price: baseProduct.price || 0,
+              cost: baseProduct.cost || 0,
+              stock: 0,
+              trackingMethod: 'imei'
+            });
           });
         });
       });
@@ -101,7 +118,7 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
 
     setVariants(newVariants);
     onMatrixChange(newVariants);
-  }, [selectedStorage, selectedRam, selectedColors, baseProduct]);
+  }, [selectedStorage, selectedRam, selectedColors, selectedSim, baseProduct, onMatrixChange]);
 
   const toggleAttribute = (list: string[], setter: (l: string[]) => void, value: string) => {
     if (list.includes(value)) {
@@ -149,7 +166,24 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
           </div>
         </div>
 
-        <div className="md:col-span-2 space-y-4">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Scan className="text-green-500" size={16} />
+            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">SIM Config</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {simOptions.map(opt => (
+              <AttributeChip 
+                key={opt} 
+                label={opt} 
+                isSelected={selectedSim.includes(opt)}
+                onClick={() => toggleAttribute(selectedSim, setSelectedSim, opt)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500" />
             <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Color Esthetics</span>

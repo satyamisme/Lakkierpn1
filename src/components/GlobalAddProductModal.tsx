@@ -34,6 +34,7 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     image: initialData?.image || "",
     binLocation: initialData?.binLocation || "",
     trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+    condition: initialData?.condition || "New",
     isConfigurable: initialData?.isConfigurable || true,
     isNewBrand: false,
     attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
@@ -58,6 +59,7 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
         image: initialData?.image || "",
         binLocation: initialData?.binLocation || "",
         trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+        condition: initialData?.condition || "New",
         isConfigurable: initialData?.isConfigurable ?? true,
         isNewBrand: false,
         attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
@@ -91,6 +93,10 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
   }, [newProduct.sku]);
 
   const BRANDS = ["Apple", "Samsung", "Huawei", "Xiaomi", "Google", "Oppo", "Vivo"];
+  const STORAGE_PRESETS = ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB", "2TB", "4TB"];
+  const RAM_PRESETS = ["2GB", "4GB", "6GB", "8GB", "12GB", "16GB", "32GB", "64GB"];
+  const SIM_PRESETS = ["Physical SIM", "eSIM", "Dual Nano SIM", "Nano + eSIM"];
+  const CONDITION_OPTIONS = ["New", "Used", "Refurbished"];
 
   const addAttribute = () => {
     setNewProduct({
@@ -279,6 +285,7 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
       image: "",
       binLocation: "",
       trackingMethod: 'imei' as 'none' | 'imei' | 'serial',
+      condition: "New",
       isConfigurable: true,
       isNewBrand: false,
       attributes: [] as { name: string, values: string[] }[],
@@ -466,15 +473,47 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                            </div>
                         </div>
 
+                        <div className="grid grid-cols-3 gap-4">
+                           <SmartSelector 
+                             field="storage"
+                             label="Capacity"
+                             value={newProduct.attributes.find(a => a.name === 'storage')?.values[0] || ''}
+                             onChange={(val) => {
+                               const attrs = [...newProduct.attributes].filter(a => a.name !== 'storage');
+                               if (val) attrs.push({ name: 'storage', values: [val] });
+                               setNewProduct({...newProduct, attributes: attrs});
+                             }}
+                           />
+                           <SmartSelector 
+                             field="ram"
+                             label="Memory"
+                             value={newProduct.attributes.find(a => a.name === 'ram')?.values[0] || ''}
+                             onChange={(val) => {
+                               const attrs = [...newProduct.attributes].filter(a => a.name !== 'ram');
+                               if (val) attrs.push({ name: 'ram', values: [val] });
+                               setNewProduct({...newProduct, attributes: attrs});
+                             }}
+                           />
+                           <SmartSelector 
+                             field="simType"
+                             label="Connectivity"
+                             value={newProduct.attributes.find(a => a.name === 'simType')?.values[0] || ''}
+                             onChange={(val) => {
+                               const attrs = [...newProduct.attributes].filter(a => a.name !== 'simType');
+                               if (val) attrs.push({ name: 'simType', values: [val] });
+                               setNewProduct({...newProduct, attributes: attrs});
+                             }}
+                           />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-1.5">
                               <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Default Base Price (KD)</label>
                               <input 
                                 type="number"
-                                required
                                 placeholder="0.000"
                                 value={newProduct.price}
-                                onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
+                                onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-mono"
                               />
                            </div>
@@ -482,10 +521,9 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                               <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Default Base Cost (KD)</label>
                               <input 
                                 type="number"
-                                required
                                 placeholder="0.000"
                                 value={newProduct.cost}
-                                onChange={(e) => setNewProduct({...newProduct, cost: parseFloat(e.target.value)})}
+                                onChange={(e) => setNewProduct({...newProduct, cost: parseFloat(e.target.value) || 0})}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-mono"
                               />
                            </div>
@@ -526,6 +564,26 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
 
                     <div className="flex items-center gap-8 p-6 bg-white/5 border border-white/5 rounded-2xl">
                       <div className="space-y-2">
+                        <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Condition</label>
+                        <div className="flex gap-4">
+                          {CONDITION_OPTIONS.map((cond) => (
+                            <label key={cond} className="flex items-center gap-2 cursor-pointer group">
+                              <input 
+                                type="radio"
+                                name="condition"
+                                checked={newProduct.condition === cond}
+                                onChange={() => setNewProduct({...newProduct, condition: cond})}
+                                className="w-4 h-4 accent-blue-500"
+                              />
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${newProduct.condition === cond ? 'text-blue-500' : 'text-white/40 group-hover:text-white/60'}`}>
+                                {cond}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="h-10 w-px bg-white/10 mx-4" />
+                      <div className="space-y-2 flex-1">
                         <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Tracking Method</label>
                         <div className="flex gap-4">
                           {['none', 'imei', 'serial'].map((method) => (
@@ -544,19 +602,19 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                           ))}
                         </div>
                       </div>
-                      <div className="h-10 w-px bg-white/10 mx-4" />
-                      <div className="flex items-center gap-4">
-                        <input 
-                          type="checkbox"
-                          id="globalConfigurable"
-                          checked={newProduct.isConfigurable}
-                          onChange={(e) => setNewProduct({...newProduct, isConfigurable: e.target.checked})}
-                          className="w-4 h-4 accent-blue-500 rounded cursor-pointer"
-                        />
-                        <label htmlFor="globalConfigurable" className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-white/40 hover:text-blue-500 transition-colors">
-                          Configurable Product
-                        </label>
-                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 px-6">
+                      <input 
+                        type="checkbox"
+                        id="globalConfigurable"
+                        checked={newProduct.isConfigurable}
+                        onChange={(e) => setNewProduct({...newProduct, isConfigurable: e.target.checked})}
+                        className="w-4 h-4 accent-blue-500 rounded cursor-pointer"
+                      />
+                      <label htmlFor="globalConfigurable" className="text-[10px] font-black uppercase tracking-widest cursor-pointer select-none text-white/40 hover:text-blue-500 transition-colors">
+                        Configurable Product (Matrix Generation)
+                      </label>
                     </div>
 
                     <button 
