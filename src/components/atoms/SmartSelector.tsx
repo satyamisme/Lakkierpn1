@@ -23,9 +23,18 @@ export const SmartSelector: React.FC<SmartSelectorProps> = ({ field, value, onCh
     fetchOptions();
   }, [field]);
 
+  const isNewValue = value && !options.includes(value);
+
   return (
     <div className="space-y-2">
-      {label && <label className="text-[10px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>}
+      <div className="flex items-center justify-between px-1">
+        {label && <label className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">{label}</label>}
+        {isNewValue && (
+          <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest bg-blue-500/10 px-2 py-0.5 rounded italic animate-pulse">
+            New detected
+          </span>
+        )}
+      </div>
       <div className="relative">
         <input 
           list={`${field}-options`}

@@ -3,25 +3,24 @@ import Variant from '../models/Variant.js';
 
 export const skuGenerator = {
   generateSku: async (productData: any, variantAttributes: any, storeCode: string = 'MAIN') => {
-    // Pattern: {BRAND}-{MODEL}-{STORAGE}-{CONDITION}-{MMYY}
-    const brand = productData.brand?.substring(0, 3).toUpperCase() || 'UNK';
+    // Pattern: {BRAND}-{MODEL}-{STORAGE}-{RAM}-{COLOR}-{MMYY}
+    const brand = (productData.brand || 'UNK').substring(0, 3).toUpperCase();
     
-    // Model name (last word or name)
+    // Model name (first 3 chars)
     const model = (productData.name || 'MOD')
-      .split(' ')
-      .pop()
-      ?.replace(/[^a-zA-Z0-9]/g, '')
-      .substring(0, 6)
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 3)
       .toUpperCase() || 'MOD';
     
-    const storage = variantAttributes?.storage || '000';
-    const condition = productData.condition === 'Used' ? 'U' : 'N';
+    const storage = variantAttributes?.storage?.replace('GB', '') || '000';
+    const ram = variantAttributes?.ram?.replace('GB', '') || '00';
+    const color = variantAttributes?.color?.substring(0, 2).toUpperCase() || 'XX';
     
     const date = new Date()
       .toLocaleString('en-GB', { month: '2-digit', year: '2-digit' })
       .replace('/', '');
     
-    const baseSku = `${brand}-${model}-${storage}-${condition}-${date}`;
+    const baseSku = `${brand}-${model}-${storage}-${ram}-${color}-${date}`;
     
     // Uniqueness check
     let uniqueSku = baseSku;

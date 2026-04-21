@@ -16,6 +16,7 @@ interface GlobalAddProductModalProps {
 }
 
 import { SmartSelector } from './atoms/SmartSelector';
+import { VariationMatrix } from './organisms/VariationMatrix';
 
 export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const [step, setStep] = useState(1);
@@ -33,7 +34,8 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     image: initialData?.image || "",
     binLocation: initialData?.binLocation || "",
     trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
-    isConfigurable: initialData?.isConfigurable || false,
+    isConfigurable: initialData?.isConfigurable || true,
+    isNewBrand: false,
     attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
     variants: initialData?.variants || [] as any[],
     targetStoreId: "",
@@ -56,7 +58,8 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
         image: initialData?.image || "",
         binLocation: initialData?.binLocation || "",
         trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
-        isConfigurable: initialData?.isConfigurable || false,
+        isConfigurable: initialData?.isConfigurable ?? true,
+        isNewBrand: false,
         attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
         variants: initialData?.variants || [] as any[],
         targetStoreId: "",
@@ -276,7 +279,8 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
       image: "",
       binLocation: "",
       trackingMethod: 'imei' as 'none' | 'imei' | 'serial',
-      isConfigurable: false,
+      isConfigurable: true,
+      isNewBrand: false,
       attributes: [] as { name: string, values: string[] }[],
       variants: [] as any[],
       targetStoreId: "",
@@ -291,11 +295,17 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Inline New Brand Detection
+      const brandSuggestions = await axios.get(`/api/attributes/suggestions?field=brand`);
+      const isNew = newProduct.brand && !brandSuggestions.data.includes(newProduct.brand);
+      
+      const payload = { ...newProduct, isNewBrand: isNew };
+
       let response;
       if (initialData?._id) {
-        response = await axios.put(`/api/products/${initialData._id}`, newProduct);
+        response = await axios.put(`/api/products/${initialData._id}`, payload);
       } else {
-        response = await axios.post('/api/products', newProduct);
+        response = await axios.post('/api/products', payload);
       }
       
       const savedProduct = response.data;
@@ -579,119 +589,40 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                       </div>
                       <button 
                         type="button"
-                        onClick={addAttribute}
-                        className="px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                      >
-                        <Plus size={16} /> New Attribute
-                      </button>
-                    </div>
-
-                    <div className="space-y-6">
-                      {newProduct.attributes.map((attr, idx) => (
-                        <div key={idx} className="p-8 bg-white/5 border border-white/10 rounded-[2.5rem] relative group border-t-4 border-t-primary/20">
-                          <button 
-                            type="button"
-                            onClick={() => removeAttribute(idx)}
-                            className="absolute top-6 right-6 p-2 text-white/10 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Axis Identifier</label>
-                              <input 
-                                placeholder="e.g. Storage"
-                                value={attr.name}
-                                onChange={(e) => updateAttributeName(idx, e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold text-white outline-none focus:border-primary transition-all shadow-inner"
-                              />
-                            </div>
-                            
-                            <div className="md:col-span-2 space-y-4">
-                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2 font-mono">Permitted Values</label>
-                              <div className="flex flex-wrap gap-2 mb-4">
-                                {attr.values.map((val, vIdx) => (
-                                  <motion.span 
-                                    layout
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    key={vIdx} 
-                                    className="px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2"
-                                  >
-                                    {val}
-                                    <button 
-                                      type="button" 
-                                      onClick={() => {
-                                        const newValues = attr.values.filter((_, i) => i !== vIdx);
-                                        const newAttrs = [...newProduct.attributes];
-                                        newAttrs[idx].values = newValues;
-                                        setNewProduct({...newProduct, attributes: newAttrs});
-                                      }}
-                                    >
-                                      <X size={12} />
-                                    </button>
-                                  </motion.span>
-                                ))}
-                                <div className="relative flex-1 min-w-[150px]">
-                                  <input 
-                                    placeholder="Add value & hit Enter..."
-                                    value={activeAttributeInput === idx ? attributeTempValue : ""}
-                                    onFocus={() => {
-                                      setActiveAttributeInput(idx);
-                                      setAttributeTempValue("");
-                                    }}
-                                    onChange={(e) => setAttributeTempValue(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAddValue(idx);
-                                      }
-                                    }}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] font-bold text-white outline-none focus:border-primary transition-all shadow-inner"
-                                  />
-                                  {attributeTempValue && activeAttributeInput === idx && (
-                                    <button 
-                                      type="button" 
-                                      onClick={() => handleAddValue(idx)}
-                                      className="absolute right-4 top-1/2 -translate-y-1/2 text-primary"
-                                    >
-                                      <CheckCircle2 size={16} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {newProduct.attributes.length === 0 && (
-                        <div className="py-24 border-4 border-dashed border-white/5 rounded-[3.5rem] text-center bg-white/[0.02]">
-                          <Layers className="w-20 h-20 text-white/5 mx-auto mb-6" />
-                          <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em]">Defining Product Architecture</p>
-                          <p className="text-[9px] text-white/10 font-bold mt-4 uppercase tracking-[0.2em]">Add attributes like Color, Size or Storage to generate matrix</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-4">
-                      <button 
-                        type="button"
                         onClick={() => setStep(1)}
-                        className="px-10 py-5 border border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] text-white/40 hover:bg-white/5 transition-all"
+                        className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-colors"
                       >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={generateMatrix}
-                        disabled={newProduct.attributes.filter(a => a.values.length > 0).length === 0}
-                        className="flex-1 py-5 bg-primary text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50"
-                      >
-                        Compute Variant Matrix <ArrowRight size={18} />
+                        Back to Identity
                       </button>
                     </div>
+
+                    <VariationMatrix 
+                      baseProduct={{
+                        brand: newProduct.brand,
+                        name: newProduct.name,
+                        price: newProduct.price,
+                        cost: newProduct.cost
+                      }}
+                      onMatrixChange={(variants) => {
+                        setNewProduct(prev => ({
+                          ...prev,
+                          variants: variants.map(v => ({
+                            ...v,
+                            id: Math.random().toString(36).substr(2, 9),
+                            incomingUnits: []
+                          }))
+                        }));
+                      }}
+                    />
+
+                    <button 
+                      type="button"
+                      onClick={() => setStep(3)}
+                      disabled={newProduct.variants.length === 0}
+                      className="w-full py-5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(255,255,255,0.1)] flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                    >
+                      Finalize Stock Entry <ArrowRight size={18} />
+                    </button>
                   </motion.div>
                 )}
 

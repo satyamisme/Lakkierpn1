@@ -1,17 +1,27 @@
 import Product from '../models/Product.js';
 import Variant from '../models/Variant.js';
 import SerialNumber from '../models/Imei.js';
+import Brand from '../models/Brand.js';
 import mongoose from 'mongoose';
 
 import { skuGenerator } from './skuGenerator.js';
 
 export class ProductService {
   static async createProduct(data: any) {
-    const { variants, isConfigurable, attributes, ...baseData } = data;
+    const { variants, isConfigurable, attributes, isNewBrand, ...baseData } = data;
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
+      // Logic ID 121: Register new brand if needed
+      if (isNewBrand && baseData.brand) {
+        await Brand.findOneAndUpdate(
+          { name: baseData.brand },
+          { name: baseData.brand },
+          { upsert: true, session }
+        );
+      }
+
       // Logic ID 122: Fix SKU validation by generating one if missing
       const productSku = baseData.sku || await skuGenerator.generateSku(baseData, variants?.[0]?.attributes || {});
       
