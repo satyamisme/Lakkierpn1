@@ -70,6 +70,7 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
 
   // Generate Matrix when selections change
   useEffect(() => {
+    let idx = 0; // Local counter for generation
     let newVariants: any[] = [];
     
     // Cross product logic
@@ -92,18 +93,19 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
 
             // Prediction Logic: Generate temporary SKU for UI feedback
             const brandCode = (baseProduct.brand || 'GEN').substring(0, 3).toUpperCase();
-            const modelCode = (baseProduct.name || 'PROD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
-            const sCode = s.replace(/[^0-9TB]/g, '') || '000';
+            const modelCode = (baseProduct.name || 'MOD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+            const sCode = s.replace(/[^0-9]/g, '') || '000';
             const rCode = r.replace(/[^0-9]/g, '') || '00';
             
             // Default codes for preview
             const condCode = 'N'; 
-            const simCode = sim.includes('eSIM') ? 'E' : (sim.includes('Dual') ? 'D' : 'P');
+            const simCode = sim.includes('Dual') ? 'D' : (sim.includes('eSIM') ? 'E' : 'P');
             
             const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
             const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${simCode}${condCode}-${mmYY}`;
 
             newVariants.push({
+              id: `v-${sCode}-${rCode}-${c}-${idx++}`, // Stable unique ID for React keys
               attributes,
               sku: tempSku,
               price: baseProduct.price || 0,
@@ -116,8 +118,17 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
       });
     });
 
-    setVariants(newVariants);
-    onMatrixChange(newVariants);
+    // Strategy: Only update state if the attributes cross-product has actually shifted 
+    // to prevent circular dependency firing through the parent's onMatrixChange
+    const hash = JSON.stringify(newVariants.map(v => v.attributes));
+    setVariants(prev => {
+      const prevHash = JSON.stringify(prev.map(v => v.attributes));
+      if (prevHash === hash) return prev;
+      
+      // Delay parent sync to ensure render stability
+      setTimeout(() => onMatrixChange(newVariants), 0);
+      return newVariants;
+    });
   }, [selectedStorage, selectedRam, selectedColors, selectedSim, baseProduct, onMatrixChange]);
 
   const toggleAttribute = (list: string[], setter: (l: string[]) => void, value: string) => {
@@ -217,7 +228,7 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
           <AnimatePresence mode="popLayout">
             {variants.map((v, idx) => (
               <motion.div
-                key={v.sku}
+                key={v.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}

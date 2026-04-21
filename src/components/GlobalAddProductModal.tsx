@@ -33,9 +33,9 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     stock: initialData?.stock || 0,
     image: initialData?.image || "",
     binLocation: initialData?.binLocation || "",
-    trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+    trackingMethod: (initialData?.trackingMethod || 'imei') as 'none' | 'imei' | 'serial',
     condition: initialData?.condition || "New",
-    isConfigurable: initialData?.isConfigurable || true,
+    isConfigurable: initialData?.isConfigurable ?? true,
     isNewBrand: false,
     attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
     variants: initialData?.variants || [] as any[],
@@ -58,7 +58,7 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
         stock: initialData?.stock || 0,
         image: initialData?.image || "",
         binLocation: initialData?.binLocation || "",
-        trackingMethod: (initialData?.trackingMethod || 'none') as 'none' | 'imei' | 'serial',
+        trackingMethod: (initialData?.trackingMethod || 'imei') as 'none' | 'imei' | 'serial',
         condition: initialData?.condition || "New",
         isConfigurable: initialData?.isConfigurable ?? true,
         isNewBrand: false,
@@ -358,6 +358,30 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
   };
 
 
+  const matrixBaseProduct = React.useMemo(() => ({
+    brand: newProduct.brand,
+    name: newProduct.name,
+    price: newProduct.price,
+    cost: newProduct.cost
+  }), [newProduct.brand, newProduct.name, newProduct.price, newProduct.cost]);
+
+  const handleMatrixChange = React.useCallback((variants: any[]) => {
+    setNewProduct(prev => {
+      // Logic ID 999: Only update if variants actually changed to prevent loops
+      if (JSON.stringify(prev.variants.map(v => v.sku)) === JSON.stringify(variants.map(v => v.sku))) {
+        return prev;
+      }
+      return {
+        ...prev,
+        variants: variants.map(v => ({
+          ...v,
+          id: Math.random().toString(36).substr(2, 9),
+          incomingUnits: []
+        }))
+      };
+    });
+  }, []);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -438,12 +462,14 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                             label="Brand"
                             value={newProduct.brand}
                             onChange={(val) => setNewProduct({...newProduct, brand: val})}
+                            onAddNew={(val) => console.log("New brand staged:", val)}
                           />
                           <SmartSelector 
                             field="category"
                             label="Category"
                             value={newProduct.category}
                             onChange={(val) => setNewProduct({...newProduct, category: val})}
+                            onAddNew={(val) => console.log("New category staged:", val)}
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -655,22 +681,8 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                     </div>
 
                     <VariationMatrix 
-                      baseProduct={{
-                        brand: newProduct.brand,
-                        name: newProduct.name,
-                        price: newProduct.price,
-                        cost: newProduct.cost
-                      }}
-                      onMatrixChange={(variants) => {
-                        setNewProduct(prev => ({
-                          ...prev,
-                          variants: variants.map(v => ({
-                            ...v,
-                            id: Math.random().toString(36).substr(2, 9),
-                            incomingUnits: []
-                          }))
-                        }));
-                      }}
+                      baseProduct={matrixBaseProduct}
+                      onMatrixChange={handleMatrixChange}
                     />
 
                     <button 

@@ -2,30 +2,31 @@ import Product from '../models/Product.js';
 import Variant from '../models/Variant.js';
 
 export const skuGenerator = {
-  generateSku: async (productData: any, variantAttributes: any, storeCode: string = 'MAIN') => {
-    // Pattern: {BRAND}-{MODEL}-{STORAGE}-{RAM}-{SIM}{COND}-{MMYY}
-    const brand = (productData.brand || 'GEN').substring(0, 3).toUpperCase();
+  generateSku: async (base: any, attr: any, _storeCode?: string) => {
+    const b = (base.brand || 'GEN').substring(0, 3).toUpperCase();
     
-    // Model identifier (first 4 chars of name)
-    const model = (productData.name || 'PROD')
+    // Model identifier (first 3 alphanumeric chars of name)
+    const m = (base.name || 'MOD')
       .replace(/[^a-zA-Z0-9]/g, '')
-      .substring(0, 4)
-      .toUpperCase() || 'PROD';
+      .substring(0, 3)
+      .toUpperCase() || 'XXX';
     
-    const storage = variantAttributes?.storage?.replace(/[^0-9TB]/g, '') || '000';
-    const ram = variantAttributes?.ram?.replace(/[^0-9]/g, '') || '00';
+    // Hardware DNA Extraction
+    const s = attr.storage?.replace(/[^0-9]/g, '') || '000';
+    const r = attr.ram?.replace(/[^0-9]/g, '') || '00';
     
-    // Logic ID 44: Map SIM and Condition to single codes
-    const simCode = variantAttributes?.simType?.includes('eSIM') ? 'E' : (variantAttributes?.simType?.includes('Dual') ? 'D' : 'P');
-    const condCode = productData.condition === 'Used' ? 'U' : (productData.condition === 'Refurbished' ? 'R' : 'N');
+    // Connectivity & Condition Codes (D=Dual, E=eSIM, P=Physical | N=New, U=Used)
+    const sim = attr.simType?.includes('Dual') ? 'D' : (attr.simType?.includes('eSIM') ? 'E' : 'P');
+    const cond = base.condition === 'Used' ? 'U' : 'N';
     
     const date = new Date()
       .toLocaleString('en-GB', { month: '2-digit', year: '2-digit' })
       .replace('/', '');
     
-    const baseSku = `${brand}-${model}-${storage}-${ram}-${simCode}${condCode}-${date}`;
+    // Pattern: BRAND-MODEL-STORAGE-RAM-SIM+COND-DATE
+    const baseSku = `${b}-${m}-${s}-${r}-${sim}${cond}-${date}`;
     
-    // 🛡️ Collision Resolver: Add -Vn suffix
+    // 🛡️ COLLISION RESOLVER: Prevents E11000 errors
     let uniqueSku = baseSku;
     let counter = 1;
     let exists = await Variant.findOne({ sku: uniqueSku });
