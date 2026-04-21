@@ -68,7 +68,18 @@ const ProductSchema: Schema = new Schema({
   defaultImage: { type: String },
   deletedAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Logic ID 444: Define virtual relationship to variants
+ProductSchema.virtual('variants', {
+  ref: 'Variant',
+  localField: '_id',
+  foreignField: 'productId'
+});
 
 // ID 3: Elastic Search Bar - Text Index for Name, SKU, and IMEI
 ProductSchema.index({ name: 'text', sku: 'text', category: 'text', brand: 'text', modelNumber: 'text' });

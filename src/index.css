@@ -97,3 +97,21 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.terminal-row {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr 1.5fr 1fr; /* Name | Storage | RAM | Color | Input | Action */
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.terminal-header {
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+}

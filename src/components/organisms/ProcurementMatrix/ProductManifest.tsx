@@ -100,6 +100,17 @@ export const ProductManifest: React.FC<Props> = ({
       )}
 
       <div className="space-y-4">
+        {items.length > 0 && (
+          <div className="terminal-row terminal-header px-6 py-4">
+            <div>Product Identity</div>
+            <div className="text-center">Tiers</div>
+            <div className="text-center">Stock</div>
+            <div className="text-center">Identifiers</div>
+            <div className="text-center">Quantity Matrix</div>
+            <div className="text-right px-3">Actions</div>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div className="h-40 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-white/20">
             <Package size={32} className="mb-4 opacity-20" />
@@ -112,46 +123,58 @@ export const ProductManifest: React.FC<Props> = ({
               layout
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col md:flex-row md:items-center gap-6 group hover:border-white/10 transition-all"
+              className="terminal-row px-6 !py-6 group transition-all"
             >
-              <div className="flex-1">
-                <h4 className="text-sm font-black uppercase text-white tracking-tight">{item.name}</h4>
-                <p className="text-[9px] text-white/30 font-bold uppercase mt-1">{item.sku}</p>
+              <div>
+                <h4 className="text-xs font-black uppercase text-white tracking-tight">{item.name}</h4>
+                <p className="text-[8px] text-white/20 font-bold uppercase mt-1 tracking-widest">{item.sku}</p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="bg-black/40 border border-white/5 rounded-2xl flex items-center">
+              <div className="text-center text-[8px] font-black uppercase text-white/40 tracking-widest bg-white/5 py-2 rounded-xl">
+                 Hardware
+              </div>
+
+              <div className="text-center text-[10px] font-mono font-bold text-white/60">
+                 WH_01
+              </div>
+
+              <div className="flex justify-center">
+                {item.trackingMethod !== 'none' && (
+                  <button 
+                    onClick={() => onScan(idx)}
+                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase flex items-center gap-2 transition-all ${item.serials.length === item.quantity ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
+                  >
+                    <Scan size={12} />
+                    {item.serials.length}/{item.quantity}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex justify-center">
+                <div className="bg-black/40 border border-white/5 rounded-xl flex items-center h-10 overflow-hidden">
                   <button 
                     onClick={() => onUpdate(idx, { quantity: Math.max(1, item.quantity - 1) })}
-                    className="p-3 text-white/40 hover:text-white transition-colors"
+                    className="px-3 text-white/20 hover:text-white transition-colors"
                   >-</button>
                   <input 
                     type="number"
                     value={item.quantity}
                     onChange={(e) => onUpdate(idx, { quantity: parseInt(e.target.value) || 1 })}
-                    className="w-12 bg-transparent text-center text-xs font-black text-white outline-none"
+                    className="w-10 bg-transparent text-center text-[10px] font-black text-white outline-none"
                   />
                   <button 
-                     onClick={() => onUpdate(idx, { quantity: item.quantity + 1 })}
-                    className="p-3 text-white/40 hover:text-white transition-colors"
+                    onClick={() => onUpdate(idx, { quantity: item.quantity + 1 })}
+                    className="px-3 text-white/20 hover:text-white transition-colors"
                   >+</button>
                 </div>
+              </div>
 
-                {item.trackingMethod !== 'none' && (
-                  <button 
-                    onClick={() => onScan(idx)}
-                    className={`px-5 py-3 rounded-2xl text-[9px] font-black uppercase flex items-center gap-2 transition-all ${item.serials.length === item.quantity ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
-                  >
-                    <Scan size={14} />
-                    {item.serials.length}/{item.quantity} Serials
-                  </button>
-                )}
-
+              <div className="text-right">
                 <button 
                   onClick={() => onRemove(idx)}
-                  className="p-3 text-white/10 hover:text-red-500 transition-colors"
+                  className="p-3 text-white/10 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </motion.div>

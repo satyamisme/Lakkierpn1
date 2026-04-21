@@ -3,6 +3,7 @@ import Variant from '../models/Variant.js';
 import SerialNumber from '../models/Imei.js';
 import Brand from '../models/Brand.js';
 import mongoose from 'mongoose';
+import { formatSearchQuery } from '../utils/searchFilters.js';
 
 import { skuGenerator } from './skuGenerator.js';
 
@@ -95,6 +96,7 @@ export class ProductService {
 
   static async searchAssets(query: string) {
     const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+    const fuzzyRegex = formatSearchQuery(query);
 
     // 1. Identifier Match (IMEI/Serial)
     const assetMatches = await SerialNumber.find({
@@ -119,17 +121,16 @@ export class ProductService {
     const products = await Product.find({
       ...softDeleteQuery,
       $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { sku: { $regex: query, $options: 'i' } },
-        { brand: { $regex: query, $options: 'i' } }
+        { name: { $regex: fuzzyRegex } },
+        { sku: { $regex: fuzzyRegex } },
+        { brand: { $regex: fuzzyRegex } }
       ]
-    }).limit(20).lean();
+    }).populate('variants').limit(20).lean();
 
     const results: any[] = [];
     for (const p of products) {
-      const pVariants = await Variant.find({ productId: p._id, ...softDeleteQuery }).lean();
-      if (pVariants.length > 0) {
-        pVariants.forEach(v => {
+      if (p.variants && p.variants.length > 0) {
+        p.variants.forEach((v: any) => {
           results.push({ ...v, name: p.name, brand: p.brand, isVariant: true, parentProduct: p });
         });
       } else {

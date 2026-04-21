@@ -1171,8 +1171,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                 className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                               />
                             </div>
-                            <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
-                              <div className="col-span-3">
+                            <div className="flex-1 min-w-0 terminal-row !border-0 !p-0 items-center">
+                              <div>
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="text-[8px] font-black text-primary/40 uppercase tracking-[0.2em]">{product.brand || 'GENERIC'}</span>
                                   <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded ${
@@ -1187,60 +1187,60 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                 </div>
                               </div>
 
-                              <div className="col-span-3">
-                                 <div className="flex flex-col gap-1.5">
+                              <div className="flex justify-center">
+                                 <div className="flex flex-col gap-1.5 w-full max-w-[140px]">
                                     {product.imei && (
                                       <div className="flex items-center gap-2.5 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-lg group-hover:bg-primary/10 transition-colors" title="IMEI Matrix Authenticated">
                                         <Smartphone size={12} className="text-primary" />
-                                        <span className="text-[9px] font-mono font-black text-primary tracking-tight">{product.imei}</span>
+                                        <span className="text-[9px] font-mono font-black text-primary tracking-tight">{product.imei.slice(-8)}...</span>
                                       </div>
                                     )}
-                                    {product.serial && (
+                                    {!product.imei && product.serial && (
                                       <div className="flex items-center gap-2.5 px-3 py-1.5 bg-white/5 rounded-lg border border-white/5 group-hover:border-white/20 transition-all" title="Serial Number Vector Entry">
                                         <Layers size={12} className="text-white/40" />
-                                        <span className="text-[9px] font-mono font-black text-white/50 truncate tracking-tight">{product.serial}</span>
+                                        <span className="text-[9px] font-mono font-black text-white/50 truncate tracking-tight">{product.serial.slice(-8)}...</span>
                                       </div>
                                     )}
                                  </div>
                               </div>
                               
-                              <div className="col-span-2">
-                                <div className="flex flex-col border-l-2 border-primary/20 pl-3">
+                              <div className="flex justify-center">
+                                <div className="flex flex-col border-l-2 border-primary/20 pl-3 w-full">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[7px] font-black uppercase text-muted-foreground opacity-40">Stock Vector</span>
-                                    <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden min-w-[40px]">
+                                    <span className="text-[7px] font-black uppercase text-muted-foreground opacity-40">Stock</span>
+                                    <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden min-w-[30px]">
                                       <div className={`h-full ${product.stock < 10 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${Math.min(100, product.stock * 2)}%` }} />
                                     </div>
                                   </div>
                                   <span className="text-[9px] font-black whitespace-nowrap mt-1">{product.stock} Units</span>
-                                  <span className="text-[7px] font-bold text-primary/40 truncate italic">WH-KUWAIT_A04</span>
                                 </div>
                               </div>
 
-                              <div className="col-span-2 text-right">
+                              <div className="text-center">
                                  <div className="inline-block px-3 py-1 bg-surface/50 border border-border/50 rounded-lg">
-                                    <div className="flex flex-col items-end">
-                                       <span className="text-[6px] font-black uppercase text-muted-foreground opacity-60">Market Trend</span>
+                                    <div className="flex flex-col items-center">
+                                       <span className="text-[6px] font-black uppercase text-muted-foreground opacity-60">Status</span>
                                        <div className="flex items-center gap-0.5 h-4 mt-1">
                                           {[0, 0, 0, 0, 0, 0, 0].map((h, i) => (
-                                            <div key={i} className="w-1 rounded-sm bg-white/5" style={{ height: `10%` }} />
+                                            <div key={i} className="w-1 rounded-sm bg-primary/20" style={{ height: `${20 + i * 10}%` }} />
                                           ))}
                                        </div>
                                     </div>
                                  </div>
                               </div>
 
-                              <div className="col-span-2 text-right px-4">
+                              <div className="text-right px-4">
                                  <div className="text-xl font-black text-primary font-mono tracking-tighter" title="Unit Price (Inc. Tax)">{product.price.toFixed(3)} <span className="text-[8px]">KD</span></div>
                                  <div className="flex items-center justify-end gap-1 mt-1">
-                                    <Scale size={10} className="text-muted-foreground opacity-40" />
-                                    <span className="text-[8px] font-black text-muted-foreground opacity-40 uppercase">Inc. VAT</span>
+                                    <span className="text-[8px] font-black text-muted-foreground opacity-40 uppercase tracking-tighter">Market Rate</span>
                                  </div>
                               </div>
-                            </div>
-                            
-                            <div className="w-12 h-12 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-all translate-x-5 group-hover:translate-x-0 bg-primary/10 rounded-xl">
-                              {product.isConfigurable ? <ChevronRight size={24} /> : <Plus size={24} />}
+
+                              <div className="flex justify-end pr-2">
+                                <div className="w-10 h-10 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 bg-primary/10 rounded-xl">
+                                  {product.isConfigurable ? <ChevronRight size={20} /> : <Plus size={20} />}
+                                </div>
+                              </div>
                             </div>
                           </>
                         }
