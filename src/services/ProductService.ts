@@ -3,7 +3,7 @@ import Variant from '../models/Variant.js';
 import SerialNumber from '../models/Imei.js';
 import Brand from '../models/Brand.js';
 import mongoose from 'mongoose';
-import { formatSearchQuery } from '../utils/searchFilters.js';
+import { globalSearch } from './SearchService.js';
 
 import { skuGenerator } from './skuGenerator.js';
 
@@ -96,9 +96,8 @@ export class ProductService {
 
   static async searchAssets(query: string) {
     const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-    const fuzzyRegex = formatSearchQuery(query);
-
-    // 1. Identifier Match (IMEI/Serial)
+    
+    // 1. Identifier Match (IMEI/Serial) - High Priority
     const assetMatches = await SerialNumber.find({
       identifier: query,
       status: 'in_stock'
@@ -117,27 +116,34 @@ export class ProductService {
       }));
     }
 
-    // 2. Attribute Match (Name, SKU, Brand)
-    const products = await Product.find({
-      ...softDeleteQuery,
-      $or: [
-        { name: { $regex: fuzzyRegex } },
-        { sku: { $regex: fuzzyRegex } },
-        { brand: { $regex: fuzzyRegex } }
-      ]
-    }).populate('variants').limit(20).lean();
-
-    const results: any[] = [];
-    for (const p of products) {
-      if (p.variants && p.variants.length > 0) {
+    // 2. Tokenized Universal Match
+    const results = await globalSearch(query);
+    
+    const compositeResults: any[] = [];
+    results.forEach((p: any) => {
+      // 🛡️ Logic ID 367: Automatic Explosion - return every variant as a searchable node
+      if (p.isConfigurable && p.variants && p.variants.length > 0) {
         p.variants.forEach((v: any) => {
-          results.push({ ...v, name: p.name, brand: p.brand, isVariant: true, parentProduct: p });
+          // Check if variant matches soft delete filters (manually because globalSearch uses basic populate)
+          if (!v.deletedAt) {
+            compositeResults.push({
+              ...v,
+              name: p.name,
+              brand: p.brand,
+              isVariant: true,
+              parentProduct: p,
+              // Inject display name with attributes for high-speed identification
+              displayName: `${p.name} [${Object.values(v.attributes).join(' | ')}]`
+            });
+          }
         });
       } else {
-        results.push({ ...p, isVariant: false });
+        if (!p.deletedAt) {
+          compositeResults.push({ ...p, isVariant: false });
+        }
       }
-    }
+    });
 
-    return results;
+    return compositeResults;
   }
 }

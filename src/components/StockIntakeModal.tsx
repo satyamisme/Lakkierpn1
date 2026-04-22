@@ -11,6 +11,8 @@ interface StockIntakeModalProps {
   initialItems?: any[];
 }
 
+import { StockIntakeMatrix } from './organisms/StockIntakeMatrix';
+
 export const StockIntakeModal: React.FC<StockIntakeModalProps> = ({ isOpen, onClose, onSuccess, initialItems }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -335,9 +337,11 @@ export const StockIntakeModal: React.FC<StockIntakeModalProps> = ({ isOpen, onCl
                               <img src={p.image || `https://picsum.photos/seed/${p.sku}/100/100`} alt="" className="w-full h-full object-cover" />
                             </div>
                             <div>
-                              <p className="text-xs font-black uppercase tracking-tighter group-hover:text-primary transition-colors">{p.brand} {p.name}</p>
+                              <p className="text-xs font-black uppercase tracking-tighter group-hover:text-primary transition-colors">
+                                {p.displayName || `${p.brand} ${p.name}`}
+                              </p>
                               <p className="text-[9px] font-mono text-muted-foreground font-bold">
-                                {p.sku} {p.attributes ? `• ${Object.values(p.attributes).join(' • ')}` : ''}
+                                {p.sku} {p.isVariant ? '' : (p.attributes ? `• ${Object.values(p.attributes).join(' • ')}` : '')}
                               </p>
                             </div>
                           </div>
@@ -355,161 +359,22 @@ export const StockIntakeModal: React.FC<StockIntakeModalProps> = ({ isOpen, onCl
               {/* Step 3: Intake Manifest & Scanning */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between ml-4">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] block opacity-60">3. Intake Manifest & Scanning</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] block opacity-60">3. Intake Manifest & Scanning Matrix</label>
                   {selectedItems.length > 0 && (
                     <div className="flex items-center gap-4">
-                      <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total Units: {selectedItems.reduce((acc, item) => acc + item.quantity, 0)}</div>
+                      <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Active Load: {selectedItems.reduce((acc, item) => acc + item.quantity, 0)} Units</div>
                     </div>
                   )}
                 </div>
                 
-                {selectedItems.length === 0 ? (
-                  <div className="py-24 border border-dashed border-border rounded-[3rem] text-center opacity-30 bg-surface">
-                    <Package size={48} className="mx-auto mb-4" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">No items staged for intake</p>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {selectedItems.map((item) => (
-                      <div key={item._id} className="p-10 bg-surface border border-border rounded-[3rem] space-y-8 group hover:border-primary/30 transition-all relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-primary opacity-20" />
-                        
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-8">
-                            <div className="w-24 h-24 bg-muted rounded-[2rem] overflow-hidden border border-border shadow-inner">
-                              <img src={item.image || `https://picsum.photos/seed/${item.sku}/100/100`} alt="" className="w-full h-full object-cover" />
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-2xl font-black uppercase tracking-tighter leading-none">{item.brand} {item.name}</p>
-                              <div className="flex items-center gap-4">
-                                <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-mono text-muted-foreground font-bold uppercase tracking-widest">{item.sku}</span>
-                                <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[9px] font-black text-blue-500 uppercase tracking-widest">{item.trackingMethod || 'None'}</span>
-                                {item.attributes && Object.entries(item.attributes).map(([k, v]: any) => (
-                                  <span key={k} className="text-[9px] font-black text-white/20 uppercase tracking-widest">{k}: {v}</span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-4">
-                            <button 
-                              onClick={() => setSelectedItems(selectedItems.filter(si => si._id !== item._id))}
-                              className="p-3 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                            <div className="px-6 py-3 bg-primary/5 border border-primary/10 rounded-2xl">
-                              <p className="text-[8px] font-black text-primary uppercase tracking-widest text-center mb-1">Staged Qty</p>
-                              <p className="text-xl font-black font-mono text-center">{item.quantity}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Batch Info & Scanning Grid */}
-                        <div className="grid grid-cols-12 gap-8">
-                          {/* Left: Batch Info */}
-                          <div className="col-span-4 space-y-6 p-8 bg-white/[0.02] border border-white/5 rounded-[2rem]">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-4">Batch Information</h4>
-                            <div className="space-y-4">
-                              <div className="space-y-1.5">
-                                <label className="text-[8px] font-black text-white/20 uppercase tracking-widest ml-2">Landed Cost (KD)</label>
-                                <input 
-                                  type="number"
-                                  value={item.units[0]?.cost || 0}
-                                  onChange={(e) => {
-                                    const cost = parseFloat(e.target.value);
-                                    setSelectedItems(selectedItems.map(si => si._id === item._id ? {
-                                      ...si,
-                                      units: si.units.map((u: any) => ({ ...u, cost }))
-                                    } : si));
-                                  }}
-                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 font-mono"
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <label className="text-[8px] font-black text-white/20 uppercase tracking-widest ml-2">Bin Location</label>
-                                <input 
-                                  placeholder="e.g. A-12-04"
-                                  value={item.binLocation || ''}
-                                  onChange={(e) => {
-                                    setSelectedItems(selectedItems.map(si => si._id === item._id ? { ...si, binLocation: e.target.value } : si));
-                                  }}
-                                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 uppercase tracking-widest"
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                  <label className="text-[8px] font-black text-white/20 uppercase tracking-widest ml-2">Mfg Date</label>
-                                  <input 
-                                    type="date"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500"
-                                  />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[8px] font-black text-white/20 uppercase tracking-widest ml-2">Warranty Expiry</label>
-                                  <input 
-                                    type="date"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right: Scanning Area */}
-                          <div className="col-span-8 space-y-6">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Unit Identifiers ({item.trackingMethod?.toUpperCase()})</h4>
-                              <button 
-                                onClick={() => addUnit(item._id)}
-                                className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[9px] font-black text-blue-500 uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
-                              >
-                                <Plus size={14} /> Manual Add
-                              </button>
-                            </div>
-
-                            {item.trackingMethod && item.trackingMethod !== 'none' && (
-                              <div className="relative group">
-                                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[1.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                                <textarea 
-                                  placeholder={`SCAN OR PASTE ${item.trackingMethod.toUpperCase()}S HERE...`}
-                                  className="relative w-full bg-surface border border-border rounded-[1.5rem] p-6 text-xs font-mono font-bold text-white outline-none focus:border-primary transition-all min-h-[120px] shadow-inner"
-                                  onBlur={(e) => bulkAddIdentifiers(item._id, e.target.value)}
-                                />
-                                <div className="absolute right-6 bottom-6 flex items-center gap-2 opacity-40">
-                                  <Scan size={16} className="text-primary" />
-                                  <span className="text-[8px] font-black uppercase tracking-widest">Scanner Active</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Units Grid */}
-                            <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 no-scrollbar">
-                              {item.units.map((unit: any, idx: number) => (
-                                <div key={unit.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl group/unit hover:border-white/10 transition-all">
-                                  <div className="flex items-center gap-4">
-                                    <span className="text-[9px] font-black text-white/10">#{idx + 1}</span>
-                                    <input 
-                                      placeholder="IDENTIFIER"
-                                      value={unit.identifier}
-                                      onChange={(e) => updateUnit(item._id, unit.id, 'identifier', e.target.value)}
-                                      className="bg-transparent border-none outline-none text-[10px] font-mono font-bold text-white w-32"
-                                    />
-                                  </div>
-                                  <button 
-                                    onClick={() => removeUnit(item._id, unit.id)}
-                                    className="p-2 text-red-500/0 group-hover/unit:text-red-500/40 hover:!text-red-500 transition-all"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <StockIntakeMatrix 
+                  items={selectedItems}
+                  onRemove={(id) => setSelectedItems(selectedItems.filter(si => si._id !== id))}
+                  onUpdateUnit={updateUnit}
+                  onAddUnit={addUnit}
+                  onRemoveUnit={removeUnit}
+                  onBulkIdentifiers={bulkAddIdentifiers}
+                />
               </div>
             </div>
 
