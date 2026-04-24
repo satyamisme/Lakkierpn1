@@ -12,12 +12,15 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
-  Command
+  Command,
+  Printer,
+  Scan
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocation, Link } from 'react-router-dom';
+import { useHardwareStore } from '../store/useHardwareStore';
 
 interface TopBarProps {
   activeModule: string;
@@ -34,8 +37,12 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { status } = useHardwareStore();
   const location = useLocation();
   const pathnames = location.pathname.split('/').filter((x) => x);
+
+  const isPrinterOnline = status?.printer === 'online';
+  const isScannerOnline = status?.scanner === 'online';
 
   return (
     <header className="h-14 px-6 flex items-center justify-between bg-[#0A0A0A]/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-40">
@@ -56,22 +63,22 @@ export const TopBar: React.FC<TopBarProps> = ({
               {activeModule.split('/').pop()?.replace('-', ' ')}
             </h2>
             <div className="flex gap-0.5">
-              <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-              <div className="w-1 h-1 rounded-full bg-blue-500/20" />
+              <div className={`w-1 h-1 rounded-full ${isPrinterOnline ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} title="Printer Vector" />
+              <div className={`w-1 h-1 rounded-full ${isScannerOnline ? 'bg-green-500' : 'bg-blue-500/20'}`} title="Scanner Matrix" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Center: Command Search - Floating Style */}
-      <div className="flex-1 max-w-xl mx-12">
+      <div className="flex-1 max-w-lg mx-12">
         <button 
           onClick={onSearchClick}
           className="w-full h-9 bg-white/5 border border-white/10 rounded-xl px-4 flex items-center justify-between group hover:bg-white/10 hover:border-blue-500/30 transition-all duration-300"
         >
           <div className="flex items-center gap-3">
             <Search className="w-3.5 h-3.5 text-white/20 group-hover:text-blue-500 transition-colors" />
-            <span className="text-[10px] font-bold text-white/30 tracking-tight uppercase">Execute Command...</span>
+            <span className="text-[10px] font-bold text-white/30 tracking-tight uppercase">Execute Protocol...</span>
           </div>
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/40 rounded-md border border-white/5">
             <Command className="w-2.5 h-2.5 text-white/20" />
@@ -85,12 +92,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* Real-time Telemetry */}
         <div className="hidden xl:flex items-center gap-5 px-4 py-1.5 bg-white/[0.02] rounded-xl border border-white/5">
           <div className="flex flex-col items-end">
-            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">CPU Load</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
-                <div className="w-1/3 h-full bg-blue-500/60" />
-              </div>
-              <span className="text-[9px] font-mono font-bold text-white/60">14%</span>
+            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">PERIPHERALS</span>
+            <div className="flex items-center gap-3">
+              <Printer className={`w-3 h-3 ${isPrinterOnline ? 'text-green-500' : 'text-white/10'}`} />
+              <Scan className={`w-3 h-3 ${isScannerOnline ? 'text-blue-500' : 'text-white/10'}`} />
             </div>
           </div>
           <div className="w-px h-5 bg-white/5" />

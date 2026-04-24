@@ -1,28 +1,79 @@
 import React, { useState } from "react";
-import { Search, RotateCcw, ShieldAlert, FileText, CheckCircle2, XCircle } from "lucide-react";
+import axios from "axios";
+import { Search, RotateCcw, ShieldAlert, FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
 
 export const ReturnsHub: React.FC = () => {
   const [invoiceId, setInvoiceId] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [foundSale, setFoundSale] = useState<any | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!invoiceId) return;
     setIsSearching(true);
-    // Simulate lookup
-    setTimeout(() => {
-      setFoundSale({
-        id: invoiceId,
-        date: "2024-03-15",
-        total: 245.500,
-        items: [
-           { id: 1, name: "iPhone 15 Pro", price: 230.000, serial: "IMEI-8822-11" },
-           { id: 2, name: "Silicon Case", price: 15.500 }
-        ]
-      });
+    try {
+      const { data } = await axios.get(`/api/sales/lookup?q=${invoiceId}`);
+      if (data) {
+        setFoundSale(data);
+        setSelectedItems(new Set());
+      } else {
+        toast.error("Manifest not found in system matrix");
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Search Vector Failed");
+      setFoundSale(null);
+    } finally {
       setIsSearching(false);
-    }, 800);
+    }
+  };
+
+  const toggleItemSelection = (index: number) => {
+    const newItems = new Set(selectedItems);
+    if (newItems.has(index)) newItems.delete(index);
+    else newItems.add(index);
+    setSelectedItems(newItems);
+  };
+
+  const handleReturnAction = async () => {
+    if (selectedItems.size === 0) {
+      toast.error("Zero nodes selected for reversal");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const returnPayload = {
+        saleId: foundSale._id,
+        items: foundSale.items
+          .filter((_: any, idx: number) => selectedItems.has(idx))
+          .map((item: any) => ({
+            productId: item.productId?._id || item.productId,
+            variantId: item.variantId?._id || item.variantId,
+            quantity: item.quantity,
+            identifier: item.imei || item.serial,
+            condition: 'restock', // Default for now
+            price: item.price
+          })),
+        refundMethod: 'cash', // Default
+        totalRefund: foundSale.items
+          .filter((_: any, idx: number) => selectedItems.has(idx))
+          .reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+      };
+
+      await axios.post('/api/sales/returns', returnPayload);
+      toast.success("Asset Reversal Successful", {
+        description: "Inventory vectors updated for HQ Registry."
+      });
+      setFoundSale(null);
+      setInvoiceId("");
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Reversal Logic Error");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -73,7 +124,7 @@ export const ReturnsHub: React.FC = () => {
               <div className="p-8 border-b border-white/5 flex justify-between items-center">
                  <div>
                     <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">Invoice Record</h4>
-                    <p className="text-xl font-black text-white uppercase tracking-tighter">{foundSale.id}</p>
+                    <p className="text-xl font-black text-white uppercase tracking-tighter">{foundSale.saleNumber || foundSale._id}</p>
                  </div>
                  <div className="text-right">
                     <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">Total Value</p>
@@ -82,28 +133,48 @@ export const ReturnsHub: React.FC = () => {
               </div>
               
               <div className="p-8 space-y-4">
-                 {foundSale.items.map((item: any) => (
-                   <div key={item.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-primary/30 transition-all">
+                 {foundSale.items.map((item: any, idx: number) => (
+                   <div 
+                    key={idx} 
+                    onClick={() => toggleItemSelection(idx)}
+                    className={`p-4 border rounded-2xl flex items-center justify-between group transition-all cursor-pointer ${
+                      selectedItems.has(idx) 
+                        ? 'bg-primary/10 border-primary' 
+                        : 'bg-white/5 border-white/5 hover:border-primary/30'
+                    }`}
+                   >
                       <div className="flex items-center gap-4">
-                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40">
-                            <FileText size={18} />
+                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${selectedItems.has(idx) ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
+                            {selectedItems.has(idx) ? <CheckCircle2 size={18} /> : <FileText size={18} />}
                          </div>
                          <div>
-                            <p className="text-sm font-black text-white uppercase tracking-tight">{item.name}</p>
-                            {item.serial && <p className="text-[8px] font-mono text-primary font-black mt-1">{item.serial}</p>}
+                            <p className="text-sm font-black text-white uppercase tracking-tight">{item.productId?.name || 'Asset Entry'}</p>
+                            {(item.imei || item.serial) && <p className="text-[8px] font-mono text-primary font-black mt-1">{item.imei || item.serial}</p>}
                          </div>
                       </div>
-                      <button className="px-4 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
-                         Select For Return
-                      </button>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-white/80 font-mono">{(item.price * item.quantity).toFixed(3)} KD</p>
+                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">{item.quantity} Unit(s)</p>
+                      </div>
                    </div>
                  ))}
               </div>
 
-              <div className="p-8 bg-white/[0.02] border-t border-white/5 flex justify-between">
-                 <button className="text-[9px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-all">Clear Search</button>
+              <div className="p-8 bg-white/[0.02] border-t border-white/5 flex justify-between items-center">
+                 <button 
+                  onClick={() => { setFoundSale(null); setInvoiceId(""); }}
+                  className="text-[9px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-all"
+                 >
+                  Clear Search
+                 </button>
                  <div className="flex gap-4">
-                    <button className="px-8 py-3 bg-white/5 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">Void entire sale</button>
+                    <button 
+                      onClick={handleReturnAction}
+                      disabled={isProcessing || selectedItems.size === 0}
+                      className="px-10 py-4 bg-primary text-white text-[11px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:grayscale"
+                    >
+                      {isProcessing ? <Loader2 className="animate-spin" size={16} /> : `Execute Return (${selectedItems.size} items)`}
+                    </button>
                  </div>
               </div>
             </motion.div>

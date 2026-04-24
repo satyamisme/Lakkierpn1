@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { ATOMIC_NAVIGATION, NavCategory, AtomicPage } from '../constants/navigation';
 
 interface SidebarProps {
@@ -38,14 +39,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const { user, hasPermission } = useAuth();
+
+  const isPageVisible = (page: AtomicPage) => {
+    if (page.featureIds.length === 0) return true;
+    return page.featureIds.some(id => hasPermission(id));
+  };
+
   const filteredNavigation = ATOMIC_NAVIGATION.filter(category => {
+    const visiblePages = category.pages.filter(isPageVisible);
+    if (visiblePages.length === 0) return false;
+
     const matchesCategory = category.label.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPages = category.pages.some(page => 
+    const matchesPages = visiblePages.some(page => 
       page.label.toLowerCase().includes(searchQuery.toLowerCase()) || 
       page.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
     return matchesCategory || matchesPages;
-  });
+  }).map(category => ({
+    ...category,
+    pages: category.pages.filter(isPageVisible)
+  }));
 
   const handleCategoryClick = (categoryId: string) => {
     if (isCollapsed) {

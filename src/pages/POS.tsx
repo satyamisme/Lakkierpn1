@@ -136,18 +136,12 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
   const [selectedProductForVariants, setSelectedProductForVariants] = useState<Product | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [discountItemIndex, setDiscountItemIndex] = useState<number | null>(null);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [cartNotes, setCartNotes] = useState("");
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
-  const [isReturnsModalOpen, setIsReturnsModalOpen] = useState(false);
-  const [isGiftCardModalOpen, setIsGiftCardModalOpen] = useState(false);
   const [isBundlesModalOpen, setIsBundlesModalOpen] = useState(false);
-  const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [giftCardCode, setGiftCardCode] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -183,7 +177,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   }, [searchTerm]);
   const [taxRate, setTaxRate] = useState(0); // 0% by default in Kuwait
   
-  const [activeStage, setActiveStage] = useState<'grid' | 'exchange' | 'customers' | 'loyalty' | 'receipts' | 'sync' | 'layaway' | 'tax' | 'bundles' | 'records' | 'instalments' | 'setup' | 'network'>('grid');
+  const [activeStage, setActiveStage] = useState<'grid' | 'customers' | 'exchange' | 'loyalty' | 'instalments' | 'setup' | 'network' | 'records'>('grid');
   const [stats, setStats] = useState({
     todayRevenue: 0,
     todayTransactions: 0
@@ -200,30 +194,36 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [isDetailedView, setIsDetailedView] = useState(true);
 
   useEffect(() => {
-    // Audit Wiring: Handle paths from the Sidebar Navigation Matrix
+    // Audit Wiring: Handle paths from the Global Sidebar Navigation Matrix
     const path = location.pathname;
     
-    // Default switch
     if (path.includes('/pos/grid')) setActiveStage('grid');
-    else if (path.includes('/pos/exchange')) setActiveStage('exchange');
-    else if (path.includes('/pos/customers')) setActiveStage('customers');
+    else if (path.includes('/pos/returns')) setActiveStage('exchange');
+    else if (path.includes('/crm/360')) setActiveStage('customers');
     else if (path.includes('/pos/loyalty')) setActiveStage('loyalty');
-    else if (path.includes('/pos/receipts')) setActiveStage('receipts');
-    else if (path.includes('/pos/sync')) setActiveStage('sync');
-    else if (path.includes('/pos/layaway')) setActiveStage('layaway');
-    else if (path.includes('/pos/tax')) {
-      setActiveStage('grid');
-      setShowConfigPanel(true);
-    }
-    else if (path.includes('/pos/bundles')) {
-      setActiveStage('grid'); // Bundles are now part of the grid flow
-    }
+    else if (path.includes('/pos/receipts')) setActiveStage('records');
+    else if (path.includes('/pos/network')) setActiveStage('network');
+    else if (path.includes('/pos/layaway')) setActiveStage('instalments');
+    else if (path.includes('/pos/tax')) setActiveStage('setup');
+    else if (path.includes('/pos/hardware')) setActiveStage('setup'); 
     else if (path.includes('/pos/payments')) setIsSplitModalOpen(true);
-    else setActiveStage('grid');
-
-    // Keep some as modals for quick overlay if designated
-    if (path.includes('/pos/payments')) setIsSplitModalOpen(true);
   }, [location.pathname]);
+
+  const handleStageChange = (stage: typeof activeStage) => {
+    setActiveStage(stage);
+    // Deep Wiring: Sync URL with Stage Matrix
+    const stageMap: Record<string, string> = {
+      'grid': '/pos/grid',
+      'customers': '/crm/360',
+      'exchange': '/pos/returns',
+      'records': '/pos/receipts',
+      'loyalty': '/pos/loyalty',
+      'instalments': '/pos/layaway',
+      'setup': '/pos/setup',
+      'network': '/pos/network'
+    };
+    if (stageMap[stage]) navigate(stageMap[stage]);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -741,7 +741,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
              ].map((item) => (
                <button 
                 key={item.id}
-                onClick={() => setActiveStage(item.id as any)}
+                onClick={() => handleStageChange(item.id as any)}
                 title={item.title}
                 className={`w-full px-2 group flex flex-col items-center py-3 transition-all relative ${activeStage === item.id ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}
                >
@@ -787,11 +787,11 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
              </div>
           </div>           <div className="flex items-center gap-1.5">
             {[
-              { id: 'config', icon: Settings, action: () => setShowConfigPanel(true), title: 'Global Terminal Configuration' },
-              { id: 'history', icon: History, action: () => setIsHistoryModalOpen(true), title: 'Daily Order History Vector' },
+              { id: 'config', icon: Settings, action: () => handleStageChange('setup'), title: 'Global Terminal Configuration' },
+              { id: 'history', icon: History, action: () => handleStageChange('records'), title: 'Daily Order History Vector' },
               { id: 'held', icon: Pause, action: () => setIsHeldCartsModalOpen(true), title: 'Held Cart Registry' },
               { id: 'telemetry', icon: Activity, action: () => setIsDetailedView(!isDetailedView), active: isDetailedView, title: 'Toggle Detailed Data Telemetry' },
-              { id: 'operator', icon: Users, action: () => setActiveStage('customers'), active: activeStage === 'customers', title: 'Agent & Lead Vector Matrix' }
+              { id: 'operator', icon: Users, action: () => handleStageChange('customers'), active: activeStage === 'customers', title: 'Agent & Lead Vector Matrix' }
             ].map((btn) => (
               <button
                 key={btn.id}
@@ -1695,7 +1695,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <Clock size={12} /> Layaway
                 </button>
                 <button 
-                  onClick={() => setIsHistoryModalOpen(true)}
+                  onClick={() => handleStageChange('records')}
                   className="flex items-center justify-center gap-2 py-4 border border-white/5 rounded-xl font-black text-[8px] uppercase tracking-[0.2em] bg-white/[0.02] text-white/40 hover:text-white hover:bg-white/5 transition-all active:scale-95 shadow-sm"
                 >
                   <History size={12} /> History
@@ -1944,7 +1944,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <button 
-                  onClick={() => printThermalReceipt(lastSale.saleNumber || lastSale._id)}
+                  onClick={() => printThermalReceipt(lastSale.saleNumber || lastSale._id, 'pos-thermal-receipt')}
                   className="flex flex-col items-center gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] hover:border-primary-foreground/40 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary-foreground group-hover:bg-primary-foreground/10 transition-all">
@@ -1953,7 +1953,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <span className="text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-white transition-colors">Thermal Vector</span>
                 </button>
                 <button 
-                  onClick={() => printA4Invoice(lastSale.saleNumber || lastSale._id)}
+                  onClick={() => printA4Invoice(lastSale.saleNumber || lastSale._id, 'pos-a4-invoice')}
                   className="flex flex-col items-center gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] hover:border-primary-foreground/40 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary-foreground group-hover:bg-primary-foreground/10 transition-all">
@@ -1988,9 +1988,9 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                 View Manifest Archive
               </button>
 
-              {/* Off-screen Print Templates (ID 21, 25) */}
+              {/* Off-screen Print Templates (ID 21, 25) (Unique POS IDs) */}
               <div className="fixed -left-[5000px] top-0 pointer-events-none opacity-0">
-                <div id="thermal-receipt">
+                <div id="pos-thermal-receipt">
                   <ThermalReceipt 
                     id="thermal-receipt-inner"
                     orderId={lastSale.saleNumber || lastSale._id}
@@ -2000,7 +2000,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     total={lastSale.total}
                   />
                 </div>
-                <div id="a4-invoice">
+                <div id="pos-a4-invoice">
                   <A4Invoice 
                     id="a4-invoice-inner"
                     orderId={lastSale.saleNumber || lastSale._id}
@@ -2016,169 +2016,33 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
         )}
       </AnimatePresence>
 
-      <ReturnsModal 
-        isOpen={false} 
-        onClose={() => {
-          setIsReturnsModalOpen(false);
-          navigate('/pos');
-        }}
-        onSuccess={fetchProducts}
-      />
-
-      <GiftCardModal 
-        isOpen={false}
-        onClose={() => {
-          setIsGiftCardModalOpen(false);
-          navigate('/pos');
-        }}
-        customerId={selectedCustomer?._id}
-      />
-
       <AnimatePresence>
         {isBundlesModalOpen && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 p-10 rounded-[2.5rem] w-full max-w-lg shadow-2xl">
-              <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">Recursive Bundling</h2>
-              <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-6 leading-relaxed">Inventory Matrix V2 // Multi-component Synapse</p>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 p-10 rounded-[2.5rem] w-full max-w-lg shadow-2xl transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                  <Layers size={24} />
+                </div>
+                <div>
+                   <h2 className="text-xl font-black uppercase tracking-tight text-white leading-none">Recursive Bundling</h2>
+                   <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">Active Protocol V2</p>
+                </div>
+              </div>
               <p className="text-[11px] text-white/60 leading-relaxed mb-8">Bundles execute recursive logic to verify and deduct constituent entities from the registry in a single atomic transaction. Integrity verified for Kuwait local matrix.</p>
-              <div className="space-y-4">
-                <div className="p-5 bg-primary-foreground/10 border border-primary-foreground/20 rounded-2xl flex items-center gap-4">
-                  <Zap className="text-primary-foreground" size={20} />
-                  <div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-primary-foreground leading-none mb-1">Status</p>
-                    <p className="text-[11px] font-bold text-white/80">Recursive Sync Active</p>
-                  </div>
-                </div>
+              <div className="space-y-3">
+                 {[
+                   { label: 'Cloud Buffer', status: 'Optimal' },
+                   { label: 'Relational Sync', status: 'Authorized' },
+                   { label: 'Inventory Lock', status: 'Global' }
+                 ].map((stat, i) => (
+                   <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-white/40">{stat.label}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-primary">{stat.status}</span>
+                   </div>
+                 ))}
               </div>
-              <button onClick={() => setIsBundlesModalOpen(false)} className="w-full mt-10 py-4 bg-white/[0.02] hover:bg-white/5 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">Abort View</button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isTaxModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 p-10 rounded-[2.5rem] w-full max-w-lg shadow-2xl">
-              <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">VAT Metrics</h2>
-              <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-8 leading-none">Fiscal Compliance Config (Kuwait Domain)</p>
-              <div className="space-y-6">
-                <div className="p-8 bg-white/[0.02] border border-white/5 rounded-3xl text-center shadow-inner">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-4">Current Aggregate VAT</p>
-                  <p className="text-5xl font-serif italic text-white/80">{taxRate}%</p>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-amber-400/10 border border-amber-400/20 rounded-2xl">
-                   <CheckCircle2 size={16} className="text-amber-400" />
-                   <p className="text-[9px] font-black text-amber-400/80 uppercase tracking-widest leading-relaxed">
-                     Rounding synchronized to 5 fils standard
-                   </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                   setIsTaxModalOpen(false);
-                   navigate('/pos/grid');
-                }} 
-                className="w-full mt-10 py-4 bg-white/[0.02] border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all shadow-xl shadow-black/20"
-              >
-                Abort Sync
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isSyncModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 p-10 rounded-[2.5rem] w-full max-w-xl shadow-2xl shadow-black/50">
-              <div className="flex items-center gap-6 mb-8">
-                 <div className={`p-5 rounded-2xl shadow-inner border border-white/5 ${isOnline ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                   {isOnline ? <Wifi size={32} /> : <WifiOff size={32} />}
-                 </div>
-                 <div>
-                   <h2 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Edge Controller</h2>
-                   <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mt-3 leading-none">{isOnline ? 'Synchronized with Cloud Matrix' : 'Local Persistence Active'}</p>
-                 </div>
-              </div>
-              <div className="space-y-6">
-                <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] flex items-center justify-between shadow-inner">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Temporal Queue Depth</p>
-                    <p className="text-3xl font-mono text-white/80">{queueLength} VECTOR(S)</p>
-                  </div>
-                  {queueLength > 0 && isOnline && (
-                    <button onClick={() => syncPendingSales()} className="px-6 py-3 bg-primary-foreground text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-xl shadow-primary-foreground/20">Force Handshake</button>
-                  )}
-                </div>
-                <p className="text-[9px] font-black text-white/20 leading-relaxed uppercase tracking-widest">Transactions persist in IndexedDB when offline and auto-reconcile on matrix reconnect. Integrity verified for Kuwait domain nodes.</p>
-              </div>
-              <button 
-                onClick={() => { setIsSyncModalOpen(false); navigate('/pos/grid'); }} 
-                className="w-full mt-10 py-4 bg-white/[0.02] border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all shadow-xl shadow-black/20"
-              >
-                Abort View
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isCustomerModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 30 }}
-              className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)]"
-            >
-              <div className="p-8 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
-                <div>
-                  <h2 className="text-3xl font-serif italic tracking-tight text-white leading-none">Customer Matrix</h2>
-                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mt-3 leading-none">Global Identity Repository (ID 20/52-59)</p>
-                </div>
-                <button onClick={() => { setIsCustomerModalOpen(false); navigate('/pos/grid'); }} className="p-3 hover:bg-white/5 rounded-full text-white/20 hover:text-white transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-12 no-scrollbar">
-                <CustomerSelector 
-                  selectedCustomer={selectedCustomer}
-                  onSelect={(c) => {
-                    setSelectedCustomer(c);
-                    setIsCustomerModalOpen(false);
-                    navigate('/pos/grid');
-                  }}
-                />
-                <div className="mt-12 p-10 bg-white/[0.02] border border-dashed border-white/10 rounded-[2.5rem] text-center">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Initialize selection for deep identity synapsing.</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isHistoryModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden"
-            >
-              <div className="p-8 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
-                <div>
-                  <h2 className="text-3xl font-serif italic tracking-tight text-white leading-none">Manifest Archive</h2>
-                  <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mt-3 leading-none">Registry of Previous Operational Invariants</p>
-                </div>
-                <button onClick={() => { setIsHistoryModalOpen(false); navigate('/pos/grid'); }} className="p-3 hover:bg-white/5 rounded-full text-white/20 hover:text-white transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-hidden p-8">
-                <SalesHistory />
-              </div>
+              <button onClick={() => setIsBundlesModalOpen(false)} className="w-full mt-8 py-4 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Dismiss Logic</button>
             </motion.div>
           </div>
         )}

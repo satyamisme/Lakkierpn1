@@ -1,9 +1,45 @@
-import React, { useState } from "react";
-import { Gift, Star, CreditCard, ArrowUpRight, Search, PlusCircle, History } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Gift, Star, CreditCard, ArrowUpRight, Search, PlusCircle, History, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 
 export const GiftsLoyalty: React.FC = () => {
   const [activeSegment, setActiveSegment] = useState<'gifts' | 'loyalty'>('gifts');
+  const [voucherView, setVoucherView] = useState<string>("");
+  const [isValidating, setIsValidating] = useState(false);
+  const [validatedCard, setValidatedCard] = useState<any | null>(null);
+  const [activeCards, setActiveCards] = useState<any[]>([]);
+
+  const fetchActiveCards = async () => {
+    try {
+      const { data } = await axios.get('/api/gift-cards');
+      setActiveCards(data);
+    } catch (e) {
+      console.error("Failed to fetch cards", e);
+    }
+  };
+
+  const handleValidate = async () => {
+    if (!voucherView) return;
+    setIsValidating(true);
+    try {
+      const { data } = await axios.get(`/api/gift-cards/${voucherView}`);
+      setValidatedCard(data);
+      toast.success("Voucher Verified", {
+        description: `Current Balance: ${data.currentBalance.toFixed(3)} KD`
+      });
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Invalid Access Vector");
+      setValidatedCard(null);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveCards();
+  }, []);
 
   return (
     <div className="flex flex-col h-full space-y-8">
@@ -63,23 +99,29 @@ export const GiftsLoyalty: React.FC = () => {
                       <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Active Ledger</h4>
                       <button className="text-[8px] font-black text-primary uppercase tracking-widest hover:underline">View All Records</button>
                    </div>
-                   {[1, 2, 3, 4].map((i) => (
-                     <div key={i} className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between group hover:border-white/20 transition-all">
-                        <div className="flex items-center gap-5">
-                           <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 group-hover:text-primary transition-all">
-                              <Gift size={24} />
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest">GC-8822-110{i}</p>
-                              <p className="text-[8px] font-black text-white/20 uppercase mt-1">Expiry: Dec 2024</p>
-                           </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-lg font-black text-white font-mono">15.000 <span className="text-[9px]">KD</span></p>
-                           <p className="text-[7px] font-black text-emerald-500 uppercase tracking-widest mt-1">Available</p>
-                        </div>
-                     </div>
-                   ))}
+                    {activeCards.length > 0 ? activeCards.map((card) => (
+                      <div key={card._id} className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl flex items-center justify-between group hover:border-white/20 transition-all">
+                         <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 group-hover:text-primary transition-all">
+                               <Gift size={24} />
+                            </div>
+                            <div>
+                               <p className="text-[10px] font-black text-white uppercase tracking-widest">{card.code}</p>
+                               <p className="text-[8px] font-black text-white/20 uppercase mt-1">
+                                 {card.expiryDate ? `Expiry: ${new Date(card.expiryDate).toLocaleDateString()}` : "NO_EXPIRY"}
+                               </p>
+                            </div>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-lg font-black text-white font-mono">{card.currentBalance.toFixed(3)} <span className="text-[9px]">KD</span></p>
+                            <p className="text-[7px] font-black text-emerald-500 uppercase tracking-widest mt-1">{card.status}</p>
+                         </div>
+                      </div>
+                    )) : (
+                      <div className="py-20 text-center opacity-10">
+                         <p className="text-[10px] font-black uppercase tracking-widest">No active vouchers in network</p>
+                      </div>
+                    )}
                 </div>
               </>
             ) : (
@@ -99,17 +141,39 @@ export const GiftsLoyalty: React.FC = () => {
                   <input 
                     type="text" 
                     placeholder="ENTER CODE..."
+                    value={voucherView}
+                    onChange={(e) => setVoucherView(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleValidate()}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-[12px] font-black tracking-[0.4em] text-center text-white placeholder:text-white/10 outline-none focus:border-primary transition-all"
                   />
                </div>
-               <button className="w-full py-5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
-                  Validate & Check Balance
+               <button 
+                  onClick={handleValidate}
+                  disabled={isValidating || !voucherView}
+                  className="w-full py-5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+               >
+                  {isValidating && <Loader2 size={16} className="animate-spin" />}
+                  {isValidating ? "Validating..." : "Validate & Check Balance"}
                </button>
             </div>
 
             <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center">
-               <History size={32} className="text-white/10" />
-               <p className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-relaxed">Scan card or enter reference above to pull historic value nodes</p>
+               {validatedCard ? (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 w-full">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mx-auto border border-emerald-500/20">
+                       <CreditCard size={32} />
+                    </div>
+                    <div>
+                       <h3 className="text-2xl font-black text-white font-mono">{validatedCard.currentBalance.toFixed(3)} KD</h3>
+                       <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">Verified Liquid Balance</p>
+                    </div>
+                 </motion.div>
+               ) : (
+                 <>
+                   <History size={32} className="text-white/10" />
+                   <p className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-relaxed">Scan card or enter reference above to pull historic value nodes</p>
+                 </>
+               )}
             </div>
          </div>
       </div>

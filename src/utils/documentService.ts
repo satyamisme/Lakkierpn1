@@ -9,23 +9,33 @@ export const triggerPrint = (elementId: string, title: string = 'Lakki ERP Docum
   
   if (!printContents) {
     console.error(`Element with ID ${elementId} not found for printing.`);
+    toast.error("Component mismatch: Print target not identified.");
     return;
   }
 
   // Create a temporary hidden iframe for printing
   const iframe = document.createElement('iframe');
-  iframe.style.position = 'absolute';
-  iframe.style.width = '0px';
-  iframe.style.height = '0px';
-  iframe.style.border = 'none';
-  iframe.style.visibility = 'hidden';
+  
+  // Minimal visibility but must be in DOM
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.zIndex = '-1';
+  
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
-  if (!doc) return;
+  if (!doc) {
+    toast.error("Internal IFrame Error: Could not initialize print buffer.");
+    return;
+  }
 
   doc.open();
   doc.write(`
+    <!DOCTYPE html>
     <html>
       <head>
         <title>${title}</title>
@@ -36,11 +46,13 @@ export const triggerPrint = (elementId: string, title: string = 'Lakki ERP Docum
             font-family: 'Inter', 'Noto Sans Arabic', sans-serif; 
             margin: 0;
             padding: 20px;
-            -webkit-print-color-adjust: exact;
+            background: white;
+            color: black;
           }
           @media print {
+            body { padding: 0; margin: 0; }
+            @page { margin: 0; }
             .no-print { display: none; }
-            body { padding: 0; }
           }
           /* Thermal Receipt Specific Styles */
           .thermal-receipt {
@@ -54,20 +66,54 @@ export const triggerPrint = (elementId: string, title: string = 'Lakki ERP Docum
           ${printContents}
         </div>
         <script>
-          window.onload = () => {
-            setTimeout(() => {
-              window.print();
-              setTimeout(() => {
-                window.frameElement.remove();
-              }, 500);
-            }, 500);
+          // Wait for Tailwind to initialize
+          window.tailwind.config = {
+            theme: {
+              extend: {
+                colors: {
+                  primary: '#3b82f6',
+                  secondary: '#1f2937',
+                }
+              }
+            }
           };
+
+          const checkLoaded = () => {
+             const tailwindReady = !!document.head.querySelector('style[data-tailwind]');
+             const images = Array.from(document.images);
+             const imagesLoaded = images.length === 0 || images.every(img => img.complete);
+
+             if (tailwindReady && imagesLoaded) {
+                window.focus();
+                window.print();
+                setTimeout(() => {
+                  window.frameElement.remove();
+                }, 1000);
+             } else {
+                setTimeout(checkLoaded, 100);
+             }
+          };
+
+          // Re-trigger tailwind processing if needed
+          if (window.tailwind) {
+            window.tailwind.process?.(document.body);
+          }
+
+          // Force check on load or as a fallback
+          window.addEventListener('load', () => {
+            setTimeout(checkLoaded, 400);
+          });
+          
+          // Fallback trigger
+          setTimeout(checkLoaded, 1500);
         </script>
       </body>
     </html>
   `);
   doc.close();
 };
+
+import { toast } from 'sonner';
 
 /**
  * ID 61: Job Card Print Helper
@@ -79,15 +125,15 @@ export const printJobCard = (jobId: string) => {
 /**
  * ID 21: Thermal Receipt Print Helper
  */
-export const printThermalReceipt = (orderId: string) => {
-  triggerPrint('thermal-receipt', `Receipt #${orderId}`);
+export const printThermalReceipt = (orderId: string, elementId: string = 'thermal-receipt') => {
+  triggerPrint(elementId, `Receipt #${orderId}`);
 };
 
 /**
  * ID 25: A4 Invoice Print Helper
  */
-export const printA4Invoice = (orderId: string) => {
-  triggerPrint('a4-invoice', `Invoice #${orderId}`);
+export const printA4Invoice = (orderId: string, elementId: string = 'a4-invoice') => {
+  triggerPrint(elementId, `Invoice #${orderId}`);
 };
 
 /**

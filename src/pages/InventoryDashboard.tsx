@@ -408,7 +408,7 @@ export const InventoryDashboard: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        <div className="p-10 space-y-4">
+        <div className="p-10 space-y-4 dashboard-matrix-container custom-scrollbar">
           <div className="dashboard-matrix-header mb-6">
             <div className="flex items-center gap-6">
                <input 

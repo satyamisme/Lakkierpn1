@@ -1,18 +1,38 @@
 import { create } from "zustand";
 import { hardwareService, HardwareStatus } from "../api/services/hardware";
+import { toast } from "sonner";
+
+interface HardwareSettings {
+  defaultPrinterType: 'thermal' | 'a4';
+  preferredThermalPrinter: string;
+  preferredA4Printer: string;
+  scannerMode: 'hid' | 'serial';
+  cameraEnabled: boolean;
+  autoPrintReceipts: boolean;
+}
 
 interface HardwareState {
   status: HardwareStatus | null;
+  settings: HardwareSettings;
   isLoading: boolean;
   error: string | null;
   fetchStatus: () => Promise<void>;
-  testPrinter: (id: string) => Promise<void>;
+  updateSettings: (settings: Partial<HardwareSettings>) => void;
+  testPrinter: (id: string, type: 'thermal' | 'a4') => Promise<void>;
   testScanner: (id: string) => Promise<void>;
   openCashDrawer: (id: string) => Promise<void>;
 }
 
 export const useHardwareStore = create<HardwareState>((set) => ({
   status: null,
+  settings: {
+    defaultPrinterType: 'thermal',
+    preferredThermalPrinter: 'USB-THERMAL-80mm',
+    preferredA4Printer: 'NETWORK-LASER-OFFICE',
+    scannerMode: 'hid',
+    cameraEnabled: true,
+    autoPrintReceipts: false,
+  },
   isLoading: false,
   error: null,
 
@@ -26,7 +46,14 @@ export const useHardwareStore = create<HardwareState>((set) => ({
     }
   },
 
-  testPrinter: async (id: string) => {
+  updateSettings: (newSettings) => {
+    set((state) => ({
+      settings: { ...state.settings, ...newSettings }
+    }));
+    toast.success("Hardware configuration synchronized.");
+  },
+
+  testPrinter: async (id: string, type: 'thermal' | 'a4') => {
     set({ isLoading: true, error: null });
     try {
       await hardwareService.testPrinter(id);

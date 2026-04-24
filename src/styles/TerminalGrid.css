@@ -8,13 +8,19 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.dashboard-matrix-container {
+  overflow-x: auto;
+  width: 100%;
+}
+
 /* 7-Column Global Dashboard Profile */
 .dashboard-matrix-header, .dashboard-matrix-row {
   display: grid;
-  grid-template-columns: 3fr 1.2fr 1fr 1fr 1fr 1fr 100px;
+  grid-template-columns: 3fr 1.2fr 1fr 1fr 1fr 1fr 120px;
   gap: 24px;
   align-items: center;
   padding: 16px 40px;
+  min-width: 1100px; /* Force minimum width for matrix integrity */
 }
 
 .dashboard-matrix-header {

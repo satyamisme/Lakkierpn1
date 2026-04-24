@@ -219,79 +219,80 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
             // Map specific paths to existing components if available
             if (page.path === 'pos/grid') return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
             if (page.path === 'pos/returns') return <Route key={page.id} path={page.path} element={<Returns />} />;
+            if (page.path === 'pos/receipts') return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
             if (page.path === 'pos/loyalty') return <Route key={page.id} path={page.path} element={<POSLoyalty />} />;
             if (page.path === 'pos/layaway') return <Route key={page.id} path={page.path} element={<POSLayaway />} />;
             if (page.path === 'pos/tax') return <Route key={page.id} path={page.path} element={<POSConfiguration />} />;
             if (page.path === 'pos/sync') return <Route key={page.id} path={page.path} element={<POSSync />} />;
+            if (page.path === 'pos/hardware') return <Route key={page.id} path={page.path} element={<Hardware />} />;
+            if (page.path === 'pos/stats') return <Route key={page.id} path={page.path} element={<AnalyticsDashboard />} />;
             if (page.path.startsWith('pos/')) return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
-            if (page.path === 'repairs' || page.path.startsWith('repairs/')) return <Route key={page.id} path={page.path} element={<RepairHub />} />;
+            
+            if (page.path === 'repairs' || page.path === 'repairs/intake') return <Route key={page.id} path={page.path} element={<RepairIntake />} />;
+            if (page.path === 'repairs/catalog') return <Route key={page.id} path={page.path} element={<DeviceCatalog />} />;
+            if (page.path === 'repairs/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
+            if (page.path === 'repairs/tech-stats' || page.path === 'repairs/assignment') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
+            if (page.path.startsWith('repairs/')) return <Route key={page.id} path={page.path} element={<RepairHub />} />;
+            
+            if (page.path === 'auth/profile') return <Route key={page.id} path={page.path} element={<Profile />} />;
             if (page.path === 'auth/roles' || page.path === 'auth/overrides') return <Route key={page.id} path={page.path} element={<Roles />} />;
-            if (page.path === 'inventory/po-approval') return <Route key={page.id} path={page.path} element={<POApproval />} />;
-            if (page.path === 'inventory/purchase-orders' || page.path === 'inventory/pos') return <Route key={page.id} path={page.path} element={<PurchaseOrders />} />;
-            if (page.path === 'inventory/adjust') return <Route key={page.id} path={page.path} element={<StockAdjustment />} />;
-            if (page.path === 'inventory/labels') return <Route key={page.id} path={page.path} element={<LabelPrinting />} />;
-            if (page.path === 'inventory/snapshot') return <Route key={page.id} path={page.path} element={<StockSnapshot />} />;
-            if (page.path === 'inventory/bins') return <Route key={page.id} path={page.path} element={<BinLocations />} />;
-            if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />;
-            if (page.path === 'gov/reports' || page.path === 'gov/z-reports') return <Route key={page.id} path={page.path} element={<ZReports />} />;
-            if (page.path === 'gov/compliance' || page.path === 'gov/audit' || page.path === 'gov/vat') return <Route key={page.id} path={page.path} element={<Compliance />} />;
-            if (page.path === 'inventory/qc' || page.path === 'repairs/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
-            if (page.path === 'auth/profile' || page.path === 'auth/2fa') return <Route key={page.id} path={page.path} element={<Profile />} />;
-            if (page.path === 'staff') return <Route key={page.id} path={page.path} element={<Staff />} />;
-            if (page.path === 'auth/ip-whitelist' || page.path === 'auth/geofence') return <Route key={page.id} path={page.path} element={<SecurityConfig />} />;
+            if (page.path === 'auth/2fa') return <Route key={page.id} path={page.path} element={<Profile />} />;
+            if (page.path === 'auth/security-config' || page.path === 'auth/ip-whitelist' || page.path === 'auth/geofence') return <Route key={page.id} path={page.path} element={<SecurityConfig />} />;
             if (page.path === 'auth/bulk-invite') return <Route key={page.id} path={page.path} element={<BulkUserInvite />} />;
             if (page.path === 'auth/password-policy') return <Route key={page.id} path={page.path} element={<PasswordPolicy />} />;
+            if (page.path === 'staff') return <Route key={page.id} path={page.path} element={<Staff />} />;
+            if (page.path === 'hr/dashboard') return <Route key={page.id} path={page.path} element={<HRDashboard />} />;
+            
             if (page.path === 'exec/revenue') return <Route key={page.id} path={page.path} element={<Cockpit />} />;
             if (page.path === 'exec/comparison') return <Route key={page.id} path={page.path} element={<ExecutiveComparison />} />;
             if (page.path === 'exec/anomalies') return <Route key={page.id} path={page.path} element={<ExecutiveAnomalies />} />;
             if (page.path === 'exec/affinity') return <Route key={page.id} path={page.path} element={<ExecutiveAffinity />} />;
+            if (page.path === 'exec/infrastructure') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="routing" />} />;
             if (page.path === 'exec/routing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="routing" />} />;
             if (page.path === 'exec/coalescing') return <Route key={page.id} path={page.path} element={<ExecutiveInfrastructure type="coalescing" />} />;
-            if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
-            if (page.path === 'inventory/intake') return <Route key={page.id} path={page.path} element={<ReceivingMatrix />} />;
-            if (page.path === 'inventory/serial-matrix' || page.path === 'inventory/imei-reg') return <Route key={page.id} path={page.path} element={<SerialManagement />} />;
-            if (page.path === 'repairs/assignment' || page.path === 'repairs/tech-stats') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
+            if (page.path === 'intelligence/data-lake') return <Route key={page.id} path={page.path} element={<DataLake />} />;
             
-            // CRM & Omni
-            if (page.path === 'crm/360') return <Route key={page.id} path={page.path} element={<Customer360 />} />;
-            if (page.path === 'crm/wishlist') return <Route key={page.id} path={page.path} element={<Wishlist />} />;
-            if (page.path === 'crm/blacklist') return <Route key={page.id} path={page.path} element={<Blacklist />} />;
-            if (page.path === 'crm/mandoob' || page.path === 'crm/sync') return <Route key={page.id} path={page.path} element={<Omnichannel />} />;
-            if (page.path === 'crm/iot') return <Route key={page.id} path={page.path} element={<IoTDashboard />} />;
-            if (page.path === 'crm/portal') return <Route key={page.id} path={page.path} element={<CustomerPortal />} />;
-            if (page.path === 'crm/marketing' || page.path === 'crm/whatsapp' || page.path === 'crm/sms' || page.path === 'crm/email') return <Route key={page.id} path={page.path} element={<Marketing />} />;
-
-            // Governance & Finance
-            if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<MasterFeatureGrid />} />;
-            if (page.path === 'gov/anomalies') return <Route key={page.id} path={page.path} element={<ExecutiveAnomalies />} />;
-            if (page.path === 'gov/expenses' || page.path === 'gov/payroll') return <Route key={page.id} path={page.path} element={<FinanceDashboard />} />;
-            if (page.path === 'gov/staff-score') return <Route key={page.id} path={page.path} element={<StaffPerformance />} />;
-            if (page.path === 'gov/profile') return <Route key={page.id} path={page.path} element={<Stores />} />;
-            if (page.path.startsWith('gov/health') || page.path.startsWith('gov/backups') || page.path.startsWith('gov/sessions')) return <Route key={page.id} path={page.path} element={<EnterpriseHub />} />;
-            if (page.path === 'gov/audit' || page.path === 'gov/compliance') return <Route key={page.id} path={page.path} element={<Governance />} />;
-
-            // Inventory & Logistics
-            if (page.path === 'inventory/analytics' || page.path === 'inventory/valuation') return <Route key={page.id} path={page.path} element={<StockValuation />} />;
-            if (page.path === 'inventory/landed-cost') return <Route key={page.id} path={page.path} element={<LandedCost />} />;
-            if (page.path === 'inventory/rma') return <Route key={page.id} path={page.path} element={<SupplierRMA />} />;
-            if (page.path === 'inventory/recon') return <Route key={page.id} path={page.path} element={<StockRecon />} />;
-            if (page.path === 'inventory/imei-log') return <Route key={page.id} path={page.path} element={<ImeiTimeline />} />;
+            if (page.path === 'inventory/matrix' || page.path === 'inventory/transfer') return <Route key={page.id} path={page.path} element={<InventoryDashboard />} />;
             if (page.path === 'inventory/warehouse') return <Route key={page.id} path={page.path} element={<Warehouse />} />;
-            if (page.path === 'inventory/suppliers') return <Route key={page.id} path={page.path} element={<SupplierPortal />} />;
+            if (page.path === 'inventory/bins') return <Route key={page.id} path={page.path} element={<BinLocations />} />;
+            if (page.path === 'inventory/purchase-orders') return <Route key={page.id} path={page.path} element={<PurchaseOrders />} />;
+            if (page.path === 'inventory/po-approval') return <Route key={page.id} path={page.path} element={<POApproval />} />;
+            if (page.path === 'inventory/landed-cost') return <Route key={page.id} path={page.path} element={<LandedCost />} />;
+            if (page.path === 'inventory/valuation') return <Route key={page.id} path={page.path} element={<StockValuation />} />;
+            if (page.path === 'inventory/adjust') return <Route key={page.id} path={page.path} element={<StockAdjustment />} />;
             if (page.path === 'inventory/cycle-count') return <Route key={page.id} path={page.path} element={<CycleCountStaff />} />;
+            if (page.path === 'inventory/recon') return <Route key={page.id} path={page.path} element={<StockRecon />} />;
+            if (page.path === 'inventory/serial-matrix') return <Route key={page.id} path={page.path} element={<SerialManagement />} />;
+            if (page.path === 'inventory/suppliers') return <Route key={page.id} path={page.path} element={<SupplierPortal />} />;
+            if (page.path === 'inventory/rma') return <Route key={page.id} path={page.path} element={<SupplierRMA />} />;
+            if (page.path === 'inventory/labels') return <Route key={page.id} path={page.path} element={<LabelPrinting />} />;
+            if (page.path === 'inventory/snapshot') return <Route key={page.id} path={page.path} element={<StockSnapshot />} />;
+            if (page.path === 'inventory/transit') return <Route key={page.id} path={page.path} element={<ReceivingMatrix />} />;
             if (page.path === 'inventory/reconciliation') return <Route key={page.id} path={page.path} element={<CycleCountManager />} />;
-
-            // Extended
-            if (page.path.startsWith('ext/')) return <Route key={page.id} path={page.path} element={<ExtendedFeatures />} />;
-            if (page.path === 'intelligence/data-lake' || page.path === 'vault') return <Route key={page.id} path={page.path} element={<DataLake />} />;
-
-            // Specifics & Placeholders
-            if (page.path === 'pos/gift-cards') return <Route key={page.id} path={page.path} element={<GiftCards />} />;
+            if (page.path === 'inventory/imei-log') return <Route key={page.id} path={page.path} element={<ImeiTimeline />} />;
+            if (page.path === 'inventory/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
+            
+            if (page.path === 'gov/audit') return <Route key={page.id} path={page.path} element={<Governance />} />;
+            if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<MasterFeatureGrid />} />;
+            if (page.path === 'gov/reports' || page.path === 'gov/z-reports') return <Route key={page.id} path={page.path} element={<ZReports />} />;
+            if (page.path === 'gov/expenses' || page.path === 'gov/payroll') return <Route key={page.id} path={page.path} element={<FinanceDashboard />} />;
+            if (page.path === 'gov/vat') return <Route key={page.id} path={page.path} element={<Compliance />} />;
+            if (page.path === 'gov/profile') return <Route key={page.id} path={page.path} element={<Stores />} />;
+            if (page.path.startsWith('gov/health')) return <Route key={page.id} path={page.path} element={<EnterpriseHub />} />;
             if (page.path === 'gov/handover') return <Route key={page.id} path={page.path} element={<ShiftHandover />} />;
             if (page.path === 'gov/commissions') return <Route key={page.id} path={page.path} element={<Commission />} />;
-            if (page.path === 'hr/dashboard') return <Route key={page.id} path={page.path} element={<HRDashboard />} />;
-            if (page.path === 'pos/hardware') return <Route key={page.id} path={page.path} element={<Hardware />} />;
-            if (page.path === 'pos/stats') return <Route key={page.id} path={page.path} element={<AnalyticsDashboard />} />;
+            if (page.path === 'gov/staff-score') return <Route key={page.id} path={page.path} element={<StaffPerformance />} />;
+            
+            if (page.path === 'crm/marketing' || page.path === 'crm/whatsapp') return <Route key={page.id} path={page.path} element={<Marketing />} />;
+            if (page.path === 'crm/portal') return <Route key={page.id} path={page.path} element={<CustomerPortal />} />;
+            if (page.path === 'crm/wishlist') return <Route key={page.id} path={page.path} element={<Wishlist />} />;
+            if (page.path === 'crm/sync' || page.path === 'crm/mandoob') return <Route key={page.id} path={page.path} element={<Omnichannel />} />;
+            if (page.path === 'crm/iot') return <Route key={page.id} path={page.path} element={<IoTDashboard />} />;
+            if (page.path === 'crm/blacklist') return <Route key={page.id} path={page.path} element={<Blacklist />} />;
+            if (page.path === 'crm/360') return <Route key={page.id} path={page.path} element={<Customer360 />} />;
+            
+            if (page.path.startsWith('ext/')) return <Route key={page.id} path={page.path} element={<ExtendedFeatures />} />;
+
 
             // Default to placeholder
             return <Route key={page.id} path={page.path} element={<FeaturePagePlaceholder page={page} />} />;

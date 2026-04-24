@@ -3,6 +3,9 @@ import { motion } from 'motion/react';
 import { History, Search, Printer, FileText, Download, Filter, MoreVertical, Loader2, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { printThermalReceipt, printA4Invoice } from '../../utils/documentService';
+import { ThermalReceipt } from '../print/ThermalReceipt';
+import { A4Invoice } from '../print/A4Invoice';
 
 /**
  * ID 21: Sales History & Thermal Receipts
@@ -11,6 +14,23 @@ export const SalesHistory: React.FC = () => {
   const [sales, setSales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [printingSale, setPrintingSale] = useState<any>(null);
+
+  const handlePrint = (sale: any, type: 'thermal' | 'a4') => {
+    setPrintingSale(sale);
+    toast.info(`Initializing ${type} print job...`, {
+      description: "Compiling binary assets for thermal sequence."
+    });
+    
+    // Allow React to render the hidden component before calling triggerPrint
+    setTimeout(() => {
+      if (type === 'thermal') {
+        printThermalReceipt(sale.saleNumber || sale._id, 'history-thermal-receipt');
+      } else {
+        printA4Invoice(sale.saleNumber || sale._id, 'history-a4-invoice');
+      }
+    }, 300);
+  };
 
   const fetchSales = async () => {
     try {
@@ -101,13 +121,13 @@ export const SalesHistory: React.FC = () => {
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
-                            onClick={() => toast.success("Spooling thermal sequence...")}
+                            onClick={() => handlePrint(sale, 'thermal')}
                             className="p-1.5 hover:bg-white/5 border border-white/10 rounded-lg transition-all text-primary-foreground" title="Thermal Receipt"
                           >
                             <Printer size={12} />
                           </button>
                           <button 
-                             onClick={() => toast.success("Generating A4 document stream...")}
+                             onClick={() => handlePrint(sale, 'a4')}
                              className="p-1.5 hover:bg-white/5 border border-white/10 rounded-lg transition-all text-white/40 hover:text-white" title="A4 Invoice"
                           >
                             <FileText size={12} />
@@ -121,6 +141,32 @@ export const SalesHistory: React.FC = () => {
             </table>
           )}
         </div>
+
+        {/* Hidden Print Nodes (ID 21, 25) */}
+        {printingSale && (
+          <div className="hidden">
+            <div id="history-thermal-receipt">
+              <ThermalReceipt 
+                id="thermal-receipt-inner"
+                orderId={printingSale.saleNumber || printingSale._id} 
+                date={new Date(printingSale.createdAt).toLocaleString()}
+                items={printingSale.items} 
+                total={printingSale.total} 
+                payments={printingSale.payments} 
+              />
+            </div>
+            <div id="history-a4-invoice">
+              <A4Invoice 
+                id="a4-invoice-inner"
+                orderId={printingSale.saleNumber || printingSale._id} 
+                date={new Date(printingSale.createdAt).toLocaleDateString()}
+                items={printingSale.items} 
+                total={printingSale.total} 
+                payments={printingSale.payments} 
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
