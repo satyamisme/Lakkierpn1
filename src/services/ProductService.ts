@@ -48,17 +48,23 @@ export class ProductService {
           createdVariants.push(variant);
         }
       } else {
-        const variant = new Variant({
-          productId: product._id,
-          sku: product.sku,
-          price: product.price,
-          cost: product.cost,
-          stock: product.stock,
-          trackingMethod: product.isImeiRequired ? 'imei' : (product.isSerialRequired ? 'serial' : 'none'),
-          attributes: {}
-        });
-        await variant.save({ session });
-        createdVariants.push(variant);
+        // Support for creating all conditions at once if provided as array in baseData
+        const conditions = Array.isArray(baseData.condition) ? baseData.condition : [baseData.condition || 'New'];
+        
+        for (const cond of conditions) {
+          const vSku = await skuGenerator.generateSku({ ...baseData, condition: cond }, {});
+          const variant = new Variant({
+            productId: product._id,
+            sku: vSku,
+            price: baseData.price || 0,
+            cost: baseData.cost || 0,
+            stock: baseData.stock || 0,
+            trackingMethod: product.isImeiRequired ? 'imei' : (product.isSerialRequired ? 'serial' : 'none'),
+            attributes: { condition: cond }
+          });
+          await variant.save({ session });
+          createdVariants.push(variant);
+        }
       }
 
       await session.commitTransaction();
@@ -108,7 +114,9 @@ export class ProductService {
         ...((a.variantId as any) || {}),
         _id: (a.variantId as any)?._id || a.productId,
         name: (a.productId as any).name,
+        name_ar: (a.productId as any).name_ar,
         brand: (a.productId as any).brand,
+        brand_ar: (a.productId as any).brand_ar,
         isVariant: !!a.variantId,
         parentProduct: a.productId,
         imei: a.identifier,
@@ -124,16 +132,18 @@ export class ProductService {
       // 🛡️ Logic ID 367: Automatic Explosion - return every variant as a searchable node
       if (p.isConfigurable && p.variants && p.variants.length > 0) {
         p.variants.forEach((v: any) => {
-          // Check if variant matches soft delete filters (manually because globalSearch uses basic populate)
-          if (!v.deletedAt) {
+          // Check if v is actually a document (populated)
+          if (v && typeof v === 'object' && !v.deletedAt) {
+            const attrValues = v.attributes ? Object.values(v.attributes).filter(val => typeof val === 'string') : [];
             compositeResults.push({
               ...v,
               name: p.name,
+              name_ar: p.name_ar,
               brand: p.brand,
+              brand_ar: p.brand_ar,
               isVariant: true,
               parentProduct: p,
-              // Inject display name with attributes for high-speed identification
-              displayName: `${p.name} [${Object.values(v.attributes).join(' | ')}]`
+              displayName: `${p.name} ${attrValues.length > 0 ? `[${attrValues.join(' | ')}]` : ''}`.trim()
             });
           }
         });

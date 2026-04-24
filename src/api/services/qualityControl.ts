@@ -15,21 +15,21 @@ export interface Inspection {
 }
 
 export const qualityControlService = {
-  // POST /api/qc/inspections
+  // POST /api/quality-control
   createInspection: async (data: Partial<Inspection>) => {
-    const response = await client.post<Inspection>("/qc/inspections", data);
+    const response = await client.post<Inspection>("/quality-control", data);
     return response.data;
   },
 
-  // GET /api/qc/inspections
+  // GET /api/quality-control
   getInspections: async (params?: any) => {
-    const response = await client.get<Inspection[]>("/qc/inspections", { params });
+    const response = await client.get<Inspection[]>("/quality-control", { params });
     return response.data;
   },
 
-  // PATCH /api/qc/inspections/:id
+  // PUT /api/quality-control/:id
   updateInspectionResult: async (id: string, result: Inspection["result"], notes?: string) => {
-    const response = await client.patch<Inspection>(`/qc/inspections/${id}`, { result, notes });
+    const response = await client.put<Inspection>(`/quality-control/${id}`, { result, notes });
     return response.data;
   },
 };

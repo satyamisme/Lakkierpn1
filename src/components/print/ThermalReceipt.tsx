@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, CreditCard, Banknote, MapPin, Phone, RefreshCcw } from 'lucide-react';
+import { toArabicNumerals } from '../../utils/arabicUtils';
 
 interface ThermalReceiptProps {
   id: string;
   orderId: string;
   date: string;
-  items: { name: string; sku: string; price: number; imei?: string }[];
+  items: { 
+    name: string; 
+    name_ar?: string;
+    sku: string; 
+    price: number; 
+    imei?: string;
+    brand?: string;
+    storage?: string;
+  }[];
   payments: any;
   total: number;
 }
@@ -86,11 +95,14 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, dat
           {items.map((item, idx) => (
             <div key={idx} className="text-[10px]">
               <div className="flex justify-between font-bold">
-                <span className="flex-1">{item.name}</span>
-                <span className="ml-2">{item.price.toFixed(3)} KD</span>
+                <div className="flex flex-col flex-1">
+                    <span className="font-black">{item.name}</span>
+                    {item.name_ar && <span className="text-gray-600 text-[9px]" dir="rtl">{item.name_ar}</span>}
+                </div>
+                <span className="ml-2 font-black">{item.price.toFixed(3)} KD</span>
               </div>
               <div className="flex justify-between text-gray-500 text-[9px] mt-0.5 italic">
-                <span>SKU: {item.sku}</span>
+                <span>SKU: {item.sku} {item.brand && `| ${item.brand}`}</span>
                 {item.imei && <span className="text-indigo-600 font-bold">IMEI: {item.imei}</span>}
               </div>
             </div>
@@ -101,7 +113,10 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, dat
       {/* Totals */}
       <div className="border-t border-dashed border-gray-300 pt-3 mb-4 space-y-1">
         <div className="flex justify-between text-[10px] font-bold">
-          <span>Subtotal / المجموع الفرعي</span>
+          <div className="flex flex-col">
+            <span>Subtotal / المجموع الفرعي</span>
+            <span className="text-gray-400 text-[8px]" dir="rtl">{toArabicNumerals(total.toFixed(3))} د.ك</span>
+          </div>
           <span>{total.toFixed(3)} KD</span>
         </div>
         <div className="flex justify-between text-[10px] font-bold">
@@ -109,7 +124,10 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({ id, orderId, dat
           <span>0.000 KD</span>
         </div>
         <div className="flex justify-between text-sm font-black pt-1 border-t border-gray-100">
-          <span>TOTAL / الإجمالي</span>
+          <div className="flex flex-col">
+            <span>TOTAL / الإجمالي</span>
+            <span className="text-gray-400 text-[9px]" dir="rtl">{toArabicNumerals(total.toFixed(3))} د.ك</span>
+          </div>
           <span>{total.toFixed(3)} KD</span>
         </div>
       </div>

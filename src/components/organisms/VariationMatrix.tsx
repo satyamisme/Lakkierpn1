@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Hash, Layers, Cpu, Scan } from 'lucide-react';
+import { Plus, Trash2, Hash, Layers, Cpu, Scan, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import api from '../../api/client';
 import { ColorSelector } from '../atoms/ColorSelector';
@@ -39,11 +39,13 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
   const [selectedRam, setSelectedRam] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSim, setSelectedSim] = useState<string[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>(['New']);
   
   const [storageOptions, setStorageOptions] = useState<string[]>([]);
   const [ramOptions, setRamOptions] = useState<string[]>([]);
   const [colorOptions, setColorOptions] = useState<string[]>([]);
   const [simOptions, setSimOptions] = useState<string[]>([]);
+  const CONDITION_OPTIONS = ["New", "Used", "Refurbished"];
   
   const [variants, setVariants] = useState<any[]>([]);
 
@@ -79,43 +81,45 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
     const rams = selectedRam.length > 0 ? selectedRam : [''];
     const colors = selectedColors.length > 0 ? selectedColors : [''];
     const sims = selectedSim.length > 0 ? selectedSim : [''];
+    const conditions = selectedConditions.length > 0 ? selectedConditions : ['New'];
 
     storages.forEach(s => {
       rams.forEach(r => {
         colors.forEach(c => {
           sims.forEach(sim => {
-            if (!s && !r && !c && !sim) return;
-            
-            const attributes: any = {};
-            if (s) attributes.storage = s;
-            if (r) attributes.ram = r;
-            if (c) attributes.color = c;
-            if (sim) attributes.simType = sim;
+            conditions.forEach(cond => {
+              if (!s && !r && !c && !sim && !cond) return;
+              
+              const attributes: any = {};
+              if (s) attributes.storage = s;
+              if (r) attributes.ram = r;
+              if (c) attributes.color = c;
+              if (sim) attributes.simType = sim;
+              attributes.condition = cond;
 
-            // Prediction Logic: Generate temporary SKU for UI feedback
-            const brandCode = (baseProduct.brand || 'GEN').substring(0, 3).toUpperCase();
-            const modelCode = (baseProduct.name || 'MOD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
-            const sCode = s.replace(/[^0-9]/g, '') || '000';
-            const rCode = r.replace(/[^0-9]/g, '') || '00';
-            
-            // Default codes for preview
-            const condCode = 'N'; 
-            const simCode = sim.includes('Dual') ? 'D' : (sim.includes('eSIM') ? 'E' : 'P');
-            
-            // Logic: 2-Letter Color Code (First + Last letter) to prevent BL/BL collisions
-            const colorCode = c ? (c[0] + (c.length > 1 ? c.slice(-1) : c[0])).toUpperCase() : 'XX';
-            
-            const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
-            const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${colorCode}-${simCode}${condCode}-${mmYY}`;
+              // Prediction Logic: Generate temporary SKU for UI feedback
+              const brandCode = (baseProduct.brand || 'GEN').substring(0, 3).toUpperCase();
+              const modelCode = (baseProduct.name || 'MOD').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+              const sCode = s.replace(/[^0-9]/g, '') || '000';
+              const rCode = r.replace(/[^0-9]/g, '') || '00';
+              
+              const condCode = cond.substring(0, 1).toUpperCase(); 
+              const simCode = sim.includes('Dual') ? 'D' : (sim.includes('eSIM') ? 'E' : 'P');
+              
+              const colorCode = c ? (c[0] + (c.length > 1 ? c.slice(-1) : c[0])).toUpperCase() : 'XX';
+              
+              const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
+              const tempSku = `${brandCode}-${modelCode}-${sCode}-${rCode}-${colorCode}-${simCode}${condCode}-${mmYY}`;
 
-            newVariants.push({
-              id: `v-${sCode}-${rCode}-${c}-${idx++}`, // Stable unique ID for React keys
-              attributes,
-              sku: tempSku,
-              price: baseProduct.price || 0,
-              cost: baseProduct.cost || 0,
-              stock: 0,
-              trackingMethod: 'imei'
+              newVariants.push({
+                id: `v-${sCode}-${rCode}-${c}-${condCode}-${idx++}`, // Stable unique ID for React keys
+                attributes,
+                sku: tempSku,
+                price: baseProduct.price || 0,
+                cost: baseProduct.cost || 0,
+                stock: 0,
+                trackingMethod: 'imei'
+              });
             });
           });
         });
@@ -193,6 +197,23 @@ export const VariationMatrix: React.FC<VariationMatrixProps> = ({ baseProduct, o
                 label={opt} 
                 isSelected={selectedSim.includes(opt)}
                 onClick={() => toggleAttribute(selectedSim, setSelectedSim, opt)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Zap className="text-yellow-500" size={16} />
+            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Physical Condition</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {CONDITION_OPTIONS.map(opt => (
+              <AttributeChip 
+                key={opt} 
+                label={opt} 
+                isSelected={selectedConditions.includes(opt)}
+                onClick={() => toggleAttribute(selectedConditions, setSelectedConditions, opt)}
               />
             ))}
           </div>

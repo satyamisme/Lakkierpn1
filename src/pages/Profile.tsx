@@ -26,12 +26,39 @@ export const Profile: React.FC = () => {
   const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: ""
+  });
 
   useEffect(() => {
     if (user) {
       fetchSecurityLogs();
+      setFormData({
+        name: user.name,
+        email: user.email,
+        password: ""
+      });
     }
   }, [user]);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.put("/api/users/profile", formData);
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
+      window.location.reload(); 
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchSecurityLogs = async () => {
     try {
@@ -108,22 +135,71 @@ export const Profile: React.FC = () => {
         {/* Identity Card */}
         <div className="lg:col-span-1 space-y-8">
           <div className="bg-surface-container-lowest border border-border rounded-[3.5rem] p-12 shadow-sm relative overflow-hidden group">
-            <div className="w-24 h-24 bg-primary/5 text-primary rounded-[2rem] flex items-center justify-center mb-10 shadow-inner group-hover:bg-primary group-hover:text-white transition-all duration-500">
-              <User size={48} />
-            </div>
-            <h2 className="text-4xl font-serif italic mb-2">{user?.name}</h2>
-            <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-10 opacity-60">{user?.email}</p>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">System Role</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{user?.role}</span>
+            <div className="flex justify-between items-start mb-10">
+              <div className="w-24 h-24 bg-primary/5 text-primary rounded-[2rem] flex items-center justify-center shadow-inner group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                <User size={48} />
               </div>
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Permissions</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{user?.permissions?.length || 0} Active</span>
-              </div>
+              <button 
+                onClick={() => setIsEditing(!isEditing)}
+                className="p-4 rounded-2xl bg-surface border border-border hover:border-primary transition-all text-muted-foreground hover:text-primary"
+              >
+                <Key size={20} />
+              </button>
             </div>
+
+            {isEditing ? (
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest ml-2">Full Name</label>
+                  <input 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full bg-surface border border-border rounded-xl p-4 text-xs font-bold outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest ml-2">Email</label>
+                  <input 
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full bg-surface border border-border rounded-xl p-4 text-xs font-bold outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest ml-2">New Password (Optional)</label>
+                  <input 
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    placeholder="••••••••"
+                    className="w-full bg-surface border border-border rounded-xl p-4 text-xs font-bold outline-none focus:border-primary transition-all"
+                  />
+                </div>
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : "Save Changes"}
+                </button>
+              </form>
+            ) : (
+              <>
+                <h2 className="text-4xl font-serif italic mb-2">{user?.name}</h2>
+                <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-10 opacity-60">{user?.email}</p>
+                
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">System Role</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">{user?.role}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Permissions</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">{user?.permissions?.length || 0} Active</span>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="mt-12 pt-10 border-t border-border flex justify-between items-center">
               <div className="flex items-center gap-2">

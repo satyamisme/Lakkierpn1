@@ -73,12 +73,15 @@ import { NetworkMatrix } from "../components/pos/submenus/NetworkMatrix";
 interface Product {
   _id: string;
   name: string;
+  name_ar?: string;
   sku: string;
   price: number;
   stock: number;
   image?: string;
   category: string;
+  category_ar?: string;
   brand?: string;
+  brand_ar?: string;
   isConfigurable?: boolean;
   variants?: any[];
   // Deep-tech metadata
@@ -118,7 +121,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [scanBuffer, setScanBuffer] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'knet' | 'store_credit'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'knet' | 'store_credit' | 'gift_card'>('cash');
   const [isWholesale, setIsWholesale] = useState(false);
   const [splitPayments, setSplitPayments] = useState<Record<string, number>>({});
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
@@ -135,6 +138,8 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [discountItemIndex, setDiscountItemIndex] = useState<number | null>(null);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [cartNotes, setCartNotes] = useState("");
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isReturnsModalOpen, setIsReturnsModalOpen] = useState(false);
@@ -143,6 +148,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [giftCardCode, setGiftCardCode] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -552,24 +558,28 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
           }))
       : [{ method: paymentMethod, amount: total }];
 
-      const saleData = {
-        items: cart.map(item => ({
-          productId: item.isVariant ? item.parentProduct?._id : item.product._id,
-          variantId: item.isVariant ? item.product._id : undefined,
-          quantity: item.quantity,
-          price: item.product.price,
-          imei: item.imei
-        })),
-        payments,
-        subtotal,
-        discount: lineDiscounts + globalDiscount + wholesaleDiscount,
-        total,
-        tax: taxAmount,
-        status: finalStatus,
-        customerId: selectedCustomer?._id,
-        storeId: selectedStoreId || user?.storeId,
-        notes: cartNotes
-      };
+    // Tax and Rounding calculation for the backend
+    const saleData = {
+      items: cart.map(item => ({
+        productId: item.isVariant ? item.parentProduct?._id : item.product._id,
+        variantId: item.isVariant ? item.product._id : undefined,
+        quantity: item.quantity,
+        price: item.product.price,
+        imei: item.imei,
+        discount: item.discount || 0
+      })),
+      payments,
+      subtotal,
+      discount: lineDiscounts + globalDiscount + wholesaleDiscount,
+      total,
+      tax: taxAmount,
+      rounding: roundingDifference,
+      status: finalStatus,
+      customerId: selectedCustomer?._id,
+      giftCardCode: giftCardCode || undefined,
+      storeId: selectedStoreId || user?.storeId,
+      notes: cartNotes
+    };
 
     if (!isOnline) {
       addToQueue(saleData);
@@ -589,6 +599,9 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
           ...sale,
           items: cart.map(item => ({
             name: item.isVariant ? `${item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name,
+            name_ar: item.isVariant ? `${item.parentProduct?.name_ar || item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name_ar,
+            brand: item.product.brand,
+            brand_ar: item.product.brand_ar,
             sku: item.product.sku,
             price: item.product.price,
             imei: item.imei,
@@ -895,7 +908,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                  className="w-full p-4 flex items-center gap-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.08] hover:border-primary/30 transition-all text-left group"
                                >
                                   <div className="w-12 h-12 bg-white/5 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                                     <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
+                                     <img src={p.image || undefined} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
                                   </div>
                                   <div className="flex-1 min-w-0">
                                      <p className="text-[10px] font-black uppercase text-white tracking-widest truncate">{p.name}</p>
@@ -1054,7 +1067,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                                    <td className="px-6 py-4">
                                       <div className="flex items-center gap-4">
                                          <div className="w-8 h-8 rounded-lg bg-white/5 overflow-hidden shadow-inner">
-                                            <img src={product.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                            <img src={product.image || undefined} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                          </div>
                                          <div className="min-w-0">
                                             <p className="text-[10px] font-black text-white uppercase tracking-tighter truncate">{product.name}</p>
@@ -1115,7 +1128,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                           <>
                             <div className="aspect-square bg-muted rounded-lg relative overflow-hidden shadow-inner flex items-center justify-center mb-2">
                               <img 
-                                src={product.image} 
+                                src={product.image || undefined} 
                                 alt={product.name}
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
@@ -1165,7 +1178,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                           <>
                             <div className="w-16 h-16 bg-muted rounded-2xl overflow-hidden flex-shrink-0 shadow-inner group-hover:scale-110 transition-transform">
                               <img 
-                                src={product.image} 
+                                src={product.image || undefined} 
                                 alt={product.name}
                                 referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
@@ -1499,7 +1512,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {cart.map((item, index) => (
                         <motion.div 
                           key={`${item.product._id}-${index}`}
@@ -1507,34 +1520,46 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -20 }}
-                          className="p-4 bg-surface-container-highest/20 border border-white/5 rounded-2xl space-y-4 group hover:border-primary-foreground/30 transition-all shadow-sm"
+                          className="px-4 py-3 bg-surface-container-highest/10 border border-white/5 rounded-xl group hover:border-primary-foreground/30 transition-all shadow-sm relative overflow-hidden"
                         >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <h4 className="text-[11px] font-black uppercase tracking-tight leading-snug line-clamp-2 text-white/80 group-hover:text-primary-foreground transition-colors">
-                                {item.isVariant ? `${item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name}
-                              </h4>
-                              <p className="text-[8px] font-mono text-white/20 font-bold mt-1.5 tracking-tighter">{item.product.sku}</p>
+                          <div className="flex justify-between items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                               <div className="flex items-center gap-2">
+                                  <h4 className="text-[10px] font-black uppercase tracking-tight text-white/80 group-hover:text-primary-foreground transition-colors truncate">
+                                    {item.isVariant ? `${item.parentProduct?.name} (${Object.values(item.product.attributes).join('/')})` : item.product.name}
+                                  </h4>
+                                  <span className="text-[7px] font-mono text-white/20 font-black tracking-tighter uppercase whitespace-nowrap">{item.product.sku}</span>
+                               </div>
+                               {(item.imei || item.product.isImeiRequired) && (
+                                <div className={`mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[7px] font-mono font-black border uppercase tracking-wider ${item.imei ? 'bg-primary-foreground/5 text-primary-foreground border-primary-foreground/10' : 'bg-amber-500/5 text-amber-500 border-amber-500/20'}`}>
+                                  <span>{item.imei ? `ID: ${item.imei}` : 'ID REQUIRED'}</span>
+                                  {!item.imei && <Scan size={8} />}
+                                </div>
+                              )}
                             </div>
-                            <span className="text-sm font-black font-mono text-primary-foreground tracking-tighter">{(item.product.price * item.quantity).toFixed(3)}</span>
-                          </div>
-                          {(item.imei || item.product.isImeiRequired) && (
-                            <div className={`px-3 py-1 rounded-lg text-[8px] font-mono font-black border uppercase tracking-widest flex items-center justify-between ${item.imei ? 'bg-primary-foreground/5 text-primary-foreground border-primary-foreground/10' : 'bg-amber-500/5 text-amber-500 border-amber-500/20'}`}>
-                              <span>{item.imei ? `ID: ${item.imei}` : 'ID REQUIRED'}</span>
-                              {!item.imei && <Scan size={10} />}
+                            
+                            <div className="flex items-center gap-4 shrink-0">
+                               <div className="flex items-center bg-black/20 border border-white/5 rounded-lg overflow-hidden h-7">
+                                 <button onClick={() => updateQuantity(index, -1)} className="px-2 h-full hover:bg-white/5 transition-colors text-white/40"><Minus size={10} /></button>
+                                 <span className="w-8 text-center text-[10px] font-black font-mono text-white/60">{item.quantity}</span>
+                                 <button onClick={() => updateQuantity(index, 1)} className="px-2 h-full hover:bg-white/5 transition-colors text-white/40"><Plus size={10} /></button>
+                               </div>
+                               <div className="text-right min-w-[70px]">
+                                  <span className="block text-xs font-black font-mono text-primary-foreground tracking-tighter">{(item.product.price * item.quantity).toFixed(3)}</span>
+                                  <Gate id={13}>
+                                    <button 
+                                      onClick={() => {
+                                        setDiscountItemIndex(index);
+                                        setDiscountAmount(item.discount || 0);
+                                        setIsDiscountModalOpen(true);
+                                      }}
+                                      className="text-[7px] font-black text-white/20 uppercase tracking-widest hover:text-primary-foreground transition-colors"
+                                    >
+                                      Disc.
+                                    </button>
+                                  </Gate>
+                               </div>
                             </div>
-                          )}
-                          <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                            <div className="flex items-center bg-surface-container-highest/40 border border-white/5 rounded-xl overflow-hidden shadow-inner">
-                              <button onClick={() => updateQuantity(index, -1)} className="p-2 hover:bg-white/5 transition-colors text-white/40"><Minus size={12} /></button>
-                              <span className="px-5 text-[11px] font-black font-mono text-white/60">{item.quantity}</span>
-                              <button onClick={() => updateQuantity(index, 1)} className="p-2 hover:bg-white/5 transition-colors text-white/40"><Plus size={12} /></button>
-                            </div>
-                            <Gate id={13}>
-                              <button className="text-[8px] font-black text-primary-foreground uppercase tracking-[0.2em] flex items-center gap-1.5 hover:underline">
-                                <Percent size={10} /> Discount
-                              </button>
-                            </Gate>
                           </div>
                         </motion.div>
                       ))}
@@ -1688,6 +1713,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   { id: 'cash', icon: Banknote, label: 'Cash' },
                   { id: 'card', icon: CreditCard, label: 'Card' },
                   { id: 'knet', icon: Store, label: 'K-Net' },
+                  { id: 'gift_card', icon: Gift, label: 'Gift' },
                   { id: 'store_credit', icon: RefreshCcw, label: 'Credit' }
                 ].map((method) => (
                   <button
@@ -1704,6 +1730,25 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   </button>
                 ))}
               </div>
+
+              {paymentMethod === 'gift_card' && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mb-4"
+                >
+                  <div className="relative">
+                    <Gift className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-foreground" size={14} />
+                    <input 
+                      type="text"
+                      value={giftCardCode}
+                      onChange={(e) => setGiftCardCode(e.target.value)}
+                      placeholder="ENTER GC CODE..."
+                      className="w-full bg-primary-foreground/5 border border-primary-foreground/20 pl-12 pr-4 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary-foreground placeholder:text-primary-foreground/40 outline-none focus:border-primary-foreground/40 transition-all"
+                    />
+                  </div>
+                </motion.div>
+              )}
 
               <button 
                 onClick={() => handleProcessSale()}
@@ -1723,6 +1768,50 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
             <div className="absolute bottom-0 left-0 w-full h-64 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
           </div>
         </div>
+
+      {/* Line Item Discount Modal */}
+      <AnimatePresence>
+        {isDiscountModalOpen && (
+          <div className="fixed inset-0 z-[1001] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface-container-low/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl"
+            >
+               <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-sm font-black uppercase tracking-widest text-white">Item Discount</h3>
+                 <button onClick={() => setIsDiscountModalOpen(false)} className="p-2 hover:bg-white/5 rounded-full"><X size={16}/></button>
+               </div>
+               <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-white/20 uppercase tracking-widest">KD</span>
+                  <input 
+                    type="number"
+                    step="0.001"
+                    value={discountAmount}
+                    onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                    className="w-full bg-white/[0.02] border border-white/5 pl-12 pr-4 py-3 rounded-xl text-lg font-black font-mono text-white outline-none focus:border-primary-foreground/40"
+                    placeholder="0.000"
+                    autoFocus
+                  />
+               </div>
+               <button 
+                 onClick={() => {
+                   if (discountItemIndex !== null) {
+                     const newCart = [...cart];
+                     newCart[discountItemIndex].discount = discountAmount;
+                     setCart(newCart);
+                   }
+                   setIsDiscountModalOpen(false);
+                 }}
+                 className="w-full bg-primary-foreground text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] mt-6 shadow-xl shadow-primary-foreground/10"
+               >
+                 Apply Credit
+               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <ImeiModal 
         isOpen={isImeiModalOpen}
@@ -1771,20 +1860,47 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
               </div>
 
               <div className="p-8 space-y-4">
-                {['cash', 'card', 'knet', 'store_credit'].map(method => (
-                  <div key={method} className="flex items-center gap-6 group">
-                    <div className="w-24 text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">{method.replace('_', ' ')}</div>
-                    <div className="relative flex-1">
-                      <input 
-                        type="number"
-                        step="0.001"
-                        value={splitPayments[method] || ''}
-                        onChange={(e) => setSplitPayments({...splitPayments, [method]: parseFloat(e.target.value) || 0})}
-                        className="w-full bg-white/[0.02] border border-white/5 pl-6 pr-14 py-3 rounded-xl text-lg font-black font-mono focus:border-primary-foreground/40 outline-none transition-all text-white placeholder:text-white/5"
-                        placeholder="0.000"
-                      />
-                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest text-white/10">KD</span>
+                {['cash', 'card', 'knet', 'gift_card', 'store_credit'].map(method => (
+                  <div key={method} className="space-y-2">
+                    <div className="flex items-center gap-6 group">
+                      <div className="w-24 text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-white/60 transition-colors">{method.replace('_', ' ')}</div>
+                      <div className="relative flex-1">
+                        <input 
+                          type="number"
+                          step="0.001"
+                          value={splitPayments[method] || ''}
+                          onChange={(e) => setSplitPayments({...splitPayments, [method]: parseFloat(e.target.value) || 0})}
+                          className="w-full bg-white/[0.02] border border-white/5 pl-6 pr-14 py-3 rounded-xl text-lg font-black font-mono focus:border-primary-foreground/40 outline-none transition-all text-white placeholder:text-white/5"
+                          placeholder="0.000"
+                        />
+                        <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest text-white/10">KD</span>
+                      </div>
                     </div>
+                    {method === 'gift_card' && (
+                      <div className="ml-30 flex gap-2">
+                         <input 
+                           type="text"
+                           placeholder="GC CODE..."
+                           value={giftCardCode}
+                           onChange={(e) => setGiftCardCode(e.target.value)}
+                           className="flex-1 bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white outline-none focus:border-primary-foreground/40"
+                         />
+                         <button 
+                           onClick={async () => {
+                             if (!giftCardCode) return;
+                             try {
+                               const res = await axios.get(`/api/gift-cards/${giftCardCode}`);
+                               toast.success(`GC Verified: ${res.data.currentBalance.toFixed(3)} KD`);
+                               const amt = Math.min(res.data.currentBalance, total - Object.entries(splitPayments).filter(([k])=>k!=='gift_card').reduce((s,[,v])=>s+v,0));
+                               setSplitPayments({...splitPayments, gift_card: amt});
+                             } catch(e) {
+                               toast.error("Invalid Vector");
+                             }
+                           }}
+                           className="px-3 py-1 bg-primary-foreground/20 text-primary-foreground rounded-lg text-[8px] font-black uppercase tracking-widest"
+                         >Verify</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1828,7 +1944,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <button 
-                  onClick={() => printThermalReceipt(lastSale)}
+                  onClick={() => printThermalReceipt(lastSale.saleNumber || lastSale._id)}
                   className="flex flex-col items-center gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] hover:border-primary-foreground/40 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary-foreground group-hover:bg-primary-foreground/10 transition-all">
@@ -1837,7 +1953,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
                   <span className="text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-white transition-colors">Thermal Vector</span>
                 </button>
                 <button 
-                  onClick={() => printA4Invoice(lastSale)}
+                  onClick={() => printA4Invoice(lastSale.saleNumber || lastSale._id)}
                   className="flex flex-col items-center gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] hover:border-primary-foreground/40 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-primary-foreground group-hover:bg-primary-foreground/10 transition-all">
@@ -1871,6 +1987,30 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
               >
                 View Manifest Archive
               </button>
+
+              {/* Off-screen Print Templates (ID 21, 25) */}
+              <div className="fixed -left-[5000px] top-0 pointer-events-none opacity-0">
+                <div id="thermal-receipt">
+                  <ThermalReceipt 
+                    id="thermal-receipt-inner"
+                    orderId={lastSale.saleNumber || lastSale._id}
+                    date={new Date(lastSale.createdAt).toLocaleString()}
+                    items={lastSale.items}
+                    payments={lastSale.payments}
+                    total={lastSale.total}
+                  />
+                </div>
+                <div id="a4-invoice">
+                  <A4Invoice 
+                    id="a4-invoice-inner"
+                    orderId={lastSale.saleNumber || lastSale._id}
+                    date={new Date(lastSale.createdAt).toLocaleDateString()}
+                    items={lastSale.items}
+                    payments={lastSale.payments}
+                    total={lastSale.total}
+                  />
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

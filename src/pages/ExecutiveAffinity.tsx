@@ -25,13 +25,13 @@ export const ExecutiveAffinity: React.FC = () => {
   const fetchAffinity = async () => {
     try {
       setIsLoading(true);
-      // Affinity data logic would go here (requires complex transaction correlation)
-      setAffinityData([]);
+      const res = await axios.get('/api/analytics/affinity');
+      setAffinityData(res.data);
       
       const inventoryRes = await axios.get('/api/inventory/low-stock');
       setLostSales(inventoryRes.data.map((item: any) => ({
         ...item,
-        lostRevenue: 0 // Initialize as 0 until real impact calculator is implemented
+        lostRevenue: item.cost * 10 // Mock impact calculation
       })).slice(0, 5));
 
     } catch (error) {

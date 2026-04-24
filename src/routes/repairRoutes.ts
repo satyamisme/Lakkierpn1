@@ -9,8 +9,9 @@ const router = express.Router();
 // POST / (intake) - requires 61
 router.post('/', authenticate, requirePermission(61), async (req, res) => {
   try {
-    const ticketId = 'RP-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    const repair = new Repair({ ...req.body, ticketId });
+    const count = await Repair.countDocuments();
+    const repairNumber = `REP-${(count + 1).toString().padStart(6, '0')}`;
+    const repair = new Repair({ ...req.body, repairNumber });
     await repair.save();
     res.status(201).json(repair);
   } catch (error) {
@@ -25,76 +26,53 @@ router.get('/', authenticate, requirePermission(61), async (req, res) => {
     if ((req as any).user.role === 'technician') {
       query.technicianId = (req as any).user.id;
     }
-    const repairs = await Repair.find(query).sort({ createdAt: -1 });
+    const repairs = await Repair.find(query)
+      .populate('customerId')
+      .populate('technicianId')
+      .sort({ createdAt: -1 });
     res.json(repairs);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch repairs' });
   }
 });
 
-// PATCH /:id/status - requires 67
-router.patch('/:id/status', authenticate, requirePermission(67), async (req, res) => {
+// PATCH /:id (generic update for status etc)
+router.patch('/:id', authenticate, requirePermission(67), async (req, res) => {
   try {
-    const { status } = req.body;
-    const repair = await Repair.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const repair = await Repair.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('customerId');
     
-    if (status === 'ready' && repair?.customerPhone) {
+    if (req.body.status === 'ready' && repair?.customerId?.phone) {
       // ID 74: WhatsApp Status Bot
-      await sendTemplate(repair.customerPhone, 'repair_ready', {
-        customerName: repair.customerName,
-        ticketId: repair.ticketId,
-        deviceModel: repair.phoneModel,
-        amount: repair.estimatedQuote.toString()
+      await sendTemplate(repair.customerId.phone, 'repair_ready', {
+        customerName: repair.customerId.name,
+        ticketId: repair.repairNumber,
+        deviceModel: `${repair.deviceInfo.brand} ${repair.deviceInfo.model}`,
+        amount: repair.quotedPrice.toString()
       });
     }
 
-    if (status === 'picked_up' && repair) {
+    if (req.body.status === 'collected' && repair) {
       // ID 254: Review Solicitor
       await scheduleReviewRequest(repair._id);
     }
 
     res.json(repair);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update status' });
+    res.status(500).json({ error: 'Failed to update repair' });
   }
 });
 
-// PATCH /:id/qc - requires 71
-router.patch('/:id/qc', authenticate, requirePermission(71), async (req, res) => {
+// GET /:id
+router.get('/:id', authenticate, requirePermission(61), async (req, res) => {
   try {
-    const { qcChecklist } = req.body;
-    // checklist can be array or object, let's normalize
-    const checklistData = Array.isArray(qcChecklist) ? qcChecklist : Object.values(qcChecklist);
-    
-    const repair = await Repair.findByIdAndUpdate(req.params.id, { 
-      qcChecklist: checklistData, 
-      status: 'ready',
-      completedAt: new Date()
-    }, { new: true });
-    
+    const repair = await Repair.findById(req.params.id)
+      .populate('customerId')
+      .populate('technicianId')
+      .populate('partsConsumed.productId');
+    if (!repair) return res.status(404).json({ error: 'Repair not found' });
     res.json(repair);
   } catch (error) {
-    res.status(500).json({ error: 'QC failed' });
-  }
-});
-
-// POST /:id/whatsapp (triggers status alert, ID 74)
-router.post('/:id/whatsapp', authenticate, requirePermission(74), async (req, res) => {
-  try {
-    const repair = await Repair.findById(req.params.id);
-    if (!repair || !repair.customerPhone) return res.status(404).json({ error: 'Repair not found or no phone' });
-    
-    // ID 74: WhatsApp Status Bot
-    await sendTemplate(repair.customerPhone, 'repair_ready', {
-      customerName: repair.customerName,
-      ticketId: repair.ticketId,
-      deviceModel: repair.phoneModel,
-      amount: repair.estimatedQuote.toString()
-    });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'WhatsApp alert failed' });
+    res.status(500).json({ error: 'Failed to fetch repair details' });
   }
 });
 

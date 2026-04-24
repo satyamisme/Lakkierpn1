@@ -169,11 +169,50 @@ export const ShiftHandover: React.FC = () => {
             <History size={20} className="text-primary" />
             Recent Handovers
           </h3>
-          <div className="space-y-4 opacity-50">
-            <p className="text-[10px] font-black uppercase tracking-widest text-center py-8">History loading...</p>
+          <div className="space-y-4">
+            {users.length === 0 ? (
+               <p className="text-[10px] font-black uppercase tracking-widest text-center py-8 opacity-50">No history available</p>
+            ) : (
+              <div className="space-y-4 max-h-[300px] overflow-y-auto no-scrollbar">
+                {/* We'll use a local state for history too */}
+                <HandoverList />
+              </div>
+            )}
           </div>
         </div>
       </div>
     </Gate>
   );
 };
+
+const HandoverList = () => {
+  const [history, setHistory] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/shift/history', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    }).then(r => r.json()).then(setHistory).catch(console.error);
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      {history.map((h: any) => (
+        <div key={h._id} className="p-4 bg-muted/40 rounded-xl border border-border/50">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-3">
+               <ArrowRightLeft size={12} className="text-primary" />
+               <p className="text-[10px] font-black uppercase tracking-tighter">
+                 {h.fromUserId?.name} → {h.toUserId?.name}
+               </p>
+            </div>
+            <span className="text-[9px] font-mono opacity-40">{new Date(h.createdAt).toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-center px-2 py-1 bg-background/50 rounded-lg">
+             <span className="text-[9px] font-black uppercase text-muted-foreground">Drawer</span>
+             <span className="text-[10px] font-black font-mono">{(h.cashInDrawer || 0).toFixed(3)} KD</span>
+          </div>
+          {h.notes && <p className="text-[9px] mt-2 italic opacity-60">"{h.notes}"</p>}
+        </div>
+      ))}
+    </div>
+  );
+}

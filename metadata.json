@@ -1,5 +1,5 @@
 {
-  "name": "Lakki Enterprise Shell",
+  "name": "Lakki Phone - Obsidian ERP",
   "description": "A mission-critical ERP & POS ecosystem for high-scale mobile retail. Features a 360-degree feature universe, real-time system pulse, and deep-tech logistics matrix.",
   "requestFramePermissions": [
     "geolocation"

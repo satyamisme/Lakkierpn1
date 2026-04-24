@@ -70,6 +70,15 @@ export const RepairIntake: React.FC = () => {
     setDamageMap(prev => ({ ...prev, [part]: !prev[part] }));
   };
 
+  const [esdChecklist, setEsdChecklist] = useState({
+    wristStrap: false,
+    matGrounded: false,
+    antistaticTools: false,
+    devicePoweredOff: false
+  });
+
+  const allEsdPassed = Object.values(esdChecklist).every(v => v);
+
   const addPhoto = () => {
     const newPhoto = `https://picsum.photos/seed/${Math.random()}/800/600`;
     setPhotos(prev => [...prev, newPhoto]);
@@ -397,12 +406,40 @@ export const RepairIntake: React.FC = () => {
               </div>
             </div>
 
+            <div className="bg-surface-container-lowest border border-border p-8 rounded-[3rem] shadow-sm space-y-6">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 flex items-center gap-3">
+                <AlertCircle size={14} /> ESD Safety Protocol (Critical)
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { key: 'wristStrap', label: 'Anti-Static Wrist Strap Connected' },
+                  { key: 'matGrounded', label: 'Workbench Mat Grounded' },
+                  { key: 'antistaticTools', label: 'Using Anti-Static Opening Tools' },
+                  { key: 'devicePoweredOff', label: 'Device Isolated & Powered Off' }
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center gap-3 p-4 bg-surface border border-border rounded-xl cursor-pointer hover:border-amber-500/50 transition-all group">
+                    <input 
+                      type="checkbox" 
+                      checked={(esdChecklist as any)[item.key]}
+                      onChange={() => setEsdChecklist(prev => ({ ...prev, [item.key]: !(prev as any)[item.key] }))}
+                      className="w-4 h-4 rounded border-border text-amber-500 focus:ring-amber-500/20 bg-muted"
+                    />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <button 
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-foreground text-background py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-4 shadow-2xl shadow-foreground/20"
+              disabled={isSubmitting || !allEsdPassed}
+              className="w-full bg-foreground text-background py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.4em] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-20 flex items-center justify-center gap-4 shadow-2xl shadow-foreground/20"
             >
-              {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              {!allEsdPassed ? (
+                 <span className="flex items-center gap-2 text-amber-500 animate-pulse">
+                   <AlertCircle size={16} /> ESD CLEARANCE REQUIRED
+                 </span>
+              ) : isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                 <>
                   <CheckCircle2 size={20} />
                   Authorize & Generate Job Card

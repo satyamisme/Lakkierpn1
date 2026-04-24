@@ -90,7 +90,7 @@ export const ATOMIC_NAVIGATION: NavCategory[] = [
     pages: [
       { id: 'p15', label: 'Sale Terminal', featureIds: ['1', '3', '4', '2', '9', '5', '6', '7', '8'], description: 'Main transaction matrix with scanner, IMEI, and bundling logic', path: 'pos/grid' },
       { id: 'p20', label: 'Client 360', featureIds: ['10', '52', '53', '54', '55', '56', '58', '59'], description: 'Master customer directory and loyalty profiles', path: 'pos/customers' },
-      { id: 'p26', label: 'Returns Hub', featureIds: ['17', '18', '21'], description: 'Process exchanges and item returns', path: 'pos/exchange' },
+      { id: 'p26', label: 'Returns Hub', featureIds: ['17', '18', '21'], description: 'Process exchanges and item returns', path: 'pos/returns' },
       { id: 'p25', label: 'Sale Records', featureIds: ['15', '16', '48', '220'], description: 'History, re-prints, and daily reports', path: 'pos/receipts' },
       { id: 'p24', label: 'Gifts & Loyalty', featureIds: ['14', '23'], description: 'Card activation and point management', path: 'pos/loyalty' },
       { id: 'p27', label: 'Instalment Plan', featureIds: ['19', '22'], description: 'Layaway and credit plans', path: 'pos/layaway' },
@@ -104,9 +104,9 @@ export const ATOMIC_NAVIGATION: NavCategory[] = [
     icon: Wrench,
     color: 'text-orange-500',
     pages: [
-      { id: 'p29', label: 'Repair Intake', featureIds: ['61', '64', '65', '66', '67', '68'], description: 'Intake, symptoms, priority, estimate, quote, approval', path: 'repairs/intake' },
-      { id: 'p30', label: 'Device Catalog', featureIds: ['62', '63', '114'], description: 'Device models, visual damage mapper, gallery', path: 'repairs/catalog' },
-      { id: 'p31', label: 'Repair Photos', featureIds: ['88', '89'], description: 'Upload before/after, customer gallery', path: 'repairs/photos' },
+      { id: 'p29', label: 'Repair Center', featureIds: ['61', '64', '65', '66', '67', '68'], description: 'Unified repair pipeline, intake, and diagnostics hub', path: 'repairs' },
+      { id: 'p30', label: 'Device Catalog', featureIds: ['62', '63', '114'], description: 'Device models, visual damage mapper, gallery', path: 'repairs' },
+      { id: 'p31', label: 'Repair Photos', featureIds: ['88', '89'], description: 'Upload before/after, customer gallery', path: 'repairs' },
       { id: 'p32', label: 'Repair Payments', featureIds: ['90', '91', '92', '93', '310'], description: 'Deposit, balance, invoice, split', path: 'repairs/payments' },
       { id: 'p33', label: 'Status & Notify', featureIds: ['69', '70', '74', '75', '108'], description: 'Status tracking, WhatsApp/SMS, post-repair survey', path: 'repairs/status' },
       { id: 'p34', label: '20-Point QC', featureIds: ['71', '72', '73'], description: 'Checklist, failure reason, rework', path: 'repairs/qc' },

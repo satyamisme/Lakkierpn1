@@ -97,7 +97,7 @@ export const Customer360: React.FC = () => {
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-surface-container-lowest border border-border p-10 rounded-[4rem] shadow-sm relative overflow-hidden group">
             <div className="flex items-center gap-8 relative z-10">
               <div className="w-32 h-32 rounded-full bg-muted overflow-hidden border-4 border-primary/20 shadow-2xl group-hover:scale-105 transition-transform duration-700">
-                <img src={data.customer.image} alt="Profile" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                <img src={data.customer.image || undefined} alt="Profile" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
               </div>
               <div>
                 <div className="flex items-center gap-4 mb-2">

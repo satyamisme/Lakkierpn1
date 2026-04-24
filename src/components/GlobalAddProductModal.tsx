@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { toArabicNumerals } from '../utils/arabicUtils';
 
 interface GlobalAddProductModalProps {
   isOpen: boolean;
@@ -23,18 +24,22 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
   const [createdProducts, setCreatedProducts] = useState<any[]>([]);
   const [newProduct, setNewProduct] = useState({
     name: initialData?.name || "",
+    name_ar: initialData?.name_ar || "",
     sku: initialData?.sku || "",
     category: initialData?.category || "Phones",
+    category_ar: initialData?.category_ar || "",
     brand: initialData?.brand || "",
+    brand_ar: initialData?.brand_ar || "",
     modelNumber: initialData?.modelNumber || "",
     description: initialData?.description || "",
+    description_ar: initialData?.description_ar || "",
     price: initialData?.price || 0,
     cost: initialData?.cost || 0,
     stock: initialData?.stock || 0,
     image: initialData?.image || "",
     binLocation: initialData?.binLocation || "",
     trackingMethod: (initialData?.trackingMethod || 'imei') as 'none' | 'imei' | 'serial',
-    condition: initialData?.condition || "New",
+    condition: (initialData?.condition || ["New"]) as string[],
     isConfigurable: initialData?.isConfigurable ?? true,
     isNewBrand: false,
     attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
@@ -48,18 +53,22 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
     if (isOpen) {
       setNewProduct({
         name: initialData?.name || "",
+        name_ar: initialData?.name_ar || "",
         sku: initialData?.sku || "",
         category: initialData?.category || "Phones",
+        category_ar: initialData?.category_ar || "",
         brand: initialData?.brand || "",
+        brand_ar: initialData?.brand_ar || "",
         modelNumber: initialData?.modelNumber || "",
         description: initialData?.description || "",
+        description_ar: initialData?.description_ar || "",
         price: initialData?.price || 0,
         cost: initialData?.cost || 0,
         stock: initialData?.stock || 0,
         image: initialData?.image || "",
         binLocation: initialData?.binLocation || "",
         trackingMethod: (initialData?.trackingMethod || 'imei') as 'none' | 'imei' | 'serial',
-        condition: initialData?.condition || "New",
+        condition: (initialData?.condition || ["New"]) as string[],
         isConfigurable: initialData?.isConfigurable ?? true,
         isNewBrand: false,
         attributes: initialData?.attributes || [] as { name: string, values: string[] }[],
@@ -274,18 +283,22 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
   const resetAndClose = () => {
     setNewProduct({
       name: "",
+      name_ar: "",
       sku: "",
       category: "Phones",
+      category_ar: "",
       brand: "",
+      brand_ar: "",
       modelNumber: "",
       description: "",
+      description_ar: "",
       price: 0,
       cost: 0,
       stock: 0,
       image: "",
       binLocation: "",
       trackingMethod: 'imei' as 'none' | 'imei' | 'serial',
-      condition: "New",
+      condition: ["New"],
       isConfigurable: true,
       isNewBrand: false,
       attributes: [] as { name: string, values: string[] }[],
@@ -446,31 +459,78 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                   >
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Product Name</label>
-                          <input 
-                            required
-                            placeholder="e.g. iPhone 15 Pro"
-                            value={newProduct.name}
-                            onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
-                          />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5 text-left">
+                            <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Product Name (EN)</label>
+                            <input 
+                              required
+                              placeholder="e.g. iPhone 15 Pro"
+                              value={newProduct.name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setNewProduct({
+                                  ...newProduct, 
+                                  name: val,
+                                  name_ar: toArabicNumerals(val)
+                                });
+                              }}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-sans"
+                            />
+                          </div>
+                          <div className="space-y-1.5 text-right">
+                            <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mr-2">اسم المنتج (Arabic)</label>
+                            <input 
+                              placeholder="مثال: ايفون 15 برو"
+                              value={newProduct.name_ar}
+                              dir="rtl"
+                              onChange={(e) => setNewProduct({...newProduct, name_ar: e.target.value})}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all font-sans"
+                            />
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                          <SmartSelector 
-                            field="brand"
-                            label="Brand"
-                            value={newProduct.brand}
-                            onChange={(val) => setNewProduct({...newProduct, brand: val})}
-                            onAddNew={(val) => console.log("New brand staged:", val)}
-                          />
-                          <SmartSelector 
-                            field="category"
-                            label="Category"
-                            value={newProduct.category}
-                            onChange={(val) => setNewProduct({...newProduct, category: val})}
-                            onAddNew={(val) => console.log("New category staged:", val)}
-                          />
+                          <div className="space-y-4">
+                            <SmartSelector 
+                              field="brand"
+                              label="Brand (EN)"
+                              value={newProduct.brand}
+                              onChange={(val) => setNewProduct({
+                                ...newProduct, 
+                                brand: val,
+                                brand_ar: toArabicNumerals(val)
+                              })}
+                              onAddNew={(val) => console.log("New brand staged:", val)}
+                            />
+                            <div className="space-y-1.5 text-right">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mr-2">الماركة (Arabic)</label>
+                              <input 
+                                placeholder="الماركة بالعربية..."
+                                value={newProduct.brand_ar}
+                                dir="rtl"
+                                onChange={(e) => setNewProduct({...newProduct, brand_ar: e.target.value})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <SmartSelector 
+                              field="category"
+                              label="Category (EN)"
+                              value={newProduct.category}
+                              onChange={(val) => setNewProduct({...newProduct, category: val})}
+                              onAddNew={(val) => console.log("New category staged:", val)}
+                            />
+                             <div className="space-y-1.5 text-right">
+                              <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mr-2">الفئة (Arabic)</label>
+                              <input 
+                                placeholder="الفئة بالعربية..."
+                                value={newProduct.category_ar}
+                                dir="rtl"
+                                onChange={(e) => setNewProduct({...newProduct, category_ar: e.target.value})}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
+                              />
+                            </div>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-1.5">
@@ -578,14 +638,26 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Description</label>
-                      <textarea 
-                        placeholder="The latest A17 Pro chip..."
-                        value={newProduct.description}
-                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all min-h-[80px]"
-                      />
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] ml-2">Description (EN)</label>
+                        <textarea 
+                          placeholder="The latest A17 Pro chip..."
+                          value={newProduct.description}
+                          onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all min-h-[80px]"
+                        />
+                      </div>
+                      <div className="space-y-1.5 text-right">
+                        <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mr-2">الوصف (Arabic)</label>
+                        <textarea 
+                          placeholder="أحدث شريحة A17 برو..."
+                          value={newProduct.description_ar}
+                          dir="rtl"
+                          onChange={(e) => setNewProduct({...newProduct, description_ar: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all min-h-[80px]"
+                        />
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-8 p-6 bg-white/5 border border-white/5 rounded-2xl">
@@ -597,11 +669,20 @@ export const GlobalAddProductModal: React.FC<GlobalAddProductModalProps> = ({ is
                               <input 
                                 type="radio"
                                 name="condition"
-                                checked={newProduct.condition === cond}
-                                onChange={() => setNewProduct({...newProduct, condition: cond})}
+                                checked={newProduct.condition.includes(cond)}
+                                onChange={() => {
+                                  const current = newProduct.condition;
+                                  if (current.includes(cond)) {
+                                    if (current.length > 1) {
+                                      setNewProduct({ ...newProduct, condition: current.filter(c => c !== cond) });
+                                    }
+                                  } else {
+                                    setNewProduct({ ...newProduct, condition: [...current, cond] });
+                                  }
+                                }}
                                 className="w-4 h-4 accent-blue-500"
                               />
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${newProduct.condition === cond ? 'text-blue-500' : 'text-white/40 group-hover:text-white/60'}`}>
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${newProduct.condition.includes(cond) ? 'text-blue-500' : 'text-white/40 group-hover:text-white/60'}`}>
                                 {cond}
                               </span>
                             </label>

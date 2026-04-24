@@ -25,7 +25,7 @@ interface PurchaseOrder {
     name: string;
   };
   totalLanded: number;
-  status: 'draft' | 'sent' | 'received' | 'rejected';
+  status: 'draft' | 'pending_approval' | 'sent' | 'received' | 'rejected' | 'cancelled';
   createdAt: string;
   items: any[];
 }
@@ -115,12 +115,12 @@ export const POApproval: React.FC = () => {
                   <Loader2 size={48} className="animate-spin mb-4" />
                   <p className="text-[10px] font-black uppercase tracking-widest">Synchronizing PO Ledger...</p>
                 </div>
-              ) : pos.filter(po => po.status === 'draft').length === 0 ? (
+              ) : pos.filter(po => po.status === 'pending_approval').length === 0 ? (
                 <div className="p-20 text-center opacity-20">
                   <ClipboardCheck size={48} className="mx-auto mb-4" />
                   <p className="text-[10px] font-black uppercase tracking-widest">No pending authorizations</p>
                 </div>
-              ) : pos.filter(po => po.status === 'draft').map((po) => (
+              ) : pos.filter(po => po.status === 'pending_approval').map((po) => (
                 <motion.div 
                   layout
                   key={po._id} 

@@ -14,5 +14,6 @@ router.delete('/rules/:id', requirePermission(330), commissionController.deleteR
 router.get('/transactions', requirePermission(329), commissionController.getTransactions);
 router.post('/calculate', requirePermission(330), commissionController.calculateCommission);
 router.patch('/transactions/:id/pay', requirePermission(330), commissionController.payCommission);
+router.get('/leaderboard', requirePermission(188), commissionController.getLeaderboard);
 
 export default router;

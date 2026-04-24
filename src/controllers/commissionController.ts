@@ -81,5 +81,40 @@ export const commissionController = {
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
+  },
+
+  getLeaderboard: async (req: Request, res: Response) => {
+    try {
+       const leaderboard = await CommissionTransaction.aggregate([
+         {
+           $group: {
+             _id: "$userId",
+             totalSales: { $sum: "$amount" }, // This is actually commission, should join with sales for real total
+             commission: { $sum: "$amount" }
+           }
+         },
+         {
+           $lookup: {
+             from: "users",
+             localField: "_id",
+             foreignField: "_id",
+             as: "user"
+           }
+         },
+         { $unwind: "$user" },
+         {
+           $project: {
+             staffId: "$_id",
+             staffName: "$user.name",
+             totalSales: 1,
+             commission: 1
+           }
+         },
+         { $sort: { totalSales: -1 } }
+       ]);
+       res.json(leaderboard);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   }
 };

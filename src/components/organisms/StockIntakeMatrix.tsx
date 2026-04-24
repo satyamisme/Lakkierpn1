@@ -55,7 +55,7 @@ export const StockIntakeMatrix: React.FC<StockIntakeMatrixProps> = ({
               <div className="terminal-matrix-row border-b-0 bg-transparent">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden border border-white/5">
-                    <img src={item.image} alt="" className="w-full h-full object-cover" />
+                    <img src={item.image || undefined} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h4 className="variant-label truncate max-w-[200px]">{item.name}</h4>

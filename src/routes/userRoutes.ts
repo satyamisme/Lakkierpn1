@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.put('/profile', userController.updateProfile);
 router.post('/', requirePermission(195), userController.create);
 router.get('/', requirePermission(195), userController.getAll);
 router.get('/:id', requirePermission(195), userController.getById);

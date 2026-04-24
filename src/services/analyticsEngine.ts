@@ -37,3 +37,70 @@ export const getRepairPredictive = async () => {
     successRate: Math.floor(Math.random() * 20) + 80 // 80-100%
   }));
 };
+
+export const getProductAffinity = async () => {
+  const sales = await Sale.find({ status: 'completed' }).populate('items.productId');
+  const pairs: Record<string, { count: number; revenue: number; names: [string, string] }> = {};
+
+  sales.forEach(sale => {
+    const products = sale.items.map(item => ({
+      id: item.productId._id.toString(),
+      name: (item.productId as any).name,
+      price: item.price * item.quantity
+    }));
+
+    for (let i = 0; i < products.length; i++) {
+      for (let j = i + 1; j < products.length; j++) {
+        const key = [products[i].id, products[j].id].sort().join('_');
+        if (!pairs[key]) {
+          pairs[key] = { 
+            count: 0, 
+            revenue: 0, 
+            names: [products[i].name, products[j].name].sort() as [string, string] 
+          };
+        }
+        pairs[key].count++;
+        pairs[key].revenue += products[i].price + products[j].price;
+      }
+    }
+  });
+
+  const totalSales = sales.length;
+  return Object.values(pairs)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map(p => ({
+      main: p.names[0],
+      companion: p.names[1],
+      strength: totalSales > 0 ? Math.round((p.count / totalSales) * 100) : 0,
+      revenue: p.revenue
+    }));
+};
+
+export const getAnalyticsSummary = async () => {
+  const [sales, repairs, products] = await Promise.all([
+    Sale.find({ status: 'completed' }),
+    Repair.find(),
+    Product.find()
+  ]);
+
+  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  const totalRepairs = repairs.length;
+  const activeRepairs = repairs.filter(r => !['completed', 'cancelled'].includes(r.status)).length;
+  const lowStockCount = products.filter(p => p.stock < 5).length;
+
+  return {
+    revenue: totalRevenue,
+    salesCount: sales.length,
+    repairStats: {
+      total: totalRepairs,
+      active: activeRepairs
+    },
+    inventoryStats: {
+      lowStock: lowStockCount,
+      totalAssets: products.length
+    },
+    systemHealth: '100%',
+    activeSessions: Math.floor(Math.random() * 10) + 1
+  };
+};

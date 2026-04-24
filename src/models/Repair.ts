@@ -1,24 +1,75 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
-const RepairSchema = new mongoose.Schema({
-  ticketId: { type: String, required: true, unique: true },
-  customerName: { type: String, required: true },
-  customerPhone: { type: String, required: true },
-  phoneModel: { type: String, required: true },
-  imei: { type: String, required: true },
-  faults: [{ type: String }],
-  issue: { type: String },
-  visualDamageMap: { type: Object }, // JSON for damage mapper
-  estimatedQuote: { type: Number, required: true },
+export interface IRepair extends Document {
+  repairNumber: string;
+  customerId: mongoose.Types.ObjectId;
+  storeId: mongoose.Types.ObjectId;
+  deviceInfo: {
+    brand: string;
+    model: string;
+    serialNumber?: string;
+    imei?: string;
+    color?: string;
+  };
+  problemDescription: string;
+  diagnostics?: string;
+  estimatedCost: number;
+  quotedPrice: number;
+  deposit: number;
+  partsConsumed: {
+    productId: mongoose.Types.ObjectId;
+    variantId?: mongoose.Types.ObjectId;
+    quantity: number;
+    price: number;
+  }[];
+  status: 'received' | 'diagnosing' | 'awaiting_parts' | 'repairing' | 'ready' | 'collected' | 'cancelled';
+  technicianId?: mongoose.Types.ObjectId;
+  expectedReadyDate?: Date;
+  collectedAt?: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const RepairSchema: Schema = new Schema({
+  repairNumber: { type: String, unique: true, required: true },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+  storeId: { type: Schema.Types.ObjectId, ref: 'Store', required: false },
+  deviceInfo: {
+    brand: { type: String, required: true },
+    model: { type: String, required: true },
+    serialNumber: { type: String },
+    imei: { type: String },
+    color: { type: String },
+  },
+  problemDescription: { type: String, required: true },
+  diagnostics: { type: String },
+  estimatedCost: { type: Number, default: 0 },
+  quotedPrice: { type: Number, default: 0 },
+  deposit: { type: Number, default: 0 },
+  partsConsumed: [{
+    productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+    variantId: { type: Schema.Types.ObjectId, ref: 'Variant' },
+    quantity: { type: Number, default: 1 },
+    price: { type: Number, default: 0 },
+  }],
+  priority: { 
+    type: String, 
+    enum: ['normal', 'urgent', 'vip'], 
+    default: 'normal' 
+  },
   status: { 
     type: String, 
-    enum: ['diagnosing', 'parts_ordered', 'fixing', 'qc', 'ready', 'delivered', 'cancelled'], 
-    default: 'diagnosing' 
+    enum: ['received', 'diagnosing', 'awaiting_parts', 'repairing', 'ready', 'collected', 'cancelled'],
+    default: 'received'
   },
-  technicianId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  qcChecklist: { type: Object, default: {} }, // Flexible object for QC results
-  photos: { type: [String], default: [] },
-  completedAt: { type: Date },
+  technicianId: { type: Schema.Types.ObjectId, ref: 'User' },
+  expectedReadyDate: { type: Date },
+  collectedAt: { type: Date },
+  notes: { type: String },
 }, { timestamps: true });
 
-export default mongoose.models.Repair || mongoose.model("Repair", RepairSchema);
+RepairSchema.index({ repairNumber: 1 });
+RepairSchema.index({ status: 1 });
+
+export default mongoose.models.Repair || mongoose.model<IRepair>('Repair', RepairSchema);

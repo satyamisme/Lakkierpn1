@@ -15,9 +15,10 @@ const PurchaseOrderSchema = new mongoose.Schema({
   totalLanded: { type: Number, required: true },
   status: { 
     type: String, 
-    enum: ['draft', 'sent', 'received'], 
+    enum: ['draft', 'pending_approval', 'sent', 'received', 'cancelled'], 
     default: 'draft' 
   },
+  targetStoreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store' },
   receivedAt: { type: Date }
 }, { timestamps: true });
 

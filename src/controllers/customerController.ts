@@ -1,7 +1,34 @@
 import { Request, Response } from 'express';
 import Customer from '../models/Customer.js';
+import Sale from '../models/Sale.js';
+import Repair from '../models/Repair.js';
 
 export const customerController = {
+// ... existing code ...
+  getCustomerSummary: async (req: Request, res: Response) => {
+    try {
+      const customer = await Customer.findById(req.params.id);
+      if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+      const [sales, repairs] = await Promise.all([
+        Sale.find({ customerId: customer._id }).sort({ createdAt: -1 }),
+        Repair.find({ customerId: customer._id }).sort({ createdAt: -1 })
+      ]);
+
+      res.json({
+        customer,
+        sales,
+        repairs,
+        stats: {
+          totalSpend: sales.reduce((sum, s) => sum + s.total, 0),
+          repairCount: repairs.length,
+          lastVisit: sales[0]?.createdAt || repairs[0]?.createdAt || null
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  },
   create: async (req: Request, res: Response) => {
     try {
       const customer = new Customer(req.body);

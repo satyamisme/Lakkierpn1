@@ -1,11 +1,30 @@
 .terminal-matrix-row {
   display: grid;
-  grid-template-columns: 2.5fr 1fr 1fr 1.5fr 2fr 120px;
+  grid-template-columns: 3fr 1fr 1fr 1.2fr 2fr 80px;
   gap: 20px;
   align-items: center;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 7-Column Global Dashboard Profile */
+.dashboard-matrix-header, .dashboard-matrix-row {
+  display: grid;
+  grid-template-columns: 3fr 1.2fr 1fr 1fr 1fr 1fr 100px;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 40px;
+}
+
+.dashboard-matrix-header {
+  background: rgba(255, 255, 255, 0.03);
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .variant-label { 
@@ -17,7 +36,7 @@
 /* Intake Header Alignment */
 .terminal-matrix-header {
   display: grid;
-  grid-template-columns: 2.5fr 1fr 1fr 1.5fr 2fr 120px;
+  grid-template-columns: 3fr 1fr 1fr 1.2fr 2fr 80px;
   gap: 20px;
   align-items: center;
   padding: 12px 16px;

@@ -49,6 +49,7 @@ router.get('/available-imeis', authenticate, inventoryController.getAvailableIme
 
 // Purchase Orders
 router.get('/po', authenticate, requirePermission(122), inventoryController.getPurchaseOrders);
+router.post('/po', authenticate, requirePermission(122), inventoryController.createPurchaseOrder);
 router.patch('/po/:id/status', authenticate, requirePermission(122), inventoryController.updatePurchaseOrderStatus);
 
 // Bin Locations

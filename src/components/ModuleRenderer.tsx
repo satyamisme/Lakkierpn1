@@ -25,6 +25,19 @@ const ReceivingMatrix = lazy(() => import('../pages/ReceivingMatrix').then(m => 
 const Roles = lazy(() => import('../pages/Roles').then(m => ({ default: m.Roles })));
 const POApproval = lazy(() => import('../pages/POApproval').then(m => ({ default: m.POApproval })));
 const BinLocations = lazy(() => import('../pages/BinLocations').then(m => ({ default: m.BinLocations })));
+const StockValuation = lazy(() => import('../pages/StockValuation').then(m => ({ default: m.StockValuation })));
+const LandedCost = lazy(() => import('../pages/LandedCost').then(m => ({ default: m.LandedCost })));
+const SupplierRMA = lazy(() => import('../pages/SupplierRMA').then(m => ({ default: m.SupplierRMA })));
+const StockRecon = lazy(() => import('../pages/StockRecon').then(m => ({ default: m.StockRecon })));
+const Wishlist = lazy(() => import('../pages/Wishlist').then(m => ({ default: m.Wishlist })));
+const Blacklist = lazy(() => import('../pages/Blacklist').then(m => ({ default: m.Blacklist })));
+const PurchaseOrders = lazy(() => import('../pages/PurchaseOrders').then(m => ({ default: m.PurchaseOrders })));
+const ZReports = lazy(() => import('../pages/ZReports').then(m => ({ default: m.ZReports })));
+const DeviceCatalog = lazy(() => import('../pages/DeviceCatalog').then(m => ({ default: m.DeviceCatalog })));
+const StockAdjustment = lazy(() => import('../pages/StockAdjustment').then(m => ({ default: m.StockAdjustment })));
+const LabelPrinting = lazy(() => import('../pages/LabelPrinting').then(m => ({ default: m.LabelPrinting })));
+const StockSnapshot = lazy(() => import('../pages/StockSnapshot').then(m => ({ default: m.StockSnapshot })));
+const DataLake = lazy(() => import('../pages/DataLake').then(m => ({ default: m.DataLake })));
 const FeatureToggleBoard = lazy(() => import('./FeatureToggleBoard').then(m => ({ default: m.FeatureToggleBoard })));
 const Compliance = lazy(() => import('../pages/Compliance').then(m => ({ default: m.Compliance })));
 const QualityControl = lazy(() => import('../pages/QualityControl').then(m => ({ default: m.QualityControl })));
@@ -45,6 +58,10 @@ const EnterpriseHub = lazy(() => import('../pages/EnterpriseHub').then(m => ({ d
 const IoTDashboard = lazy(() => import('../pages/IoTDashboard').then(m => ({ default: m.IoTDashboard })));
 const Omnichannel = lazy(() => import('../pages/Omnichannel').then(m => ({ default: m.Omnichannel })));
 const ExtendedFeatures = lazy(() => import('../pages/ExtendedFeatures').then(m => ({ default: m.ExtendedFeatures })));
+const POSLoyalty = lazy(() => import('../pages/POSLoyalty').then(m => ({ default: m.POSLoyalty })));
+const POSLayaway = lazy(() => import('../pages/POSLayaway').then(m => ({ default: m.POSLayaway })));
+const POSSync = lazy(() => import('../pages/POSSync').then(m => ({ default: m.POSSync })));
+const POSConfiguration = lazy(() => import('../pages/POSConfiguration').then(m => ({ default: m.POSConfiguration })));
 const FinanceDashboard = lazy(() => import('../pages/FinanceDashboard').then(m => ({ default: m.FinanceDashboard })));
 const Marketing = lazy(() => import('../pages/Marketing').then(m => ({ default: m.Marketing })));
 const StaffPerformance = lazy(() => import('../pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
@@ -201,16 +218,23 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
           category.pages.map(page => {
             // Map specific paths to existing components if available
             if (page.path === 'pos/grid') return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
+            if (page.path === 'pos/returns') return <Route key={page.id} path={page.path} element={<Returns />} />;
+            if (page.path === 'pos/loyalty') return <Route key={page.id} path={page.path} element={<POSLoyalty />} />;
+            if (page.path === 'pos/layaway') return <Route key={page.id} path={page.path} element={<POSLayaway />} />;
+            if (page.path === 'pos/tax') return <Route key={page.id} path={page.path} element={<POSConfiguration />} />;
+            if (page.path === 'pos/sync') return <Route key={page.id} path={page.path} element={<POSSync />} />;
             if (page.path.startsWith('pos/')) return <Route key={page.id} path={page.path} element={<POS onAddProductClick={onAddProductClick} />} />;
-            if (page.path === 'repairs/intake') return <Route key={page.id} path={page.path} element={<RepairIntake />} />;
-            if (page.path === 'repairs/assignment' || page.path === 'repairs/tech-stats') return <Route key={page.id} path={page.path} element={<TechnicianDashboard />} />;
-            if (page.path === 'repairs/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
-            if (page.path.startsWith('repairs/')) return <Route key={page.id} path={page.path} element={<RepairHub />} />;
+            if (page.path === 'repairs' || page.path.startsWith('repairs/')) return <Route key={page.id} path={page.path} element={<RepairHub />} />;
             if (page.path === 'auth/roles' || page.path === 'auth/overrides') return <Route key={page.id} path={page.path} element={<Roles />} />;
             if (page.path === 'inventory/po-approval') return <Route key={page.id} path={page.path} element={<POApproval />} />;
+            if (page.path === 'inventory/purchase-orders' || page.path === 'inventory/pos') return <Route key={page.id} path={page.path} element={<PurchaseOrders />} />;
+            if (page.path === 'inventory/adjust') return <Route key={page.id} path={page.path} element={<StockAdjustment />} />;
+            if (page.path === 'inventory/labels') return <Route key={page.id} path={page.path} element={<LabelPrinting />} />;
+            if (page.path === 'inventory/snapshot') return <Route key={page.id} path={page.path} element={<StockSnapshot />} />;
             if (page.path === 'inventory/bins') return <Route key={page.id} path={page.path} element={<BinLocations />} />;
             if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<FeatureToggleBoard userId={user?.id || "65f1a2b3c4d5e6f7a8b9c0d1"} />} />;
-            if (page.path === 'gov/compliance' || page.path === 'gov/audit' || page.path === 'gov/reports' || page.path === 'gov/vat') return <Route key={page.id} path={page.path} element={<Compliance />} />;
+            if (page.path === 'gov/reports' || page.path === 'gov/z-reports') return <Route key={page.id} path={page.path} element={<ZReports />} />;
+            if (page.path === 'gov/compliance' || page.path === 'gov/audit' || page.path === 'gov/vat') return <Route key={page.id} path={page.path} element={<Compliance />} />;
             if (page.path === 'inventory/qc' || page.path === 'repairs/qc') return <Route key={page.id} path={page.path} element={<QualityControl />} />;
             if (page.path === 'auth/profile' || page.path === 'auth/2fa') return <Route key={page.id} path={page.path} element={<Profile />} />;
             if (page.path === 'staff') return <Route key={page.id} path={page.path} element={<Staff />} />;
@@ -230,10 +254,12 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
             
             // CRM & Omni
             if (page.path === 'crm/360') return <Route key={page.id} path={page.path} element={<Customer360 />} />;
+            if (page.path === 'crm/wishlist') return <Route key={page.id} path={page.path} element={<Wishlist />} />;
+            if (page.path === 'crm/blacklist') return <Route key={page.id} path={page.path} element={<Blacklist />} />;
             if (page.path === 'crm/mandoob' || page.path === 'crm/sync') return <Route key={page.id} path={page.path} element={<Omnichannel />} />;
             if (page.path === 'crm/iot') return <Route key={page.id} path={page.path} element={<IoTDashboard />} />;
             if (page.path === 'crm/portal') return <Route key={page.id} path={page.path} element={<CustomerPortal />} />;
-            if (page.path === 'crm/marketing') return <Route key={page.id} path={page.path} element={<Marketing />} />;
+            if (page.path === 'crm/marketing' || page.path === 'crm/whatsapp' || page.path === 'crm/sms' || page.path === 'crm/email') return <Route key={page.id} path={page.path} element={<Marketing />} />;
 
             // Governance & Finance
             if (page.path === 'gov/toggles') return <Route key={page.id} path={page.path} element={<MasterFeatureGrid />} />;
@@ -245,20 +271,22 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
             if (page.path === 'gov/audit' || page.path === 'gov/compliance') return <Route key={page.id} path={page.path} element={<Governance />} />;
 
             // Inventory & Logistics
-            if (page.path === 'inventory/analytics') return <Route key={page.id} path={page.path} element={<InventoryIntelligence />} />;
+            if (page.path === 'inventory/analytics' || page.path === 'inventory/valuation') return <Route key={page.id} path={page.path} element={<StockValuation />} />;
+            if (page.path === 'inventory/landed-cost') return <Route key={page.id} path={page.path} element={<LandedCost />} />;
+            if (page.path === 'inventory/rma') return <Route key={page.id} path={page.path} element={<SupplierRMA />} />;
+            if (page.path === 'inventory/recon') return <Route key={page.id} path={page.path} element={<StockRecon />} />;
             if (page.path === 'inventory/imei-log') return <Route key={page.id} path={page.path} element={<ImeiTimeline />} />;
             if (page.path === 'inventory/warehouse') return <Route key={page.id} path={page.path} element={<Warehouse />} />;
             if (page.path === 'inventory/suppliers') return <Route key={page.id} path={page.path} element={<SupplierPortal />} />;
             if (page.path === 'inventory/cycle-count') return <Route key={page.id} path={page.path} element={<CycleCountStaff />} />;
             if (page.path === 'inventory/reconciliation') return <Route key={page.id} path={page.path} element={<CycleCountManager />} />;
-            if (page.path === 'pos/returns') return <Route key={page.id} path={page.path} element={<Returns />} />;
 
             // Extended
             if (page.path.startsWith('ext/')) return <Route key={page.id} path={page.path} element={<ExtendedFeatures />} />;
+            if (page.path === 'intelligence/data-lake' || page.path === 'vault') return <Route key={page.id} path={page.path} element={<DataLake />} />;
 
-            // Defaults (Specifics)
+            // Specifics & Placeholders
             if (page.path === 'pos/gift-cards') return <Route key={page.id} path={page.path} element={<GiftCards />} />;
-            if (page.path === 'pos/layaway') return <Route key={page.id} path={page.path} element={<Layaway />} />;
             if (page.path === 'gov/handover') return <Route key={page.id} path={page.path} element={<ShiftHandover />} />;
             if (page.path === 'gov/commissions') return <Route key={page.id} path={page.path} element={<Commission />} />;
             if (page.path === 'hr/dashboard') return <Route key={page.id} path={page.path} element={<HRDashboard />} />;
@@ -272,7 +300,7 @@ export const ModuleRenderer: React.FC<ModuleRendererProps> = ({ activeModule, on
 
         {/* Legacy / Compatibility Routes */}
         <Route path="pos" element={<POS onAddProductClick={onAddProductClick} />} />
-        <Route path="repairs" element={<RepairIntake />} />
+        <Route path="repairs" element={<RepairHub />} />
         <Route path="inventory" element={<InventoryDashboard />} />
         
         {/* Fallback */}

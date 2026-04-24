@@ -10,7 +10,10 @@ export const skuGenerator = {
     const sim = attr.simType?.includes('Dual') ? 'D' : attr.simType?.includes('eSIM') ? 'E' : 'P';
     const cond = base.condition?.substring(0, 1).toUpperCase() || 'N';
     
-    let baseSku = `${b}-${m}-${s}-${c}-${sim}${cond}`;
+    const mmYY = new Date().toLocaleString('en-GB', { month: '2-digit', year: '2-digit' }).replace('/', '');
+    const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    let baseSku = `${b}-${m}-${s}-${c}-${sim}${cond}-${mmYY}-${entropy}`;
     let uniqueSku = baseSku; 
     let counter = 1;
     

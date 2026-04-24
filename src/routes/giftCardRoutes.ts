@@ -39,13 +39,14 @@ router.get('/:code', authenticate, async (req, res) => {
 // CREATE a gift card (Sale of a gift card)
 router.post('/', authenticate, async (req, res) => {
   try {
-    const { code, balance, expiryDate, customerId } = req.body;
+    const { code, initialAmount, expiryDate, customerId } = req.body;
+    const balance = initialAmount;
     const newCard = new GiftCard({
       code,
       initialBalance: balance,
       currentBalance: balance,
       expiryDate,
-      customerId,
+      customerId: customerId || undefined,
       storeId: (req as any).user.storeId
     });
     await newCard.save();

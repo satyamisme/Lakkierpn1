@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { Search, ShoppingCart, Smartphone, Package, Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gate } from '../../PermissionGuard';
@@ -129,9 +130,9 @@ export const ProductGrid: React.FC = () => {
   };
 
   // Virtualization Settings
-  const COLUMN_COUNT = 4;
-  const ROW_HEIGHT = 280;
-  const GUTTER = 24;
+  const COLUMN_COUNT = 5;
+  const ROW_HEIGHT = 200;
+  const GUTTER = 12;
 
   const Cell = ({ columnIndex, rowIndex, style }: any) => {
     const index = rowIndex * COLUMN_COUNT + columnIndex;
@@ -148,49 +149,37 @@ export const ProductGrid: React.FC = () => {
         height: style.height - GUTTER,
       }}>
         <motion.div 
-          whileHover={{ y: -4 }}
-          className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all h-full flex flex-col justify-between group"
+          whileHover={{ y: -2, scale: 1.02 }}
+          onClick={() => handleAddToCart(product)}
+          className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all h-full flex flex-col justify-between group cursor-pointer relative overflow-hidden"
         >
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <div className={`p-2 rounded-xl ${product.isPhone ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'}`}>
-                {product.isPhone ? <Smartphone className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+          {/* Stock Indicator Dot */}
+          <div className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${
+            product.stock === 0 ? 'bg-red-500' : product.stock < 5 ? 'bg-amber-500' : 'bg-green-500'
+          }`} />
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`p-1.5 rounded-lg ${product.isPhone ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'}`}>
+                {product.isPhone ? <Smartphone className="w-3 h-3" /> : <Package className="w-3 h-3" />}
               </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{product.sku}</span>
-                {product.stock === 0 ? (
-                  <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-[8px] font-black uppercase tracking-widest rounded-lg">Out of Stock</span>
-                ) : product.stock < 5 ? (
-                  <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest rounded-lg">Low Stock</span>
-                ) : (
-                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 text-[8px] font-black uppercase tracking-widest rounded-lg">In Stock</span>
-                )}
-              </div>
+              <span className="text-[7px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest truncate">{product.sku}</span>
             </div>
-            <h3 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-2 mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight">{product.name}</h3>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-2">{product.category}</p>
+            <h3 className="font-bold text-[11px] text-gray-900 dark:text-white line-clamp-2 leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase tracking-tight">{product.name}</h3>
+            <p className="text-[8px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{product.category}</p>
           </div>
 
-          <div>
-            <div className="flex justify-between items-end mb-3">
-              <div>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-black tracking-widest">Price</p>
-                <p className="text-lg font-black text-gray-900 dark:text-white">{product.price.toFixed(3)} <span className="text-[10px] font-normal text-gray-500">KD</span></p>
-              </div>
-              <div className="text-right">
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-black tracking-widest">Stock</p>
-                <p className={`text-xs font-black ${product.stock < 5 ? 'text-red-500' : 'text-green-500'}`}>{product.stock} pcs</p>
-              </div>
+          <div className="flex justify-between items-end pt-2 border-t border-gray-50 dark:border-gray-800/50">
+            <div>
+              <p className="text-[7px] text-gray-400 dark:text-gray-500 uppercase font-black tracking-widest mb-0.5">Price</p>
+              <p className="text-sm font-black text-gray-900 dark:text-white leading-none">
+                {product.price.toFixed(3)}
+              </p>
             </div>
-
-            <button 
-              onClick={() => handleAddToCart(product)}
-              disabled={product.stock === 0}
-              className="w-full bg-gray-900 dark:bg-gray-800 text-white py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-200 dark:shadow-none active:scale-95 disabled:opacity-50 disabled:bg-gray-200 dark:disabled:bg-gray-800"
-            >
-              <ShoppingCart className="w-3 h-3" />
-              Add to Cart
-            </button>
+            <div className="text-right">
+              <p className="text-[7px] text-gray-400 dark:text-gray-500 uppercase font-black tracking-widest mb-0.5">STOCK</p>
+              <p className={`text-[10px] font-black leading-none ${product.stock < 5 ? 'text-red-500' : 'text-green-500'}`}>{product.stock}</p>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -267,17 +256,24 @@ export const ProductGrid: React.FC = () => {
             </div>
           )}
 
-          <Grid
-            columnCount={COLUMN_COUNT}
-            columnWidth={1200 / COLUMN_COUNT} // Assuming 1200px container
-            height={600}
-            rowCount={Math.ceil(filteredProducts.length / COLUMN_COUNT)}
-            rowHeight={ROW_HEIGHT}
-            width={1200}
-            className="scrollbar-hide"
-          >
-            {Cell}
-          </Grid>
+          <div className="flex-1 h-[600px] min-h-[600px]">
+            {/* @ts-ignore */}
+            <AutoSizer>
+              {({ height, width }: any) => (
+                <Grid
+                  columnCount={COLUMN_COUNT}
+                  columnWidth={width / COLUMN_COUNT}
+                  height={height}
+                  rowCount={Math.ceil(filteredProducts.length / COLUMN_COUNT)}
+                  rowHeight={ROW_HEIGHT}
+                  width={width}
+                  className="scrollbar-hide"
+                >
+                  {Cell}
+                </Grid>
+              )}
+            </AutoSizer>
+          </div>
           
           {filteredProducts.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center h-[600px] text-gray-400">
@@ -364,8 +360,8 @@ export const ProductGrid: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Hidden Print Templates */}
-                <div className="hidden">
+                {/* Off-screen Print Templates */}
+                <div className="fixed -left-[5000px] top-0 pointer-events-none opacity-0">
                   <div id="thermal-receipt">
                     <ThermalReceipt 
                       id="thermal-receipt-component"

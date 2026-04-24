@@ -302,8 +302,7 @@ export const StockIntakeModal: React.FC<StockIntakeModalProps> = ({ isOpen, onCl
                 </div>
               </div>
 
-              {/* Step 2: Product Search / Selection */}
-              <div className="space-y-4">
+              <div className="space-y-4 relative">
                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-4 block opacity-60">2. Select Product Variant</label>
                 <div className="relative">
                   <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40" size={20} />
@@ -321,36 +320,45 @@ export const StockIntakeModal: React.FC<StockIntakeModalProps> = ({ isOpen, onCl
                 <AnimatePresence>
                   {searchResults.length > 0 && (
                     <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute left-0 right-0 mt-2 bg-surface-container-lowest border border-border rounded-[2rem] shadow-2xl z-50 overflow-hidden max-h-60 overflow-y-auto"
+                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                      className="absolute left-0 right-0 top-[calc(100%+8px)] bg-surface-container border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] z-[60] overflow-hidden max-h-[400px] overflow-y-auto no-scrollbar"
                     >
-                      {searchResults.map((p) => (
-                        <button 
-                          key={p._id}
-                          onClick={() => addItem(p)}
-                          className="w-full p-6 flex items-center justify-between hover:bg-primary/5 transition-colors border-b border-border last:border-0 text-left group"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-muted rounded-xl overflow-hidden border border-border">
-                              <img src={p.image || `https://picsum.photos/seed/${p.sku}/100/100`} alt="" className="w-full h-full object-cover" />
+                      <div className="p-4 space-y-2">
+                        {searchResults.map((p) => (
+                          <button 
+                            key={p._id}
+                            onClick={() => addItem(p)}
+                            className="w-full p-4 flex items-center justify-between hover:bg-primary/10 rounded-2xl transition-all border border-transparent hover:border-primary/20 text-left group"
+                          >
+                            <div className="flex items-center gap-5">
+                              <div className="w-12 h-12 bg-black/40 rounded-xl overflow-hidden border border-white/5 flex-shrink-0">
+                                <img src={p.image || `https://picsum.photos/seed/${p.sku}/100/100`} alt="" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-black uppercase tracking-tight group-hover:text-primary transition-colors truncate max-w-[300px]">
+                                  {p.displayName || `${p.brand} ${p.name}`}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1 underline-offset-4">
+                                  <span className="text-[8px] font-mono text-primary font-black uppercase px-2 py-0.5 bg-primary/10 rounded">
+                                    {p.sku}
+                                  </span>
+                                  <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none">
+                                    {p.category}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs font-black uppercase tracking-tighter group-hover:text-primary transition-colors">
-                                {p.displayName || `${p.brand} ${p.name}`}
-                              </p>
-                              <p className="text-[9px] font-mono text-muted-foreground font-bold">
-                                {p.sku} {p.isVariant ? '' : (p.attributes ? `• ${Object.values(p.attributes).join(' • ')}` : '')}
-                              </p>
+                            <div className="text-right flex flex-col items-end gap-1">
+                              <p className="text-[7px] font-black uppercase tracking-[0.2em] text-white/20">Ingestion Path</p>
+                              <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/5">
+                                <span className="text-[9px] font-black uppercase text-white/40">{p.trackingMethod || 'General'}</span>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Tracking</p>
-                            <p className="text-[10px] font-black uppercase text-blue-500">{p.trackingMethod || 'None'}</p>
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        ))}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

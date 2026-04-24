@@ -17,12 +17,40 @@ import { Gate } from "../components/PermissionGuard";
 import axios from "axios";
 import { toast } from "sonner";
 
+import Papa from "papaparse";
+
 export const BulkUserInvite: React.FC = () => {
   const [emails, setEmails] = useState<string[]>([""]);
   const [role, setRole] = useState("cashier");
   const [sending, setSending] = useState(false);
   const [successCount, setSuccessCount] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsedEmails = results.data
+          .map((row: any) => row.email || row.Email)
+          .filter((email: string) => email && email.includes("@"));
+        
+        if (parsedEmails.length > 0) {
+          setEmails([...emails.filter(e => e !== ""), ...parsedEmails]);
+          toast.success(`Parsed ${parsedEmails.length} emails from CSV`);
+        } else {
+          toast.error("No valid emails found in CSV. Ensure you have an 'email' column.");
+        }
+      },
+      error: () => {
+        toast.error("Failed to parse CSV file");
+      }
+    });
+  };
 
   const addEmailField = () => {
     setEmails([...emails, ""]);
@@ -136,7 +164,17 @@ export const BulkUserInvite: React.FC = () => {
                       <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">CSV or Manual Entry</p>
                     </div>
                   </div>
-                  <div className="p-8 border-2 border-dashed border-border rounded-[2rem] flex flex-col items-center justify-center text-center space-y-4 hover:border-primary/40 transition-all cursor-pointer group">
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-8 border-2 border-dashed border-border rounded-[2rem] flex flex-col items-center justify-center text-center space-y-4 hover:border-primary/40 transition-all cursor-pointer group"
+                  >
+                    <input 
+                      type="file" 
+                      accept=".csv" 
+                      className="hidden" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                    />
                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
                       <FileUp size={24} />
                     </div>

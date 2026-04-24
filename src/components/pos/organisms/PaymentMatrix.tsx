@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { CreditCard, Banknote, Smartphone, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import axios from 'axios';
+import { toast } from 'sonner';
 import { Gate } from '../../PermissionGuard';
 import { PaymentInput } from '../atoms/PaymentInput';
 import { 
@@ -15,7 +17,7 @@ interface PaymentMatrixProps {
   isOpen: boolean;
   onClose: () => void;
   totalAmount: number;
-  onProcessSale: (payments: PaymentData) => void;
+  onProcessSale: (payments: PaymentData, giftCardCode?: string) => void;
 }
 
 export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, totalAmount, onProcessSale }) => {
@@ -23,7 +25,29 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
     cash: 0,
     knet: 0,
     creditCard: 0,
+    giftCard: 0,
+    storeCredit: 0,
   });
+
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [isValidatingGC, setIsValidatingGC] = useState(false);
+
+  const validateGiftCard = async () => {
+    if (!giftCardCode) return;
+    setIsValidatingGC(true);
+    try {
+      const res = await axios.get(`/api/gift-cards/verify/${giftCardCode}`);
+      const balance = res.data.currentBalance;
+      toast.success(`Gift Card Verified: ${balance.toFixed(3)} KD available`);
+      // Auto-apply balance up to remaining
+      const applyAmount = Math.min(balance, remainingBalance);
+      setPayments(prev => ({ ...prev, giftCard: applyAmount }));
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Invalid Gift Card");
+    } finally {
+      setIsValidatingGC(false);
+    }
+  };
 
   const totalPaid = useMemo(() => calculateTotalPaid(payments), [payments]);
   const remainingBalance = useMemo(() => calculateRemainingBalance(totalAmount, totalPaid), [totalAmount, totalPaid]);
@@ -104,6 +128,40 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
                 onChange={(v) => handleInputChange('creditCard', v)}
                 colorClass="text-purple-500"
               />
+              
+              <div className="pt-4 border-t border-dashed border-gray-100">
+                <div className="flex gap-2 mb-2">
+                  <input 
+                    type="text"
+                    placeholder="Enter Gift Card Code"
+                    value={giftCardCode}
+                    onChange={(e) => setGiftCardCode(e.target.value)}
+                    className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest outline-none focus:border-indigo-500 transition-all"
+                  />
+                  <button 
+                    onClick={validateGiftCard}
+                    disabled={isValidatingGC}
+                    className="px-4 py-2 bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all disabled:opacity-50"
+                  >
+                    {isValidatingGC ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Verify'}
+                  </button>
+                </div>
+                <PaymentInput 
+                  label="Gift Card (Redeem)"
+                  icon={<CreditCard className="w-4 h-4" />}
+                  value={payments.giftCard}
+                  onChange={(v) => handleInputChange('giftCard', v)}
+                  colorClass="text-indigo-400"
+                />
+              </div>
+
+              <PaymentInput 
+                label="Store Credit / Account"
+                icon={<Banknote className="w-4 h-4" />}
+                value={payments.storeCredit}
+                onChange={(v) => handleInputChange('storeCredit', v)}
+                colorClass="text-amber-600"
+              />
             </div>
 
             {overPaid && (
@@ -115,7 +173,7 @@ export const PaymentMatrix: React.FC<PaymentMatrixProps> = ({ isOpen, onClose, t
 
             <Gate id={12}>
               <button 
-                onClick={() => onProcessSale(payments)}
+                onClick={() => onProcessSale(payments, giftCardCode)}
                 disabled={(!fullyPaid && !overPaid)}
                 className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-xl shadow-gray-200 disabled:opacity-50 disabled:bg-gray-200 disabled:shadow-none active:scale-95"
               >

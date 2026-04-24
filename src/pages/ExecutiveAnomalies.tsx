@@ -129,11 +129,15 @@ export const ExecutiveAnomalies: React.FC = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-3 mb-1">
-                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Low Price Alert</span>
+                        <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                          {a.discount > (a.subtotal * 0.3) ? 'High Discount Alert' : 'Price Anomaly'}
+                        </span>
                         <span className="text-[9px] font-mono text-muted-foreground opacity-40">{new Date(a.createdAt).toLocaleString()}</span>
                       </div>
                       <h4 className="text-xl font-black uppercase tracking-tighter">Transaction: {a.total.toFixed(3)} KD</h4>
-                      <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mt-1">Node ID: {a._id.toUpperCase()}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mt-1">
+                        Operator: {a.userId?.name || 'Unknown'} | Node: {a._id.toString().slice(-6).toUpperCase()}
+                      </p>
                     </div>
                   </div>
                   <button className="p-4 bg-surface-container border border-border rounded-2xl text-muted-foreground hover:text-primary transition-all opacity-0 group-hover:opacity-100">

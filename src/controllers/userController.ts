@@ -89,13 +89,30 @@ export const userController = {
     }
   },
 
-  resetPassword: async (req: Request, res: Response) => {
+  async resetPassword(req: Request, res: Response) {
     try {
       const { newPassword } = req.body;
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       const user = await User.findByIdAndUpdate(req.params.id, { password: hashedPassword }, { new: true });
       if (!user) return res.status(404).json({ message: 'User not found' });
       res.json({ message: 'Password reset successfully' });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  },
+
+  updateProfile: async (req: any, res: Response) => {
+    try {
+      const { name, email, password } = req.body;
+      const updateData: any = { name, email };
+      
+      if (password) {
+        updateData.password = await bcrypt.hash(password, 10);
+      }
+
+      const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true }).select('-password');
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      res.json(user);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }

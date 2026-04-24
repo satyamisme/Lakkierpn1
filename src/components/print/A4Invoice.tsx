@@ -1,11 +1,22 @@
 import React from 'react';
 import { Smartphone, CreditCard, Banknote, MapPin, Phone, Mail, Globe, CheckCircle2 } from 'lucide-react';
+import { toArabicNumerals } from '../../utils/arabicUtils';
 
 interface A4InvoiceProps {
   id: string;
   orderId: string;
   date: string;
-  items: { name: string; sku: string; price: number; imei?: string }[];
+  items: { 
+    name: string; 
+    name_ar?: string; 
+    sku: string; 
+    price: number; 
+    imei?: string;
+    brand?: string;
+    brand_ar?: string;
+    storage?: string;
+    storage_ar?: string;
+  }[];
   payments: { cash: number; knet: number; creditCard: number };
   total: number;
 }
@@ -81,10 +92,19 @@ export const A4Invoice: React.FC<A4InvoiceProps> = ({ id, orderId, date, items, 
           <tbody className="text-sm font-bold">
             {items.map((item, idx) => (
               <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="p-4">{item.name}</td>
-                <td className="p-4 text-gray-500">{item.sku}</td>
-                <td className="p-4 text-indigo-600">{item.imei || 'N/A'}</td>
-                <td className="p-4 text-right">{item.price.toFixed(3)} KD</td>
+                <td className="p-4">
+                  <div className="flex flex-col">
+                    <span className="font-black text-gray-900">{item.name}</span>
+                    {item.name_ar && <span className="text-gray-500 font-sans" dir="rtl">{item.name_ar}</span>}
+                    <div className="flex gap-2 mt-1">
+                      {item.brand && <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded uppercase">{item.brand}</span>}
+                      {item.storage && <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded uppercase">{item.storage}</span>}
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4 text-gray-500 font-mono">{item.sku}</td>
+                <td className="p-4 text-indigo-600 font-bold">{item.imei || 'N/A'}</td>
+                <td className="p-4 text-right font-black">{item.price.toFixed(3)} KD</td>
               </tr>
             ))}
           </tbody>
@@ -132,7 +152,10 @@ export const A4Invoice: React.FC<A4InvoiceProps> = ({ id, orderId, date, items, 
               <span>0.000 KD</span>
             </div>
             <div className="flex justify-between text-2xl font-black text-gray-900 pt-4 border-t-2 border-gray-900">
-              <span>TOTAL / الإجمالي</span>
+              <div className="flex flex-col">
+                <span>TOTAL / الإجمالي</span>
+                <span className="text-gray-400 text-sm font-bold" dir="rtl">{toArabicNumerals(total.toFixed(3))} د.ك</span>
+              </div>
               <span>{total.toFixed(3)} KD</span>
             </div>
           </div>

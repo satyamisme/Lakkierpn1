@@ -1,5 +1,5 @@
 import express from 'express';
-import { getSalesHeatmap, getInventoryForecast, getRepairPredictive } from '../services/analyticsEngine.js';
+import { getSalesHeatmap, getInventoryForecast, getRepairPredictive, getAnalyticsSummary, getProductAffinity } from '../services/analyticsEngine.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -31,6 +31,26 @@ router.get('/predictive', authenticate, requirePermission(296), async (req, res)
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: 'Predictive failed' });
+  }
+});
+
+// GET /api/analytics/summary (General Overview)
+router.get('/summary', authenticate, async (req, res) => {
+  try {
+    const data = await getAnalyticsSummary();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Summary failed' });
+  }
+});
+
+// GET /api/analytics/affinity (permission 294)
+router.get('/affinity', authenticate, requirePermission(294), async (req, res) => {
+  try {
+    const data = await getProductAffinity();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Affinity analysis failed' });
   }
 });
 

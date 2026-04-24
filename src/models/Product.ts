@@ -2,13 +2,19 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IProduct extends Document {
   name: string;
+  name_ar?: string;
   sku: string;
   category: string;
+  category_ar?: string;
   brand: string;
+  brand_ar?: string;
   modelNumber: string;
   description?: string;
+  description_ar?: string;
   color?: string;
+  color_ar?: string;
   storage?: string;
+  storage_ar?: string;
   price: number;
   cost: number;
   stock: number;
@@ -35,13 +41,19 @@ export interface IProduct extends Document {
 
 const ProductSchema: Schema = new Schema({
   name: { type: String, required: true },
+  name_ar: { type: String },
   sku: { type: String, required: true, unique: true },
   category: { type: String, required: true },
+  category_ar: { type: String },
   brand: { type: String, required: true },
+  brand_ar: { type: String },
   modelNumber: { type: String },
   description: { type: String },
+  description_ar: { type: String },
   color: { type: String },
+  color_ar: { type: String },
   storage: { type: String },
+  storage_ar: { type: String },
   price: { type: Number, default: 0 },
   cost: { type: Number, default: 0 },
   costPrice: { type: Number, default: 0 },

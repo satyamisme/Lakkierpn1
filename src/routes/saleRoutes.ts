@@ -9,6 +9,8 @@ import Customer from '../models/Customer.js';
 import LoyaltyTransaction from '../models/LoyaltyTransaction.js';
 import Return from '../models/Return.js';
 import ImeiHistory from '../models/ImeiHistory.js';
+import GiftCard from '../models/GiftCard.js';
+import InstalmentPlan from '../models/InstalmentPlan.js';
 import { sendTemplate } from '../services/whatsappService.js';
 import mongoose from 'mongoose';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
@@ -119,7 +121,7 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
       }
     }
 
-    // 2. Process payments (Store Credit, Card simulation)
+    // 2. Process payments (Store Credit, Gift Card, Card simulation)
     for (const p of payments) {
       if (p.method === 'store_credit' && customerId) {
         const customer = await Customer.findById(customerId);
@@ -128,6 +130,25 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
         }
         customer.storeCredit -= p.amount;
         await customer.save();
+      }
+      
+      if (p.method === 'gift_card') {
+        const giftCode = req.body.giftCardCode;
+        if (!giftCode) throw new Error('Gift card code required for this transaction');
+        
+        const card = await GiftCard.findOne({ 
+          code: giftCode,
+          status: 'active',
+          storeId
+        });
+
+        if (!card || card.currentBalance < p.amount) {
+          throw new Error('Invalid gift card or insufficient balance');
+        }
+
+        card.currentBalance -= p.amount;
+        if (card.currentBalance === 0) card.status = 'exhausted';
+        await card.save();
       }
     }
 
@@ -147,6 +168,28 @@ router.post('/', authenticate, requirePermission(1), async (req, res) => {
       userId: (req as any).user.id 
     });
     await sale.save();
+
+    // 3b. If Layaway, create Instalment Plan
+    if (status === 'layaway' && customerId) {
+      const totalPaid = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+      const remainingAmount = total - totalPaid;
+      
+      const newPlan = new InstalmentPlan({
+        customerId,
+        saleId: sale._id,
+        totalAmount: total,
+        remainingAmount,
+        instalments: [
+          {
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+            amount: remainingAmount,
+            status: 'pending'
+          }
+        ],
+        status: 'active'
+      });
+      await newPlan.save();
+    }
     
     if (status === 'completed') {
       // 4. Deduct stock and mark IMEIs as sold

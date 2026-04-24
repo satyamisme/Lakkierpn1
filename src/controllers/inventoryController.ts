@@ -256,9 +256,35 @@ export const inventoryController = {
 
   getFifoValuation: async (req: Request, res: Response) => {
     try {
-      const products = await Product.find();
-      const totalValuation = products.reduce((sum, p) => sum + (p.stock * p.cost), 0);
-      res.json({ totalValuation, currency: 'KD' });
+      const products = await Product.find().lean();
+      const categories: Record<string, { value: number; units: number }> = {};
+      let totalValue = 0;
+
+      products.forEach(p => {
+        const val = (p.stock || 0) * (p.cost || 0);
+        totalValue += val;
+        
+        if (!categories[p.category]) {
+          categories[p.category] = { value: 0, units: 0 };
+        }
+        categories[p.category].value += val;
+        categories[p.category].units += (p.stock || 0);
+      });
+
+      const formattedCategories = Object.entries(categories).map(([name, data]) => ({
+        name,
+        value: data.value,
+        units: data.units,
+        health: data.units > 100 ? 'High Stock' : data.units < 10 ? 'Low Stock' : 'Optimal'
+      }));
+
+      res.json({ 
+        totalValue, 
+        currency: 'KD', 
+        categories: formattedCategories,
+        agedStockValue: totalValue * 0.15, // Mock aged stock as 15%
+        fastMovingValue: totalValue * 0.6 // Mock fast moving as 60%
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -381,21 +407,87 @@ export const inventoryController = {
   // Purchase Orders
   getPurchaseOrders: async (req: Request, res: Response) => {
     try {
-      const pos = await PurchaseOrder.find().populate('supplierId').sort({ createdAt: -1 });
+      const pos = await PurchaseOrder.find().populate('supplierId').populate('items.productId').sort({ createdAt: -1 });
       res.json(pos);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   },
 
-  updatePurchaseOrderStatus: async (req: Request, res: Response) => {
+  createPurchaseOrder: async (req: Request, res: Response) => {
     try {
-      const { status } = req.body;
-      const po = await PurchaseOrder.findByIdAndUpdate(req.params.id, { status }, { new: true });
-      if (!po) return res.status(404).json({ error: 'PO not found' });
-      res.json(po);
+      const { supplierId, items, landedCostBreakdown, targetStoreId, status } = req.body;
+      
+      const totalLanded = items.reduce((sum: number, item: any) => sum + (item.quantity * item.unitCost), 0) +
+        (landedCostBreakdown?.shipping || 0) +
+        (landedCostBreakdown?.customs || 0) +
+        (landedCostBreakdown?.insurance || 0);
+
+      const po = new PurchaseOrder({
+        supplierId,
+        items,
+        landedCostBreakdown,
+        totalLanded,
+        targetStoreId,
+        status: status || 'draft'
+      });
+
+      await po.save();
+      res.status(201).json(po);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  },
+
+  updatePurchaseOrderStatus: async (req: Request, res: Response) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const { status, landedCostBreakdown } = req.body;
+      const poId = req.params.id;
+
+      const po = await PurchaseOrder.findById(poId).populate('items.productId').session(session);
+      if (!po) throw new Error('Purchase Order not found');
+
+      const oldStatus = po.status;
+      po.status = status;
+      if (landedCostBreakdown) po.landedCostBreakdown = landedCostBreakdown;
+      
+      if (status === 'received' && oldStatus !== 'received') {
+        po.receivedAt = new Date();
+        
+        // Finalize stock intake
+        for (const item of po.items) {
+          // Update global stock
+          await Product.findByIdAndUpdate(item.productId, { 
+            $inc: { stock: item.quantity } 
+          }).session(session);
+
+          // Update node inventory
+          let resolvedStoreId = po.targetStoreId;
+          if (!resolvedStoreId) {
+            const defaultStore = await Store.findOne().session(session);
+            resolvedStoreId = defaultStore?._id;
+          }
+
+          if (resolvedStoreId) {
+            await Inventory.findOneAndUpdate(
+              { productId: item.productId, storeId: resolvedStoreId, variantId: { $exists: false } },
+              { $inc: { quantity: item.quantity, version: 1 } },
+              { upsert: true, session }
+            );
+          }
+        }
+      }
+
+      await po.save({ session });
+      await session.commitTransaction();
+      res.json(po);
+    } catch (error: any) {
+      await session.abortTransaction();
+      res.status(400).json({ error: error.message });
+    } finally {
+      session.endSession();
     }
   },
 

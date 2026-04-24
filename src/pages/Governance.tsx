@@ -15,12 +15,36 @@ import {
  * Audit trails, PITR, and system integrity.
  */
 export const Governance: React.FC = () => {
-  const auditLogs = [
-    { id: 'LOG-882', user: 'Ahmed (CSH)', action: 'Price Override', reason: 'Customer Loyalty', time: '10:05:12', status: 'verified' },
-    { id: 'LOG-881', user: 'Sarah (MGR)', action: 'Void Transaction', reason: 'Error in Entry', time: '09:42:05', status: 'verified' },
-    { id: 'LOG-880', user: 'System', action: 'Auto-Backup', reason: 'Scheduled', time: '03:00:00', status: 'verified' },
-    { id: 'LOG-879', user: 'Unknown', action: 'Failed Login', reason: 'Invalid PIN', time: '02:15:33', status: 'flagged' },
-  ];
+  const [logs, setLogs] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetch('/api/audit/logs', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(r => r.json())
+    .then(data => {
+      setLogs(data.logs || []);
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+  }, []);
+
+  const exportAudit = async () => {
+    try {
+      const response = await fetch('/api/audit/logs/export', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'audit_logs.csv';
+      a.click();
+    } catch (error) {
+      console.error('Export failed', error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -30,6 +54,12 @@ export const Governance: React.FC = () => {
           <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mt-2">Governance & Audit (ID 181)</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={exportAudit}
+            className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
+          >
+             <FileText size={14} /> Export CSV
+          </button>
           <div className="p-3 bg-surface-container-highest/20 border border-white/5 rounded-2xl flex items-center gap-3">
             <ShieldCheck className="text-primary-foreground" size={20} />
             <div>
@@ -48,10 +78,6 @@ export const Governance: React.FC = () => {
                 <History size={14} className="text-primary-foreground" />
                 Master Audit Trail
               </h3>
-              <div className="flex gap-1.5">
-                <button className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/20 hover:text-white"><FileText size={12} /></button>
-                <button className="p-2 hover:bg-white/5 rounded-lg transition-all text-white/20 hover:text-white"><Eye size={12} /></button>
-              </div>
             </div>
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
@@ -65,20 +91,26 @@ export const Governance: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-white/[0.02] transition-colors group text-white/60">
-                      <td className="px-6 py-3 font-mono text-[9px] font-black text-primary-foreground">{log.id}</td>
-                      <td className="px-6 py-3 text-[10px] font-black uppercase tracking-tighter text-white/80">{log.user}</td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="py-20 text-center text-[10px] font-black uppercase tracking-widest opacity-20">Loading Logs...</td>
+                    </tr>
+                  ) : logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-20 text-center text-[10px] font-black uppercase tracking-widest opacity-20">No events logged</td>
+                    </tr>
+                  ) : logs.map((log) => (
+                    <tr key={log._id} className="hover:bg-white/[0.02] transition-colors group text-white/60">
+                      <td className="px-6 py-3 font-mono text-[9px] font-black text-primary-foreground">{log._id.slice(-8).toUpperCase()}</td>
+                      <td className="px-6 py-3 text-[10px] font-black uppercase tracking-tighter text-white/80">{log.userId?.name || 'SYSTEM'}</td>
                       <td className="px-6 py-3">
-                        <div className="text-[10px] font-black uppercase tracking-tight leading-tight">{log.action}</div>
-                        <div className="text-[8px] text-white/20 uppercase tracking-widest mt-0.5">{log.reason}</div>
+                        <div className="text-[10px] font-black uppercase tracking-tight leading-tight">{log.action || 'Unknown Action'}</div>
+                        <div className="text-[8px] text-white/20 uppercase tracking-widest mt-0.5">{log.entity} - {log.entityId?.slice(-6)}</div>
                       </td>
-                      <td className="px-6 py-3 font-mono text-[9px] text-white/20">{log.time}</td>
+                      <td className="px-6 py-3 font-mono text-[9px] text-white/20">{new Date(log.timestamp).toLocaleString()}</td>
                       <td className="px-6 py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest border ${
-                          log.status === 'verified' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-destructive/10 text-destructive border-destructive/20'
-                        }`}>
-                          {log.status}
+                        <span className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest border bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>
+                          verified
                         </span>
                       </td>
                     </tr>

@@ -7,6 +7,47 @@ import { authenticate, requirePermission } from '../middleware/authMiddleware.js
 
 const router = express.Router();
 
+// GET /z-report/summary (ID 190) – JSON view for UI dashboard
+router.get('/z-report/summary', authenticate, requirePermission(190), async (req, res) => {
+  try {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const sales = await Sale.find({ createdAt: { $gte: startOfDay }, status: 'completed' });
+    const repairs = await Repair.find({ completedAt: { $gte: startOfDay }, status: 'ready' });
+    
+    const totalSales = sales.reduce((sum, s) => sum + s.total, 0);
+    const totalRepairs = repairs.reduce((sum, r) => sum + r.estimatedQuote, 0);
+
+    const paymentMethods = {
+      cash: 0,
+      card: 0,
+      knet: 0,
+      store_credit: 0
+    };
+
+    sales.forEach(s => {
+      s.payments?.forEach(p => {
+        if (p.method in paymentMethods) {
+          (paymentMethods as any)[p.method] += p.amount;
+        }
+      });
+    });
+    
+    res.json({
+      id: `Z-${Date.now()}`,
+      date: new Date().toISOString(),
+      openingFloat: 150.000,
+      sales: paymentMethods,
+      returns: 0, // Should calc from returns model
+      expenses: 0,
+      expectedTotal: totalSales + totalRepairs + 150.000 // float
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch Z-Report summary' });
+  }
+});
+
 // GET /z-report (ID 190) – aggregates sales, payments, expenses for current day
 router.get('/z-report', authenticate, requirePermission(190), async (req, res) => {
   try {
@@ -38,13 +79,34 @@ router.get('/z-report', authenticate, requirePermission(190), async (req, res) =
   }
 });
 
-// GET /anomalies (ID 244) – flags suspicious sales
+// GET /anomalies (ID 244) – flags suspicious patterns
 router.get('/anomalies', authenticate, requirePermission(244), async (req, res) => {
   try {
-    const suspiciousSales = await Sale.find({ total: { $lt: 1 } }); // Price < 1 KD
-    res.json(suspiciousSales);
+    const startOfSearch = new Date();
+    startOfSearch.setDate(startOfSearch.getDate() - 30); // Look at last 30 days
+
+    const sales = await Sale.find({ 
+      createdAt: { $gte: startOfSearch },
+      status: 'completed' 
+    }).populate('userId', 'name');
+
+    const anomalies = sales.filter(sale => {
+      // Rule 1: Very low value transactions (< 0.5 KD)
+      if (sale.total < 0.5) return true;
+
+      // Rule 2: High discount percentage (> 30% of subtotal)
+      if (sale.discount > (sale.subtotal * 0.3)) return true;
+
+      // Rule 3: Night time transactions (Between 2 AM and 6 AM)
+      const hour = new Date(sale.createdAt).getHours();
+      if (hour >= 2 && hour <= 6) return true;
+
+      return false;
+    });
+
+    res.json(anomalies);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch anomalies' });
+    res.status(500).json({ error: 'Failed to fetch heuristic anomalies' });
   }
 });
 

@@ -26,7 +26,7 @@ export const ProductManifest: React.FC<Props> = ({
     }
     const search = async () => {
       try {
-        const res = await api.get(`/products?search=${searchTerm}`);
+        const res = await api.get(`/products/search?q=${searchTerm}`);
         setResults(res.data);
       } catch (err) {
         console.error(err);
@@ -62,7 +62,7 @@ export const ProductManifest: React.FC<Props> = ({
           <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={20} />
           <input 
             type="text"
-            placeholder="Search Hardware Catalog (e.g. iPhone 15 Pro)..."
+            placeholder="Search Hardware Catalog (e.g. Blue 256GB)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-6 pl-16 pr-8 text-sm font-bold text-white focus:border-blue-500 outline-none transition-all placeholder:text-white/10"
@@ -84,13 +84,18 @@ export const ProductManifest: React.FC<Props> = ({
                       setSearchTerm('');
                       setResults([]);
                     }}
-                    className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-all text-left group"
+                    className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-all text-left group border-b border-white/5 last:border-0"
                   >
                     <div>
-                      <h4 className="text-xs font-black uppercase text-white tracking-widest group-hover:text-blue-500 transition-colors">{prod.name}</h4>
-                      <p className="text-[10px] text-white/20 font-bold uppercase mt-1">{prod.sku} • {prod.category}</p>
+                      <h4 className="text-xs font-black uppercase text-white tracking-widest group-hover:text-blue-500 transition-colors">
+                        {prod.displayName || prod.name}
+                      </h4>
+                      <p className="text-[10px] text-white/20 font-bold uppercase mt-1">{prod.sku} • {prod.brand}</p>
                     </div>
-                    <Plus size={18} className="text-white/20 group-hover:text-blue-500" />
+                    <div className="flex items-center gap-4">
+                       <span className="text-[9px] font-black text-white/10 uppercase tracking-widest">{prod.isVariant ? 'Variant' : 'Master'}</span>
+                       <Plus size={18} className="text-white/20 group-hover:text-blue-500" />
+                    </div>
                   </button>
                 ))}
               </motion.div>
@@ -101,7 +106,7 @@ export const ProductManifest: React.FC<Props> = ({
 
       <div className="space-y-4">
         {items.length > 0 && (
-          <div className="terminal-row terminal-header px-6 py-4">
+          <div className="terminal-matrix-header mb-4">
             <div>Product Identity</div>
             <div className="text-center">Tiers</div>
             <div className="text-center">Stock</div>
@@ -123,15 +128,19 @@ export const ProductManifest: React.FC<Props> = ({
               layout
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="terminal-row px-6 !py-6 group transition-all"
+              className="terminal-matrix-row !py-8 group transition-all rounded-[1.5rem] border border-white/5"
             >
               <div>
-                <h4 className="text-xs font-black uppercase text-white tracking-tight">{item.name}</h4>
-                <p className="text-[8px] text-white/20 font-bold uppercase mt-1 tracking-widest">{item.sku}</p>
+                <h4 className="text-xs font-black uppercase text-white tracking-tight leading-tight">
+                  {item.displayName || item.name}
+                </h4>
+                <p className="text-[8px] text-white/20 font-bold uppercase mt-1.5 tracking-widest">{item.sku}</p>
               </div>
 
-              <div className="text-center text-[8px] font-black uppercase text-white/40 tracking-widest bg-white/5 py-2 rounded-xl">
-                 Hardware
+              <div className="flex justify-center">
+                <span className="px-3 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase text-white/40 tracking-widest">
+                   Hardware
+                </span>
               </div>
 
               <div className="text-center text-[10px] font-mono font-bold text-white/60">
@@ -142,7 +151,7 @@ export const ProductManifest: React.FC<Props> = ({
                 {item.trackingMethod !== 'none' && (
                   <button 
                     onClick={() => onScan(idx)}
-                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase flex items-center gap-2 transition-all ${item.serials.length === item.quantity ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
+                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase flex items-center gap-2 transition-all ${item.serials.length === item.quantity ? 'bg-green-500/10 text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white'}`}
                   >
                     <Scan size={12} />
                     {item.serials.length}/{item.quantity}
@@ -151,30 +160,30 @@ export const ProductManifest: React.FC<Props> = ({
               </div>
 
               <div className="flex justify-center">
-                <div className="bg-black/40 border border-white/5 rounded-xl flex items-center h-10 overflow-hidden">
+                <div className="bg-black/40 border border-white/5 rounded-xl flex items-center h-12 overflow-hidden shadow-inner">
                   <button 
                     onClick={() => onUpdate(idx, { quantity: Math.max(1, item.quantity - 1) })}
-                    className="px-3 text-white/20 hover:text-white transition-colors"
+                    className="px-4 text-white/20 hover:text-white transition-colors"
                   >-</button>
                   <input 
                     type="number"
                     value={item.quantity}
                     onChange={(e) => onUpdate(idx, { quantity: parseInt(e.target.value) || 1 })}
-                    className="w-10 bg-transparent text-center text-[10px] font-black text-white outline-none"
+                    className="w-12 bg-transparent text-center text-sm font-black text-white outline-none"
                   />
                   <button 
                     onClick={() => onUpdate(idx, { quantity: item.quantity + 1 })}
-                    className="px-3 text-white/20 hover:text-white transition-colors"
+                    className="px-4 text-white/20 hover:text-white transition-colors"
                   >+</button>
                 </div>
               </div>
 
-              <div className="text-right">
+              <div className="flex justify-end">
                 <button 
                   onClick={() => onRemove(idx)}
-                  className="p-3 text-white/10 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                  className="w-12 h-12 bg-white/5 flex items-center justify-center rounded-2xl text-white/10 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </div>
             </motion.div>

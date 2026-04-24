@@ -10,6 +10,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/MainLayout';
 import { Login } from './components/Login';
+import { PublicReceipt } from './pages/PublicReceipt';
 import { TwoFactorVerify } from './pages/TwoFactorVerify';
 import { Loader2 } from 'lucide-react';
 import { syncPendingSales } from './services/offlineQueue';
@@ -58,6 +59,7 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/2fa-verify" element={<TwoFactorVerify />} />
+              <Route path="/receipt/:id" element={<PublicReceipt />} />
               <Route path="/ping" element={<div>Public route works</div>} />
               <Route 
                 path="/*" 

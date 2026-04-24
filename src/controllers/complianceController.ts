@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import ComplianceLog from '../models/ComplianceLog.js';
+import Sale from '../models/Sale.js';
 
 export const complianceController = {
   createLog: async (req: Request, res: Response) => {
@@ -64,8 +65,22 @@ export const complianceController = {
 
   exportTaxReport: async (req: Request, res: Response) => {
     try {
-      // Logic to export tax report would go here
-      res.json({ message: 'Tax report exported successfully' });
+      const { start, end } = req.query;
+      const filter: any = { status: 'completed' };
+      if (start && end) {
+        filter.createdAt = { $gte: new Date(start as string), $lte: new Date(end as string) };
+      }
+
+      const sales = await Sale.find(filter).sort({ createdAt: 1 });
+      
+      let csv = 'Date,SaleNumber,Subtotal,Discount,Tax,Total,Status\n';
+      sales.forEach(sale => {
+        csv += `${sale.createdAt.toISOString()},${sale.saleNumber},${sale.subtotal},${sale.discount},${sale.tax},${sale.total},${sale.status}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=tax-report-${start || 'all'}.csv`);
+      res.status(200).send(csv);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

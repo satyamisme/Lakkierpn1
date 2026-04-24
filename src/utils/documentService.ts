@@ -89,3 +89,10 @@ export const printThermalReceipt = (orderId: string) => {
 export const printA4Invoice = (orderId: string) => {
   triggerPrint('a4-invoice', `Invoice #${orderId}`);
 };
+
+/**
+ * ID 167: Product Label Print Helper
+ */
+export const printProductLabel = (sku: string) => {
+  triggerPrint(`product-label-${sku}`, `Label ${sku}`);
+};

@@ -45,11 +45,11 @@ export const LoyaltyPayment: React.FC<LoyaltyPaymentProps> = ({ onRedeem, totalA
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/crm/customers/search?phone=${phone}`, {
+      const response = await fetch(`/api/customers/search?q=${phone}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await response.json();
-      if (data.length > 0) {
+      if (Array.isArray(data) && data.length > 0) {
         setCustomer(data[0]);
       } else {
         setError('Customer not found');
