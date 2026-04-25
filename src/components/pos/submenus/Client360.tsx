@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/client";
 import { Search, User, Mail, Phone, Calendar, Package, Wrench, Heart, Users, ArrowRight, Loader2, Activity } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ export const Client360: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const { data } = await axios.get(`/api/customers/search?q=${searchTerm}`);
+      const { data } = await api.get(`/customers/search?q=${searchTerm}`);
       setCustomers(data);
     } catch (e) {
       toast.error("Cluster search failed");
@@ -41,7 +41,7 @@ export const Client360: React.FC = () => {
   const fetchRecentCustomers = async () => {
     setIsLoading(true);
     try {
-      const { data } = await axios.get('/api/customers?limit=10');
+      const { data } = await api.get('/customers?limit=10');
       setCustomers(data);
     } catch (e) {
       toast.error("Failed to fetch principal registry");
@@ -52,7 +52,7 @@ export const Client360: React.FC = () => {
 
   const fetchCustomerSummary = async (id: string) => {
     try {
-      const { data } = await axios.get(`/api/customers/${id}/summary`);
+      const { data } = await api.get(`/customers/${id}/summary`);
       setCustomerSummary(data);
     } catch (e) {
       console.error("Summary fetch error", e);

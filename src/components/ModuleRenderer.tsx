@@ -35,7 +35,7 @@ const PurchaseOrders = lazy(() => import('../pages/PurchaseOrders').then(m => ({
 const ZReports = lazy(() => import('../pages/ZReports').then(m => ({ default: m.ZReports })));
 const DeviceCatalog = lazy(() => import('../pages/DeviceCatalog').then(m => ({ default: m.DeviceCatalog })));
 const StockAdjustment = lazy(() => import('../pages/StockAdjustment').then(m => ({ default: m.StockAdjustment })));
-const LabelPrinting = lazy(() => import('../pages/LabelPrinting').then(m => ({ default: m.LabelPrinting })));
+const LabelPrinting = lazy(() => import('../pages/LabelPrinting'));
 const StockSnapshot = lazy(() => import('../pages/StockSnapshot').then(m => ({ default: m.StockSnapshot })));
 const DataLake = lazy(() => import('../pages/DataLake').then(m => ({ default: m.DataLake })));
 const FeatureToggleBoard = lazy(() => import('./FeatureToggleBoard').then(m => ({ default: m.FeatureToggleBoard })));

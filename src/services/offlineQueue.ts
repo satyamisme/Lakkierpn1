@@ -1,4 +1,5 @@
 import { openDB } from 'idb';
+import api from '../api/client';
 
 const DB_NAME = 'LakkiOfflineDB';
 const STORE_NAME = 'offlineSales';
@@ -36,25 +37,19 @@ export const syncPendingSales = async () => {
 
   for (const sale of sales) {
     try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(sale)
-      });
+      const response = await api.post('/sales', sale);
       
-      if (response.ok) {
+      if (response.status === 200 || response.status === 201) {
         await deleteSale(sale.id);
       } else {
-        const errorData = await response.json();
-        console.error(`Failed to sync sale ${sale.id}:`, errorData);
-        // Trigger conflict resolution UI if needed
-        window.dispatchEvent(new CustomEvent('offline-sync-conflict', { detail: { sale, error: errorData } }));
+        console.error(`Failed to sync sale ${sale.id}:`, response.data);
+        window.dispatchEvent(new CustomEvent('offline-sync-conflict', { detail: { sale, error: response.data } }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error syncing sale ${sale.id}:`, error);
+      if (error.response) {
+        window.dispatchEvent(new CustomEvent('offline-sync-conflict', { detail: { sale, error: error.response.data } }));
+      }
     }
   }
 };

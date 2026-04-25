@@ -37,6 +37,18 @@ export const MainLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleStatusChange = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatusChange);
+    window.addEventListener('offline', handleStatusChange);
+    return () => {
+      window.removeEventListener('online', handleStatusChange);
+      window.removeEventListener('offline', handleStatusChange);
+    };
+  }, []);
+
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
   const handleModuleChange = (module: string) => {
@@ -76,12 +88,12 @@ export const MainLayout: React.FC = () => {
         
         <div className="flex-1 flex overflow-hidden relative">
           {/* The Stage (ModuleRenderer) */}
-          <main className="flex-1 overflow-y-auto no-scrollbar relative bg-[#050505] min-w-0">
+          <main className="flex-1 overflow-hidden relative bg-[#050505] min-w-0">
             {/* Subtle Grid Background - More refined */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] bg-[size:24px_24px]" />
             <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:120px_120px]" />
             
-            <div className="p-4 lg:p-6 max-w-[2400px] mx-auto relative z-10 h-full">
+            <div className="relative z-10 h-full">
               <motion.div
                 key={activeModule}
                 className="h-full"
@@ -191,23 +203,22 @@ export const MainLayout: React.FC = () => {
         </div>
 
         {/* Global Status Bar (Bottom Bar) */}
-        <footer className="h-8 bg-[#0A0A0A] border-t border-white/5 px-6 flex items-center justify-between text-[8px] font-black text-white/20 uppercase tracking-[0.3em] shrink-0 z-40">
+        <footer className="h-8 bg-[#0A0A0A] border-t border-white/5 px-6 flex items-center justify-between text-[8px] font-bold text-white/20 uppercase tracking-[0.2em] shrink-0 z-40">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-white/40">Terminal Secure</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className={`transition-colors ${isOnline ? 'text-white/40' : 'text-red-500'}`}>{isOnline ? 'System Online' : 'Connection Lost'}</span>
             </span>
             <div className="w-px h-3 bg-white/5" />
-            <span className="opacity-40">Node: POS-01-LAKKI</span>
+            <span className="opacity-40 tracking-widest">Region: Global-NW</span>
             <div className="w-px h-3 bg-white/5" />
-            <span className="opacity-40">Latency: 12ms</span>
+            <span className="opacity-40 font-mono">Build 2.6.0-PRO</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="opacity-40">v2.6.0-OBSIDIAN</span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 opacity-20">
               <div className="w-1 h-1 rounded-full bg-blue-500" />
-              <div className="w-1 h-1 rounded-full bg-blue-500/40" />
-              <div className="w-1 h-1 rounded-full bg-blue-500/20" />
+              <div className="w-1 h-1 rounded-full bg-blue-500" />
+              <div className="w-1 h-1 rounded-full bg-blue-500" />
             </div>
           </div>
         </footer>

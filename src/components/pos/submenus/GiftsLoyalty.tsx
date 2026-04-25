@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/client";
 import { Gift, Star, CreditCard, ArrowUpRight, Search, PlusCircle, History, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ export const GiftsLoyalty: React.FC = () => {
 
   const fetchActiveCards = async () => {
     try {
-      const { data } = await axios.get('/api/gift-cards');
+      const { data } = await api.get('/gift-cards');
       setActiveCards(data);
     } catch (e) {
       console.error("Failed to fetch cards", e);
@@ -24,7 +24,7 @@ export const GiftsLoyalty: React.FC = () => {
     if (!voucherView) return;
     setIsValidating(true);
     try {
-      const { data } = await axios.get(`/api/gift-cards/${voucherView}`);
+      const { data } = await api.get(`/gift-cards/${voucherView}`);
       setValidatedCard(data);
       toast.success("Voucher Verified", {
         description: `Current Balance: ${data.currentBalance.toFixed(3)} KD`
@@ -46,7 +46,10 @@ export const GiftsLoyalty: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-4xl font-serif italic text-white leading-tight">Gifts & Loyalty</h2>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">Value & Reward Synapse</p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Value & Reward Synapse</p>
+            <div className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] font-black text-emerald-500 uppercase tracking-widest">End-to-End Ready</div>
+          </div>
         </div>
         
         <div className="flex p-1 bg-white/5 rounded-2xl border border-white/5 shadow-inner">

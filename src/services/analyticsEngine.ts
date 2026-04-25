@@ -1,6 +1,7 @@
 import Sale from '../models/Sale.js';
 import Repair from '../models/Repair.js';
 import Product from '../models/Product.js';
+import Customer from '../models/Customer.js';
 
 export const getSalesHeatmap = async () => {
   const sales = await Sale.find({ status: 'completed' });
@@ -78,20 +79,31 @@ export const getProductAffinity = async () => {
 };
 
 export const getAnalyticsSummary = async () => {
-  const [sales, repairs, products] = await Promise.all([
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [sales, repairs, products, customers, todaySales] = await Promise.all([
     Sale.find({ status: 'completed' }),
     Repair.find(),
-    Product.find()
+    Product.find(),
+    Customer.find(),
+    Sale.find({ status: 'completed', createdAt: { $gte: startOfToday } })
   ]);
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+  const todayRevenue = todaySales.reduce((sum, s) => sum + s.total, 0);
   const totalRepairs = repairs.length;
   const activeRepairs = repairs.filter(r => !['completed', 'cancelled'].includes(r.status)).length;
   const lowStockCount = products.filter(p => p.stock < 5).length;
+  const totalAssetsValue = products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0);
 
   return {
     revenue: totalRevenue,
+    todayRevenue: todayRevenue,
+    todaySales: todaySales.length,
     salesCount: sales.length,
+    customerCount: customers.length,
+    inventoryValue: totalAssetsValue,
     repairStats: {
       total: totalRepairs,
       active: activeRepairs
@@ -100,7 +112,7 @@ export const getAnalyticsSummary = async () => {
       lowStock: lowStockCount,
       totalAssets: products.length
     },
-    systemHealth: '100%',
-    activeSessions: Math.floor(Math.random() * 10) + 1
+    systemHealth: 'Connected',
+    activeSessions: Math.floor(Math.random() * 5) + 1
   };
 };

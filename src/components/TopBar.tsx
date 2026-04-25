@@ -49,8 +49,8 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Left: Module Context & Breadcrumbs */}
       <div className="flex items-center gap-6">
         <div className="flex flex-col">
-          <nav className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.4em] text-white/20">
-            <Link to="/" className="hover:text-blue-500 transition-colors">Terminal</Link>
+          <nav className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-[0.2em] text-white/20">
+            <Link to="/" className="hover:text-blue-500 transition-colors">Obsidian</Link>
             {pathnames.map((name, index) => (
               <React.Fragment key={name}>
                 <ChevronRight className="w-2 h-2 text-white/10" />
@@ -59,18 +59,18 @@ export const TopBar: React.FC<TopBarProps> = ({
             ))}
           </nav>
           <div className="flex items-center gap-3 mt-0.5">
-            <h2 className="text-sm font-black tracking-tighter uppercase text-white/90">
+            <h2 className="text-sm font-bold tracking-tight uppercase text-white/90">
               {activeModule.split('/').pop()?.replace('-', ' ')}
             </h2>
             <div className="flex gap-0.5">
-              <div className={`w-1 h-1 rounded-full ${isPrinterOnline ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} title="Printer Vector" />
-              <div className={`w-1 h-1 rounded-full ${isScannerOnline ? 'bg-green-500' : 'bg-blue-500/20'}`} title="Scanner Matrix" />
+              <div className={`w-1 h-1 rounded-full ${isPrinterOnline ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`} title="Printer Status" />
+              <div className={`w-1 h-1 rounded-full ${isScannerOnline ? 'bg-emerald-500' : 'bg-white/10'}`} title="Scanner Status" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Center: Command Search - Floating Style */}
+      {/* Center: Search */}
       <div className="flex-1 max-w-lg mx-12">
         <button 
           onClick={onSearchClick}
@@ -78,7 +78,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <div className="flex items-center gap-3">
             <Search className="w-3.5 h-3.5 text-white/20 group-hover:text-blue-500 transition-colors" />
-            <span className="text-[10px] font-bold text-white/30 tracking-tight uppercase">Execute Protocol...</span>
+            <span className="text-[10px] font-bold text-white/30 tracking-tight uppercase">Quick Search...</span>
           </div>
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/40 rounded-md border border-white/5">
             <Command className="w-2.5 h-2.5 text-white/20" />
@@ -87,22 +87,22 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
       </div>
 
-      {/* Right: System & User Intelligence */}
+      {/* Right: Actions */}
       <div className="flex items-center gap-4">
-        {/* Real-time Telemetry */}
+        {/* Hardware Status */}
         <div className="hidden xl:flex items-center gap-5 px-4 py-1.5 bg-white/[0.02] rounded-xl border border-white/5">
           <div className="flex flex-col items-end">
-            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">PERIPHERALS</span>
+            <span className="text-[7px] font-bold uppercase tracking-widest text-white/20">HARDWARE</span>
             <div className="flex items-center gap-3">
-              <Printer className={`w-3 h-3 ${isPrinterOnline ? 'text-green-500' : 'text-white/10'}`} />
+              <Printer className={`w-3 h-3 ${isPrinterOnline ? 'text-emerald-500' : 'text-white/10'}`} />
               <Scan className={`w-3 h-3 ${isScannerOnline ? 'text-blue-500' : 'text-white/10'}`} />
             </div>
           </div>
           <div className="w-px h-5 bg-white/5" />
           <div className="flex flex-col items-end">
-            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">Network</span>
+            <span className="text-[7px] font-bold uppercase tracking-widest text-white/20">LATENCY</span>
             <div className="flex items-center gap-1">
-              <Network className="w-2.5 h-2.5 text-green-500/60" />
+              <Network className="w-2.5 h-2.5 text-emerald-500/60" />
               <span className="text-[9px] font-mono font-bold text-white/60">12ms</span>
             </div>
           </div>

@@ -42,7 +42,10 @@ export const TerminalSetup: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-4xl font-serif italic text-white leading-tight">Terminal Configuration</h2>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">Local Environment & Node Parameters</p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Local Environment & Node Parameters</p>
+            <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black text-amber-500 uppercase tracking-widest">Simulation Mode</div>
+          </div>
         </div>
         <button 
           onClick={saveFiscalSettings}

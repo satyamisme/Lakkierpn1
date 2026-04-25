@@ -15,7 +15,10 @@ export const InstalmentPlan: React.FC = () => {
     <div className="flex flex-col h-full space-y-10 p-4">
       <div className="text-center space-y-4">
         <h2 className="text-5xl font-serif italic text-white tracking-tight">Financial Matrix</h2>
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.6em]">Deferred Payment Stratification</p>
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.6em]">Deferred Payment Stratification</p>
+          <div className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black text-amber-500 uppercase tracking-widest">Simulation Mode</div>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-8 max-w-5xl mx-auto w-full">

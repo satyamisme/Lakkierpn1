@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, UserPlus, Loader2, User, Phone, Mail, CheckCircle2 } from 'lucide-react';
-import axios from 'axios';
+import api from '../../../api/client';
 import { toast } from 'sonner';
 
 interface Customer {
@@ -41,7 +41,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({ onSelect, se
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      const { data } = await axios.get(`/api/customers/search?q=${searchTerm}`);
+      const { data } = await api.get(`/customers/search?q=${searchTerm}`);
       setResults(data);
     } catch (error) {
       console.error('Search failed', error);
@@ -56,7 +56,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({ onSelect, se
       return;
     }
     try {
-      const { data } = await axios.post('/api/customers', newCustomer);
+      const { data } = await api.post('/customers', newCustomer);
       onSelect(data);
       setIsCreating(false);
       setNewCustomer({ name: '', phone: '', email: '' });

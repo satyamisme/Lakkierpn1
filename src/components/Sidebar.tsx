@@ -90,23 +90,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
             animate={{ opacity: 1 }}
             className="ml-3"
           >
-            <h1 className="text-white font-black tracking-tighter text-base leading-none uppercase">LAKKI</h1>
-            <p className="text-[7px] text-white/20 font-mono tracking-[0.3em] uppercase mt-0.5">Terminal.OS</p>
+            <h1 className="text-white font-bold tracking-tight text-base leading-none uppercase">OBSIDIAN</h1>
+            <p className="text-[7px] text-white/20 font-mono tracking-[0.2em] uppercase mt-0.5">Enterprise OS</p>
           </motion.div>
         )}
       </div>
 
-      {/* Search Matrix */}
+      {/* Search */}
       {!isCollapsed && (
         <div className="px-3 py-2 border-b border-[#41484d]/10 bg-white/[0.01]">
           <div className="relative group">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/10 group-focus-within:text-primary-foreground transition-colors" />
             <input 
               type="text"
-              placeholder="Search Intelligence..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-highest/30 border border-white/5 rounded-md pl-8 pr-3 py-1.5 text-[9px] font-bold text-white placeholder:text-white/10 outline-none focus:border-primary-foreground/30 transition-all"
+              className="w-full bg-surface-container-highest/30 border border-white/5 rounded-md pl-8 pr-3 py-1.5 text-[10px] font-medium text-white placeholder:text-white/10 outline-none focus:border-white/20 transition-all"
             />
           </div>
         </div>
@@ -114,27 +114,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
 
       {/* Navigation Tree */}
       <div className="flex-1 py-3 flex flex-col gap-0.5 px-2 overflow-y-auto no-scrollbar">
-        {/* Command Center Quick Link */}
+        {/* Dashboard Quick Link */}
         <button
           onClick={() => onModuleChange('command-center')}
           className={`
             relative group flex items-center gap-3 p-2 rounded-lg transition-all duration-300 mb-2
-            ${activeModule === 'command-center' ? 'bg-gradient-to-br from-primary-foreground/20 to-primary/20 text-white' : 'text-white/20 hover:bg-white/5 hover:text-white'}
+            ${activeModule === 'command-center' ? 'bg-white/5 text-white' : 'text-white/20 hover:bg-white/5 hover:text-white'}
           `}
         >
-          <div className={`shrink-0 transition-transform duration-300 group-hover:scale-110 ${activeModule === 'command-center' ? 'text-primary-foreground' : ''}`}>
+          <div className={`shrink-0 transition-transform duration-300 group-hover:scale-110 ${activeModule === 'command-center' ? 'text-primary' : ''}`}>
             <Home className="w-4 h-4" />
           </div>
           {!isCollapsed && (
-            <span className="text-[10px] font-black tracking-tight uppercase">Command</span>
+            <span className="text-[10px] font-bold tracking-tight uppercase">Dashboard</span>
           )}
           {activeModule === 'command-center' && (
-            <motion.div layoutId="active-pill" className="absolute left-0 w-0.5 h-4 bg-primary-foreground rounded-r-full" />
+            <motion.div layoutId="active-pill" className="absolute left-0 w-0.5 h-4 bg-primary rounded-r-full" />
           )}
         </button>
 
         <div className="px-2 mb-1 mt-2">
-          <p className="text-[7px] font-black text-white/10 uppercase tracking-[0.4em]">Operational Domains</p>
+          <p className="text-[7px] font-black text-white/10 uppercase tracking-[0.4em]">Operations</p>
         </div>
 
         {filteredNavigation.map((category) => {
@@ -214,9 +214,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
         {/* Quick Tools */}
         <div className="space-y-0.5">
           {[
-            { id: 'analytics', icon: BarChart3, label: 'Intelligence' },
-            { id: 'database', icon: Database, label: 'Data Lake' },
-            { id: 'security', icon: Lock, label: 'Vault' },
+            { id: 'analytics', icon: BarChart3, label: 'Analytics' },
+            { id: 'database', icon: Database, label: 'Database' },
+            { id: 'security', icon: Lock, label: 'Security' },
           ].map((tool) => (
             <button
               key={tool.id}
@@ -224,34 +224,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, activeM
             >
               <tool.icon className="w-4 h-4 shrink-0" />
               {!isCollapsed && (
-                <span className="text-[9px] font-black uppercase tracking-widest">{tool.label}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest">{tool.label}</span>
               )}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Footer / Settings */}
+      {/* Footer / Status */}
       <div className="p-3 border-t border-white/5 bg-black/50 backdrop-blur-md">
         {!isCollapsed && (
           <div className="px-3 py-4 mb-2 bg-white/[0.02] border border-white/5 rounded-xl">
              <div className="flex items-center justify-between mb-3">
-               <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Core Status</span>
+               <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">System Status</span>
                <div className="flex items-center gap-1">
-                 <div className="w-1 h-1 rounded-full bg-green-500" />
-                 <span className="text-[8px] font-black text-green-500/80 uppercase tracking-widest leading-none">Healthy</span>
+                 <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                 <span className="text-[8px] font-bold text-emerald-500/80 uppercase tracking-widest leading-none">Healthy</span>
                </div>
              </div>
              <div className="space-y-2">
                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                  <motion.div 
                    initial={{ width: 0 }}
-                   animate={{ width: '65%' }}
-                   className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" 
+                   animate={{ width: '15%' }}
+                   className="h-full bg-blue-500" 
                  />
                </div>
-               <div className="flex justify-between text-[7px] font-bold text-white/20 uppercase tracking-widest">
-                 <span>Load: 24%</span>
+               <div className="flex justify-between text-[7px] font-medium text-white/10 uppercase tracking-widest">
+                 <span>Load: 4%</span>
                  <span>Sync: 100%</span>
                </div>
              </div>

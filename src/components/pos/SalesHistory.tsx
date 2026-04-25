@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { History, Search, Printer, FileText, Download, Filter, MoreVertical, Loader2, RefreshCw } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/client';
 import { toast } from 'sonner';
 import { printThermalReceipt, printA4Invoice } from '../../utils/documentService';
 import { ThermalReceipt } from '../print/ThermalReceipt';
@@ -35,7 +35,7 @@ export const SalesHistory: React.FC = () => {
   const fetchSales = async () => {
     try {
       setIsLoading(true);
-      const { data } = await axios.get('/api/sales');
+      const { data } = await api.get('/sales');
       setSales(data);
     } catch (error) {
       toast.error("Failed to fetch transaction records");

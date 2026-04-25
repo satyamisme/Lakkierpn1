@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../../../api/client";
 import { Search, RotateCcw, ShieldAlert, FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ export const ReturnsHub: React.FC = () => {
     if (!invoiceId) return;
     setIsSearching(true);
     try {
-      const { data } = await axios.get(`/api/sales/lookup?q=${invoiceId}`);
+      const { data } = await api.get(`/sales/lookup?q=${invoiceId}`);
       if (data) {
         setFoundSale(data);
         setSelectedItems(new Set());
@@ -63,7 +63,7 @@ export const ReturnsHub: React.FC = () => {
           .reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
       };
 
-      await axios.post('/api/sales/returns', returnPayload);
+      await api.post('/sales/returns', returnPayload);
       toast.success("Asset Reversal Successful", {
         description: "Inventory vectors updated for HQ Registry."
       });
