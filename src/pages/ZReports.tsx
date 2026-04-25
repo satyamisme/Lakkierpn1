@@ -19,16 +19,31 @@ import {
 import axios from "axios";
 import { useEffect } from "react";
 
+import { toast } from 'sonner';
+
 export const ZReports = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [zReportData, setZReportData] = useState<any>(null);
+  const [actuals, setActuals] = useState<Record<string, number>>({
+    cash: 0,
+    knet: 0,
+    card: 0,
+    store_credit: 0
+  });
 
   useEffect(() => {
     const fetchZReport = async () => {
       try {
         const res = await axios.get('/api/reports/z-report/summary');
         setZReportData(res.data);
+        // Initialize actuals with expected to make it easier for user
+        setActuals({
+          cash: res.data.sales.cash || 0,
+          knet: res.data.sales.knet || 0,
+          card: res.data.sales.card || 0,
+          store_credit: res.data.sales.store_credit || 0
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -37,6 +52,26 @@ export const ZReports = () => {
     };
     fetchZReport();
   }, []);
+
+  const handleCloseShift = async () => {
+    try {
+      await axios.post('/api/reports/z-report/close', {
+        actuals,
+        reportId: zReportData.id
+      });
+      setIsLocked(true);
+      toast.success("Shift closed and Z-Report generated successfully.");
+    } catch (err) {
+      toast.error("Failed to close shift. Please check network.");
+    }
+  };
+
+  const calculateVariance = () => {
+    if (!zReportData) return 0;
+    const totalExpected = (zReportData.sales.cash || 0) + (zReportData.sales.knet || 0) + (zReportData.sales.card || 0) + (zReportData.sales.store_credit || 0);
+    const totalActual = actuals.cash + actuals.knet + actuals.card + actuals.store_credit;
+    return totalActual - totalExpected;
+  };
 
   if (loading) {
     return (
@@ -61,7 +96,7 @@ export const ZReports = () => {
           </button>
           {!isLocked ? (
             <button 
-              onClick={() => setIsLocked(true)}
+              onClick={handleCloseShift}
               className="px-10 py-5 bg-red-600 text-white rounded-[2.5rem] font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-red-500/20 flex items-center gap-3"
             >
               <Lock size={20} /> Generate Z-Report & Close Shift
@@ -111,6 +146,10 @@ export const ZReports = () => {
                         <div className="relative">
                            <input 
                               disabled={isLocked}
+                              type="number"
+                              step="0.001"
+                              value={actuals[row.key]}
+                              onChange={(e) => setActuals({...actuals, [row.key]: parseFloat(e.target.value) || 0})}
                               placeholder="0.000"
                               className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-sm font-black font-mono text-primary text-center outline-none focus:border-primary transition-all disabled:opacity-40"
                            />
@@ -149,7 +188,9 @@ export const ZReports = () => {
                    </div>
                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-4">Net Variance Target</p>
                    <div className="flex items-baseline justify-end gap-3">
-                      <h4 className="text-6xl font-black font-mono tracking-tighter">{(zReportData.expectedTotal - zReportData.openingFloat).toLocaleString('en-KW', { minimumFractionDigits: 3 })}</h4>
+                      <h4 className={`text-6xl font-black font-mono tracking-tighter ${calculateVariance() !== 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        {calculateVariance().toLocaleString('en-KW', { minimumFractionDigits: 3, signDisplay: 'always' })}
+                      </h4>
                       <span className="text-xl font-black text-white/20">KD</span>
                    </div>
                 </div>

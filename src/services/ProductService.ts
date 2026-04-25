@@ -103,6 +103,39 @@ export class ProductService {
   static async searchAssets(query: string) {
     const softDeleteQuery = { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
     
+    if (!query) {
+      // Return latest 20 items exploded as variants
+      const recentProducts = await Product.find(softDeleteQuery)
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .populate('variants')
+        .lean();
+      
+      const compositeResults: any[] = [];
+      recentProducts.forEach((p: any) => {
+        if (p.isConfigurable && p.variants && p.variants.length > 0) {
+          p.variants.forEach((v: any) => {
+            if (v && !v.deletedAt) {
+              const attrValues = v.attributes ? Object.values(v.attributes).filter(val => typeof val === 'string') : [];
+              compositeResults.push({
+                ...v,
+                name: p.name,
+                name_ar: p.name_ar,
+                brand: p.brand,
+                brand_ar: p.brand_ar,
+                isVariant: true,
+                parentProduct: p,
+                displayName: `${p.name} ${attrValues.length > 0 ? `[${attrValues.join(' | ')}]` : ''}`.trim()
+              });
+            }
+          });
+        } else {
+          compositeResults.push({ ...p, isVariant: false });
+        }
+      });
+      return compositeResults;
+    }
+
     // 1. Identifier Match (IMEI/Serial) - High Priority
     const assetMatches = await SerialNumber.find({
       identifier: query,

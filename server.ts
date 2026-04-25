@@ -51,6 +51,7 @@ import customerRoutes from "./src/routes/customerRoutes.js";
 import leaveRoutes from "./src/routes/leaveRoutes.js";
 import paymentRoutes from "./src/routes/paymentRoutes.js";
 import valuationRoutes from "./src/routes/valuationRoutes.js";
+import adminRoutes from "./src/routes/adminRoutes.js";
 import { trainingModeMiddleware } from "./src/middleware/trainingMode.js";
 import { ipWhitelistMiddleware } from "./src/middleware/securityMiddleware.js";
 import { auditLogger } from "./src/middleware/auditMiddleware.js";
@@ -236,6 +237,7 @@ async function startServer() {
   app.use("/api/leave", leaveRoutes);
   app.use("/api/payments", paymentRoutes);
   app.use("/api/valuation", valuationRoutes);
+  app.use("/api/admin", adminRoutes);
 
   // Training Mode Middleware (ID 227)
   app.use(trainingModeMiddleware);

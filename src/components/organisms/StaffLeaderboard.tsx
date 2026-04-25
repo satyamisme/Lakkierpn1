@@ -43,10 +43,9 @@ export const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({ entries }) =
               </div>
               
               <div>
-                <h3 className="font-black uppercase tracking-tight text-lg">{entry.name}</h3>
+                <h3 className="font-black uppercase tracking-tight text-lg">{entry.staffName}</h3>
                 <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                  <span className="flex items-center gap-1"><TrendingUp size={10} /> {entry.salesCount} Sales</span>
-                  <span className="flex items-center gap-1"><Zap size={10} /> {entry.repairsCount} Repairs</span>
+                  <span className="flex items-center gap-1"><TrendingUp size={10} /> {entry.totalSales} Sales</span>
                 </div>
               </div>
             </div>
@@ -54,13 +53,13 @@ export const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({ entries }) =
             <div className="flex items-center gap-10">
               <div className="text-right hidden md:block">
                 <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Revenue</div>
-                <div className="text-lg font-black font-mono">{entry.salesValue.toFixed(3)} KD</div>
+                <div className="text-lg font-black font-mono">{entry.totalSales.toFixed(3)} KD</div>
               </div>
               <div className="text-right">
                 <div className="text-[10px] font-black uppercase tracking-widest text-primary">Commission</div>
                 <div className="text-xl font-black text-primary font-mono flex items-center gap-1 justify-end">
                   <DollarSign size={16} />
-                  {entry.commissionEarned.toFixed(3)}
+                  {entry.commission.toFixed(3)}
                 </div>
               </div>
             </div>

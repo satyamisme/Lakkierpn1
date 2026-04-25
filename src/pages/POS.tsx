@@ -177,7 +177,7 @@ export const POS: React.FC<POSProps> = ({ onAddProductClick }) => {
   }, [searchTerm]);
   const [taxRate, setTaxRate] = useState(0); // 0% by default in Kuwait
   
-  const [activeStage, setActiveStage] = useState<'grid' | 'customers' | 'exchange' | 'loyalty' | 'instalments' | 'setup' | 'network' | 'records'>('grid');
+  const [activeStage, setActiveStage] = useState<'grid' | 'customers' | 'exchange' | 'loyalty' | 'instalments' | 'setup' | 'network' | 'records' | 'sync' | 'receipts'>('grid');
   const [stats, setStats] = useState({
     todayRevenue: 0,
     todayTransactions: 0

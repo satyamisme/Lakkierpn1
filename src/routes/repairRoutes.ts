@@ -76,4 +76,57 @@ router.get('/:id', authenticate, requirePermission(61), async (req, res) => {
   }
 });
 
+// PATCH /:id/status (technician quick sync)
+router.patch('/:id/status', authenticate, requirePermission(63), async (req, res) => {
+  try {
+    const repair = await Repair.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+    res.json(repair);
+  } catch (error) {
+    res.status(500).json({ error: 'Status update failed' });
+  }
+});
+
+// PATCH /:id/qc (Quality Control Handover)
+router.patch('/:id/qc', authenticate, requirePermission(63), async (req, res) => {
+  try {
+    const repair = await Repair.findByIdAndUpdate(req.params.id, { 
+      status: 'ready',
+      qcChecklist: req.body.qcChecklist,
+      qcAt: new Date()
+    }, { new: true }).populate('customerId');
+    
+    // Auto-alert customer
+    if (repair?.customerId?.phone) {
+      await sendTemplate(repair.customerId.phone, 'repair_ready', {
+        customerName: repair.customerId.name,
+        ticketId: repair.repairNumber,
+        deviceModel: `${repair.deviceInfo.brand} ${repair.deviceInfo.model}`,
+        amount: repair.quotedPrice.toString()
+      });
+    }
+
+    res.json(repair);
+  } catch (error) {
+    res.status(500).json({ error: 'QC Handover failed' });
+  }
+});
+
+// POST /:id/whatsapp (Manual retry)
+router.post('/:id/whatsapp', authenticate, requirePermission(63), async (req, res) => {
+  try {
+    const repair = await Repair.findById(req.params.id).populate('customerId');
+    if (repair?.customerId?.phone) {
+      await sendTemplate(repair.customerId.phone, 'repair_status_update', {
+        customerName: repair.customerId.name,
+        ticketId: repair.repairNumber,
+        status: repair.status
+      });
+      return res.json({ success: true });
+    }
+    res.status(400).json({ error: 'Customer phone missing' });
+  } catch (error) {
+    res.status(500).json({ error: 'WhatsApp delivery failed' });
+  }
+});
+
 export default router;

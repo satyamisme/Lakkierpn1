@@ -2,12 +2,9 @@ import client from "../client";
 
 export interface LeaderboardEntry {
   staffId: string;
-  name: string;
-  salesCount: number;
-  salesValue: number;
-  repairsCount: number;
-  commissionEarned: number;
-  rank: number;
+  staffName: string;
+  totalSales: number;
+  commission: number;
 }
 
 export interface CommissionReport {

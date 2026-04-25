@@ -7,12 +7,33 @@ export const userController = {
     try {
       const { name, email, password, role, permissions, status, storeId } = req.body;
       const hashedPassword = await bcrypt.hash(password, 10);
+      
+      let finalPermissions = permissions;
+      if (!finalPermissions || finalPermissions.length === 0) {
+        switch (role) {
+          case 'cashier':
+            finalPermissions = [1, 121];
+            break;
+          case 'technician':
+            finalPermissions = [61, 67, 71, 88];
+            break;
+          case 'manager':
+            finalPermissions = [1, 29, 61, 121, 122, 125, 181, 188, 190, 193];
+            break;
+          case 'superadmin':
+            finalPermissions = [0, ...Array.from({ length: 350 }, (_, i) => i + 1)];
+            break;
+          default:
+            finalPermissions = [1];
+        }
+      }
+
       const user = new User({
         name,
         email,
         password: hashedPassword,
         role,
-        permissions,
+        permissions: finalPermissions,
         status,
         storeId
       });

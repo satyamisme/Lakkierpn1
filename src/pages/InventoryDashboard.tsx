@@ -299,6 +299,12 @@ export const InventoryDashboard: React.FC = () => {
             >
               <Plus size={18} /> Register Asset
             </button>
+            <Link 
+              to="/inventory/labels"
+              className="px-10 py-5 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] hover:bg-blue-500/20 transition-all flex items-center gap-3"
+            >
+              <Tag size={18} /> Label Matrix
+            </Link>
           </div>
         </Gate>
       </header>
@@ -479,11 +485,14 @@ export const InventoryDashboard: React.FC = () => {
                   </div>
 
                   <div className="flex justify-center flex-wrap gap-1">
-                      {stores.slice(0, 3).map(s => (
-                        <div key={s._id} className="w-6 h-6 bg-white/5 rounded-md flex items-center justify-center text-[8px] font-black text-white/40 border border-white/5" title={s.name}>
-                          {Math.floor(Math.random() * 5)}
-                        </div>
-                      ))}
+                      {stores.slice(0, 3).map(s => {
+                        const inv = p.storeInventory?.find((i: any) => i.storeId === s._id);
+                        return (
+                          <div key={s._id} className="w-6 h-6 bg-white/5 rounded-md flex items-center justify-center text-[8px] font-black text-white/40 border border-white/5" title={s.name}>
+                            {inv?.quantity || 0}
+                          </div>
+                        );
+                      })}
                       {stores.length > 3 && <span className="text-[8px] font-black text-white/10 self-end">+{stores.length - 3}</span>}
                   </div>
 
@@ -546,8 +555,14 @@ export const InventoryDashboard: React.FC = () => {
                       <div className="text-center text-[8px] font-black text-white/10 uppercase tracking-widest">{v.binLocation || 'UNASSIGNED'}</div>
                       <div className="text-center">
                         <div className="flex justify-center gap-1">
-                          <div className="w-5 h-5 bg-white/5 rounded flex items-center justify-center text-[7px] font-black text-white/40">3</div>
-                          <div className="w-5 h-5 bg-white/5 rounded flex items-center justify-center text-[7px] font-black text-white/40">0</div>
+                          {stores.slice(0, 2).map(s => {
+                            const inv = v.storeInventory?.find((inv: any) => inv.storeId === s._id);
+                            return (
+                              <div key={s._id} className="w-5 h-5 bg-white/5 rounded flex items-center justify-center text-[7px] font-black text-white/40" title={s.name}>
+                                {inv?.quantity || 0}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="text-center font-mono font-black text-white/80">{v.stock}</div>

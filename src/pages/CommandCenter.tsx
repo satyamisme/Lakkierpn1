@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   ShoppingCart, 
@@ -17,12 +17,29 @@ import {
   LayoutGrid,
   Cpu,
   Globe,
-  Database
+  Database,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'sonner';
 
 export const CommandCenter: React.FC = () => {
   const navigate = useNavigate();
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleSeedData = async () => {
+    try {
+      setIsSeeding(true);
+      await axios.post('/api/admin/seed');
+      toast.success("Matrix Reconstructed: Development data successfully injected.");
+      window.location.reload(); // Refresh to show new data
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Matrix corruption: Seeding failed.");
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const domainCards = [
     { 
@@ -106,6 +123,14 @@ export const CommandCenter: React.FC = () => {
             </p>
             
             <div className="flex items-center gap-4">
+              <button 
+                disabled={isSeeding}
+                onClick={handleSeedData}
+                className="group px-6 py-4 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:bg-amber-500 hover:text-black transition-all duration-300"
+              >
+                {isSeeding ? <Loader2 className="animate-spin" size={16} /> : <Zap className="w-4 h-4 fill-amber-500 group-hover:fill-black" />}
+                Seed Matrix
+              </button>
               <button 
                 onClick={() => navigate('/pos')}
                 className="group px-8 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center gap-4 hover:bg-blue-500 hover:text-white transition-all duration-500 shadow-2xl shadow-white/5"

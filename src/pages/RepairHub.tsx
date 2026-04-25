@@ -22,11 +22,14 @@ import { toast } from 'sonner';
 import { RepairIntake } from '../components/organisms/RepairIntake';
 import { RepairList } from '../components/organisms/RepairList';
 import { RepairStats } from '../components/organisms/RepairStats';
+import { RepairDetailsModal } from '../components/organisms/RepairDetailsModal';
 
 export const RepairHub = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'active' | 'history' | 'intake'>('dashboard');
   const [repairs, setRepairs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRepair, setSelectedRepair] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const fetchRepairs = async () => {
     try {
@@ -132,7 +135,15 @@ export const RepairHub = () => {
                     </div>
                     <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-12">
                        {repairs.filter(r => r.status === status).map(repair => (
-                         <RepairCard key={repair._id} repair={repair} onRefresh={fetchRepairs} />
+                          <RepairCard 
+                            key={repair._id} 
+                            repair={repair} 
+                            onRefresh={fetchRepairs} 
+                            onClick={() => {
+                              setSelectedRepair(repair);
+                              setIsDetailsOpen(true);
+                            }}
+                          />
                        ))}
                        {repairs.filter(r => r.status === status).length === 0 && (
                          <div className="p-8 border border-dashed border-white/5 rounded-3xl text-center">
@@ -155,15 +166,30 @@ export const RepairHub = () => {
           )}
         </motion.div>
       </AnimatePresence>
+
+      <AnimatePresence>
+        {isDetailsOpen && selectedRepair && (
+          <RepairDetailsModal 
+            repair={selectedRepair}
+            isOpen={isDetailsOpen}
+            onClose={() => {
+              setIsDetailsOpen(false);
+              setSelectedRepair(null);
+            }}
+            onRefresh={fetchRepairs}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-const RepairCard = ({ repair, onRefresh }: { repair: any, onRefresh: () => void }) => {
+const RepairCard = ({ repair, onRefresh, onClick }: { repair: any, onRefresh: () => void, onClick: () => void }) => {
   return (
     <motion.div 
       layout
       whileHover={{ y: -4 }}
+      onClick={onClick}
       className="p-6 bg-surface-container-low/40 backdrop-blur-xl border border-white/5 rounded-[2rem] hover:border-blue-500/30 transition-all cursor-pointer group"
     >
       <div className="flex justify-between items-start mb-4">

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
 import { toast } from "sonner";
+import api from '../api/client';
 
 export const TechnicianDashboard: React.FC = () => {
   const [repairs, setRepairs] = useState<any[]>([]);
@@ -36,15 +37,11 @@ export const TechnicianDashboard: React.FC = () => {
   const fetchRepairs = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/repairs', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRepairs(data);
-      }
+      const { data } = await api.get('/repairs');
+      setRepairs(data);
     } catch (error) {
       console.error("Fetch error:", error);
+      toast.error("Failed to sync with Repair Pipeline");
     } finally {
       setIsLoading(false);
     }
@@ -52,44 +49,29 @@ export const TechnicianDashboard: React.FC = () => {
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      const response = await fetch(`/api/repairs/${id}/status`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (response.ok) {
-        fetchRepairs();
-        if (selectedRepair?._id === id) {
-          setSelectedRepair({ ...selectedRepair, status });
-        }
+      const { data } = await api.patch(`/repairs/${id}/status`, { status });
+      fetchRepairs();
+      if (selectedRepair?._id === id) {
+        setSelectedRepair(data);
       }
+      toast.success(`Status updated to ${status}`);
     } catch (error) {
       console.error("Status update error:", error);
+      toast.error("Failed to update status");
     }
   };
 
   const handleQcSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/repairs/${selectedRepair._id}/qc`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ qcChecklist }),
-      });
-      if (response.ok) {
-        setIsQcModalOpen(false);
-        fetchRepairs();
-        setSelectedRepair(null);
-        toast.success("QC Passed & Status Updated to Ready!");
-      }
+      const { data } = await api.patch(`/repairs/${selectedRepair._id}/qc`, { qcChecklist });
+      setIsQcModalOpen(false);
+      fetchRepairs();
+      setSelectedRepair(null);
+      toast.success("QC Passed & Status Updated to Ready!");
     } catch (error) {
       console.error("QC error:", error);
+      toast.error("QC Processing Failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -97,25 +79,21 @@ export const TechnicianDashboard: React.FC = () => {
 
   const sendWhatsApp = async (id: string) => {
     try {
-      const response = await fetch(`/api/repairs/${id}/whatsapp`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (response.ok) {
-        toast.success("WhatsApp alert sent!");
-      }
+      await api.post(`/repairs/${id}/whatsapp`);
+      toast.success("WhatsApp alert sent!");
     } catch (error) {
       console.error("WhatsApp error:", error);
+      toast.error("Communication channel failure");
     }
   };
 
   return (
-    <Gate id={63}>
+    <Gate id={61}>
       <div className="space-y-12 pb-20 h-full">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-10">
           <div>
             <h1 className="text-7xl font-serif italic tracking-tighter text-foreground leading-none">Technician Hub</h1>
-            <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-6 opacity-60">Deep-tech repair orchestration & QC (ID 63)</p>
+            <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.4em] mt-6 opacity-60">Deep-tech repair orchestration & QC (ID 61)</p>
           </div>
           <div className="flex gap-6">
             <div className="px-8 py-4 bg-surface-container-lowest border border-border rounded-2xl shadow-sm flex items-center gap-4">
@@ -150,6 +128,11 @@ export const TechnicianDashboard: React.FC = () => {
                   <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
                   <p className="text-[10px] font-black uppercase tracking-widest">Syncing Matrix...</p>
                 </div>
+              ) : repairs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full opacity-20 py-20 grayscale">
+                    <Smartphone size={64} strokeWidth={1} />
+                    <p className="text-[10px] font-black uppercase tracking-widest mt-4">Queue Empty</p>
+                </div>
               ) : (
                 repairs.map((repair) => (
                   <motion.div
@@ -159,9 +142,9 @@ export const TechnicianDashboard: React.FC = () => {
                     className={`p-8 border border-border bg-surface-container-lowest cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden rounded-[2.5rem] shadow-sm ${selectedRepair?._id === repair._id ? 'border-primary ring-4 ring-primary/5' : ''}`}
                   >
                     <div className="flex justify-between items-start mb-6">
-                      <span className="text-[10px] font-black text-primary font-mono bg-primary/5 px-3 py-1 rounded-lg border border-primary/10">{repair.ticketId}</span>
+                      <span className="text-[10px] font-black text-primary font-mono bg-primary/5 px-3 py-1 rounded-lg border border-primary/10">#{repair.repairNumber}</span>
                       <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-                        repair.status === 'fixing' ? 'bg-orange-500/5 text-orange-500 border-orange-500/10' : 
+                        repair.status === 'fixing' || repair.status === 'repairing' ? 'bg-orange-500/5 text-orange-500 border-orange-500/10' : 
                         repair.status === 'ready' ? 'bg-green-500/5 text-green-500 border-green-500/10' : 'bg-muted/50 text-muted-foreground border-border'
                       }`}>
                         {repair.status}
@@ -169,11 +152,11 @@ export const TechnicianDashboard: React.FC = () => {
                     </div>
                     <h3 className="text-lg font-black uppercase tracking-tighter mb-2 flex items-center gap-3">
                       <Smartphone size={18} className="text-muted-foreground opacity-40" />
-                      {repair.phoneModel}
+                      {repair.deviceInfo.brand} {repair.deviceInfo.model}
                     </h3>
                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
-                      <span className="flex items-center gap-2"><User size={12} /> {repair.customerName}</span>
-                      <span className="flex items-center gap-2"><Clock size={12} /> 2h ago</span>
+                      <span className="flex items-center gap-2 max-w-[120px] truncate"><User size={12} /> {repair.customerId?.name || 'Guest'}</span>
+                      <span className="flex items-center gap-2"><Clock size={12} /> {new Date(repair.createdAt).toLocaleDateString()}</span>
                     </div>
                     {selectedRepair?._id === repair._id && (
                       <motion.div 
@@ -193,11 +176,11 @@ export const TechnicianDashboard: React.FC = () => {
               <div className="flex-1 flex flex-col">
                 <div className="p-10 border-b border-border bg-muted/10 flex items-center justify-between relative z-10">
                   <div>
-                    <h2 className="text-4xl font-serif italic tracking-tight">{selectedRepair.phoneModel}</h2>
+                    <h2 className="text-4xl font-serif italic tracking-tight">{selectedRepair.deviceInfo.brand} {selectedRepair.deviceInfo.model}</h2>
                     <div className="flex items-center gap-4 mt-3">
-                      <p className="text-primary text-[10px] font-mono font-black uppercase tracking-widest">Ticket: {selectedRepair.ticketId}</p>
+                      <p className="text-primary text-[10px] font-mono font-black uppercase tracking-widest">Ticket: {selectedRepair.repairNumber}</p>
                       <span className="w-1 h-1 bg-border rounded-full" />
-                      <p className="text-muted-foreground text-[10px] font-mono font-black uppercase tracking-widest opacity-60">IMEI: {selectedRepair.imei}</p>
+                      <p className="text-muted-foreground text-[10px] font-mono font-black uppercase tracking-widest opacity-60">IMEI: {selectedRepair.deviceInfo.imei || 'NOT_RECORDED'}</p>
                     </div>
                   </div>
                   <div className="flex gap-4">
@@ -231,22 +214,20 @@ export const TechnicianDashboard: React.FC = () => {
                         <Wrench size={14} /> Anomaly Report
                       </h3>
                       <div className="p-8 bg-surface border border-border rounded-[2.5rem] text-xs font-black uppercase tracking-[0.15em] leading-relaxed shadow-inner italic opacity-80">
-                        "{selectedRepair.issue}"
+                        "{selectedRepair.problemDescription}"
                       </div>
                     </div>
                     <div className="space-y-6">
                       <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-60 flex items-center gap-3">
-                        <Smartphone size={14} /> Visual Damage Matrix
+                        <Smartphone size={14} /> Device Profile
                       </h3>
                       <div className="flex flex-wrap gap-3">
-                        {Object.entries(selectedRepair.visualDamageMap || {}).filter(([_, v]) => v).map(([part]) => (
-                          <span key={part} className="px-5 py-2 bg-primary/5 border border-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm">
-                            {part}
+                          <span className="px-5 py-2 bg-primary/5 border border-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm">
+                            {selectedRepair.deviceInfo.color || 'STANDARD'}
                           </span>
-                        ))}
-                        {Object.values(selectedRepair.visualDamageMap || {}).every(v => !v) && (
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-30 italic">No visual anomalies reported</p>
-                        )}
+                          <span className="px-5 py-2 bg-blue-500/5 border border-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm">
+                            SERIAL: {selectedRepair.deviceInfo.serialNumber || 'NA'}
+                          </span>
                       </div>
                     </div>
                   </div>
@@ -256,7 +237,7 @@ export const TechnicianDashboard: React.FC = () => {
                       <Activity size={14} /> Workflow Orchestration
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {['diagnosing', 'parts_ordered', 'fixing', 'qc'].map((status) => (
+                      {['diagnosing', 'awaiting_parts', 'repairing', 'qc'].map((status) => (
                         <button
                           key={status}
                           onClick={() => updateStatus(selectedRepair._id, status)}
@@ -289,9 +270,6 @@ export const TechnicianDashboard: React.FC = () => {
                     Initiate QC Protocol (ID 71)
                   </button>
                 </div>
-
-                {/* Background Accent */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full -mr-64 -mt-64 blur-[120px] pointer-events-none" />
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center opacity-10">

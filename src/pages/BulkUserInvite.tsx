@@ -14,12 +14,14 @@ import {
   UserPlus
 } from "lucide-react";
 import { Gate } from "../components/PermissionGuard";
+import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { toast } from "sonner";
 
 import Papa from "papaparse";
 
 export const BulkUserInvite: React.FC = () => {
+  const { user } = useAuth();
   const [emails, setEmails] = useState<string[]>([""]);
   const [role, setRole] = useState("cashier");
   const [sending, setSending] = useState(false);
@@ -74,6 +76,11 @@ export const BulkUserInvite: React.FC = () => {
       return;
     }
 
+    if (!user?.storeId) {
+      toast.error("Authority Anchor Missing: No Store ID found for current operator.");
+      return;
+    }
+
     setSending(true);
     let count = 0;
     try {
@@ -85,7 +92,8 @@ export const BulkUserInvite: React.FC = () => {
           email,
           password: "TemporaryPassword123!",
           role,
-          status: "active"
+          status: "active",
+          storeId: user.storeId // PASSING STORE ID
         });
         count++;
       }

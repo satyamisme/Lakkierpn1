@@ -17,6 +17,8 @@ import {
   Search,
   Lock
 } from 'lucide-react';
+import { getPendingSales, syncPendingSales } from "../services/offlineQueue";
+import { toast } from "sonner";
 
 interface NodeStatus {
   id: string;
@@ -29,6 +31,38 @@ interface NodeStatus {
 }
 
 export const POSSync: React.FC = () => {
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      const sales = await getPendingSales();
+      setPendingCount(sales.length);
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await syncPendingSales();
+      const sales = await getPendingSales();
+      setPendingCount(sales.length);
+      if (sales.length === 0) {
+        toast.success("Synchronized: All pending records uploaded to HQ.");
+      } else {
+        toast.error(`Partial Sync: ${sales.length} items still pending. Check connection.`);
+      }
+    } catch (err) {
+      toast.error("Sync Protocol Failure: Network handshake interrupted.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const [nodes, setNodes] = useState<NodeStatus[]>([
     { id: 'NODE-AVN', name: 'Avenues branch Edge', status: 'online', latency: 42, lastSync: new Date().toISOString(), pendingTxns: 0, region: 'Kuwait City' },
     { id: 'NODE-MAR', name: 'Marina Mall Node', status: 'degraded', latency: 380, lastSync: new Date().toISOString(), pendingTxns: 12, region: 'Salmiya' },
@@ -65,8 +99,12 @@ export const POSSync: React.FC = () => {
                 <div className="w-px h-8 bg-white/10" />
                 <Activity className="text-primary animate-pulse" size={24} />
             </div>
-            <button className="px-10 py-5 bg-white text-black rounded-[2rem] font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5">
-                Force Cluster Re-Sync
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="px-10 py-5 bg-white text-black rounded-[2rem] font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5 disabled:opacity-50"
+            >
+                {isSyncing ? <RefreshCcw className="animate-spin" /> : 'Force Cluster Re-Sync'}
             </button>
         </div>
       </header>
@@ -194,7 +232,7 @@ export const POSSync: React.FC = () => {
 
                     <div className="p-8 bg-black/5 border border-black/5 rounded-[2.5rem] space-y-4">
                         <p className="text-[10px] font-black uppercase tracking-widest opacity-60 text-black">Pending Offsite records</p>
-                        <h4 className="text-5xl font-black font-mono tracking-tighter">96</h4>
+                        <h4 className="text-5xl font-black font-mono tracking-tighter">{pendingCount}</h4>
                     </div>
 
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60 leading-relaxed font-bold text-black border-l-2 border-black/20 pl-4">

@@ -5,6 +5,8 @@ import SerialNumber, { Imei } from '../models/Imei.js';
 import SecurityConfig from '../models/SecurityConfig.js';
 import { ProductService } from '../services/ProductService.js';
 
+import Inventory from '../models/Inventory.js';
+
 async function getTerminalPin() {
   const config = await SecurityConfig.findOne({ configKey: 'terminal_purge_pin' });
   return config ? config.configValue : '1212';
@@ -37,8 +39,23 @@ export const productController = {
         const variantQuery = showDeleted 
           ? { productId: p._id, deletedAt: { $ne: null } }
           : { productId: p._id, $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
-        const variants = await Variant.find(variantQuery).lean();
-        return { ...p, variants };
+        
+        const [variants, storeInventory] = await Promise.all([
+          Variant.find(variantQuery).lean(),
+          Inventory.find({ productId: p._id }).lean()
+        ]);
+
+        // Attach inventory to variants as well if needed
+        const variantsWithInv = variants.map((v: any) => ({
+          ...v,
+          storeInventory: storeInventory.filter((inv: any) => inv.variantId?.toString() === v._id.toString())
+        }));
+
+        return { 
+          ...p, 
+          variants: variantsWithInv,
+          storeInventory: storeInventory.filter((inv: any) => !inv.variantId) 
+        };
       }));
 
       if (page) {
@@ -261,10 +278,6 @@ export const productController = {
   searchProducts: async (req: Request, res: Response) => {
     try {
       const query = req.query.q as string;
-      if (!query) {
-        const products = await Product.find({ $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] }).limit(20).lean();
-        return res.json(products);
-      }
       const results = await ProductService.searchAssets(query);
       res.json(results);
     } catch (error: any) {
